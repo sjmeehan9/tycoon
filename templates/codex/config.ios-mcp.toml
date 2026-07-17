@@ -1,0 +1,16 @@
+
+# iOS agent tooling — same servers as .mcp.json (Claude Code), Codex-native registration.
+# startup_timeout_sec is raised because first-run `npx` downloads exceed the 10s default.
+
+[mcp_servers.XcodeBuildMCP]
+command = "npx"
+args = ["-y", "xcodebuildmcp@latest", "mcp"]
+startup_timeout_sec = 60
+
+[mcp_servers.XcodeBuildMCP.env]
+XCODEBUILDMCP_SENTRY_DISABLED = "true"
+
+[mcp_servers.ios-simulator]
+command = "npx"
+args = ["-y", "ios-simulator-mcp"]
+startup_timeout_sec = 60

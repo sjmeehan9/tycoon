@@ -1,0 +1,28 @@
+name: Template sync
+# Runs in repos generated from the template — opens a PR when the template evolves.
+# Requires the TEMPLATE_SYNC_PAT secret: a fine-grained PAT with read access to the
+# (private) template repo and contents + pull-requests write access to this repo.
+on:
+  schedule:
+    - cron: '0 5 * * 1'   # Mondays 05:00 UTC
+  workflow_dispatch:
+jobs:
+  sync:
+    if: github.repository != 'sjmeehan9/project-template'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.TEMPLATE_SYNC_PAT }}
+          persist-credentials: false
+      - uses: AndreasAugustin/actions-template-sync@v2
+        with:
+          source_repo_path: sjmeehan9/project-template
+          upstream_branch: main
+          source_gh_token: ${{ secrets.TEMPLATE_SYNC_PAT }}
+          target_gh_token: ${{ secrets.TEMPLATE_SYNC_PAT }}
+          pr_title: 'chore(template): sync with project-template'
+          pr_labels: template-sync

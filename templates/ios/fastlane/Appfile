@@ -1,0 +1,1 @@
+app_identifier("__BUNDLE_ID__")   # must match PRODUCT_BUNDLE_IDENTIFIER in project.yml

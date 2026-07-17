@@ -1,0 +1,17 @@
+# Per-project files the template sync must never touch.
+README.md
+CLAUDE.md
+AGENTS.md
+.codex/config.toml
+.gitignore
+docs/
+project.yml
+Sources/
+Tests/
+UITests/
+src/
+app/
+tests/
+pyproject.toml
+package.json
+.env.example

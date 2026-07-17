@@ -1,0 +1,12 @@
+name: Agents drift check
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify rendered agents/skills match agents-src and skills-src
+        run: python3 scripts/build-agents.py --check

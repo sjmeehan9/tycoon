@@ -1,0 +1,52 @@
+name: __PROJECT_NAME__
+options:
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""   # set your Apple Developer team ID (Component X.1 human task)
+targets:
+  __PROJECT_NAME__:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1"   # iPhone only
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"  # fastlane beta overrides via xcargs (git commit count)
+        # Skips the per-build export-compliance question on TestFlight uploads
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"
+  __PROJECT_NAME__Tests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: __PROJECT_NAME__
+  __PROJECT_NAME__UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: __PROJECT_NAME__
+schemes:
+  __PROJECT_NAME__:
+    build:
+      targets:
+        __PROJECT_NAME__: all
+    test:
+      targets:
+        - __PROJECT_NAME__Tests
+        - __PROJECT_NAME__UITests

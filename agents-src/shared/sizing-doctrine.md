@@ -1,0 +1,3 @@
+## Sizing Doctrine
+
+Create as many phases and components as the initiative needs — there is no target count in either direction, and no time-budget sizing. A phase is correctly scoped when it delivers one or more complete, demonstrable end-to-end features. A component is correctly scoped when its feature slice works end-to-end at the component's boundary and an agent can deliver it fully — with no required behaviour deferred — in a single focused engagement. If a component cannot meet that bar, split it into further components or sequential subcomponents; never shrink the feature to fit a count, a time budget, or a document length.

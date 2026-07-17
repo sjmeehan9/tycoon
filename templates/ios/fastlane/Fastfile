@@ -1,0 +1,33 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight. Agent-run ONLY after explicit approval at the phase gate."
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"]
+    )
+    sh("cd .. && xcodegen generate")
+    # Build number from commit count — deterministic, and survives .xcodeproj regeneration
+    # (never mutate the generated project to bump versions).
+    build_number = sh("git rev-list HEAD --count").strip
+    build_app(
+      project: "__PROJECT_NAME__.xcodeproj",
+      scheme: "__PROJECT_NAME__",
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates CURRENT_PROJECT_VERSION=#{build_number}"
+    )
+    upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
+  end
+
+  desc "Run unit + UI tests on the profile's simulator"
+  lane :test do
+    sh("cd .. && xcodegen generate")
+    run_tests(
+      project: "__PROJECT_NAME__.xcodeproj",
+      scheme: "__PROJECT_NAME__",
+      device: "__IOS_SIMULATOR__"
+    )
+  end
+end
