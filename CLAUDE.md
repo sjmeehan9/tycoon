@@ -1,0 +1,13 @@
+# Tycoon
+
+Bootstrapped from `project-template`. Read these before doing anything stack-specific:
+
+- **`docs/project-profile.md`** — the stack contract: platform, validation sequence, test frameworks, UI/E2E harness, project layout, run instructions, git workflow, human tasks, budgets. Agents trust this file over their own assumptions.
+- **`.github/instructions/copilot.instructions.md`** — coding standards (per-stack sections; the profile says which applies).
+- **`supporting-files/AGENT_FLOWS.md`** — how the agent pipeline fits together.
+
+House rules:
+
+- Agent definitions in `.claude/agents/` and `.github/agents/` are **generated** — edit `agents-src/` and run `python3 scripts/build-agents.py`. CI fails on drift.
+- All agents inherit the session model and communicate via the structured Agent Report format defined in their definitions.
+- `main` is protected; follow the git workflow contract in the project profile.

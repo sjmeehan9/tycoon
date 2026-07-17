@@ -1,0 +1,16 @@
+# Project-scoped Codex config. Loads only after you trust this repo (prompted on first
+# `codex` run here). Cannot override auth/provider/profile keys — sandbox, approvals,
+# agents, and MCP servers only.
+
+# Working defaults for the delivery pipeline: edits allowed in the workspace, network on
+# (git push, dependency resolution, uploads), escalations prompt for approval.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = true
+
+[agents]
+# Flat coordinator model: the Lead Coordinator (skill) is the root thread; subagent
+# fan-out is capped here. Raise if a phase genuinely needs more parallel teammates.
+max_threads = 6
