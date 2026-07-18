@@ -172,13 +172,14 @@ local-storage payloads.
 ## Phase 6 final release gate
 
 `docs/phase-6-test-report.md` and `docs/phase-6-release-evidence.md` record the
-validated branch as **LOCAL PASS — HOSTED PENDING**. Local PASS authorizes only
-the clean `phase-6` push. It does not authorize merge, Pages publication, or a
-hosted PASS claim.
+approved release as **HOSTED PASS**. Reviewed feature head `c14bd24` merged
+normally through PR #3 at `2ddf899`; Pages deployment `5505254011` serves the
+verified release at `https://sjmeehan9.github.io/tycoon/`.
 
-After explicit repository-owner approval, merge through the normal review/check
-workflow and observe the main-only Pages deployment. Record the PR, merge SHA,
-workflow, deployment, exact deployed commit, public direct load/refresh, desktop
-and 360px activity/name flows, autosave reload, service-worker update, offline
-continuation, and runtime health. Only replace the pending hosted fields after
-all checks pass against the deployed Phase 6 commit.
+For a later release, do not inherit this verdict by branch ancestry alone.
+Repeat the exact local sequence, obtain explicit publication approval, record
+the new PR/merge/workflow/deployment identity, then verify the public direct
+load and hard refresh, assets/installability, desktop and 360px gameplay,
+staff/migration/autosave, active worker/update behavior, offline continuation,
+and runtime health. The Phase 6 evidence also records non-blocking action-runtime
+and upload-input warnings that should be rechecked when workflow pins change.

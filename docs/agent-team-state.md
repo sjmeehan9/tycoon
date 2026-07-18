@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Phase 6 cumulative local PASS — final hosted release gate pending human approval
+Phase 6 cumulative HOSTED PASS — approved release verified on GitHub Pages
 
 ## Lean team contract
 
@@ -34,22 +34,22 @@ Phase 6 cumulative local PASS — final hosted release gate pending human approv
 - [x] Sole Implement agent delivers Phase 4 and cumulative validation PASS
 - [x] Sole Implement agent delivers Phase 5 and cumulative validation PASS
 - [x] Sole Implement agent delivers Phase 6 cumulative local validation PASS
-- [ ] Human approves final merge and Phase 6 hosted cumulative verification
+- [x] Human approves final merge and Phase 6 hosted cumulative verification
 
 ## Active agents
 
-| Agent                     | Role                       | Status                             | Owns                                                          |
-| ------------------------- | -------------------------- | ---------------------------------- | ------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done                               | `docs/phase-plan.md`                                          |
-| lean_full_build           | Implement                  | done — HOSTED PASS                 | application, validation, release evidence                     |
-| sole_implement_phases_4_6 | Implement                  | done — LOCAL PASS / HOSTED PENDING | Phase 6 source, tests, fixes, validation, docs, commits, push |
+| Agent                     | Role                       | Status             | Owns                                                                    |
+| ------------------------- | -------------------------- | ------------------ | ----------------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                                    |
+| lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                               |
+| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
 
 ## Human task gate
 
-- **Status:** OPEN — Phase 6 local PASS is complete; the human must now
-  approve/reject merge and Pages publication, then confirm public desktop,
-  360px, activity/name, refresh/autosave, service-worker, and offline behavior
-  before hosted PASS
+- **Status:** CLOSED — final approval, normal PR #3 merge, Pages publication,
+  exact deployment identity, public desktop/360px gameplay, staff uniqueness,
+  migration/autosave, worker/update, offline continuation, and runtime health
+  are verified
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
 
 ## Decisions log
@@ -69,6 +69,8 @@ Phase 6 cumulative local PASS — final hosted release gate pending human approv
 | 2026-07-18 | Schema v3 checks v2 keys before its first write     | Preserves primary/backup recovery and seeds a current backup before replacing browser storage                   | Component 5.2      |
 | 2026-07-18 | Rush activity is canonical engine observation       | One bounded deterministic stream can drive Canvas/text without becoming a second accounting ledger              | Components 6.2–6.3 |
 | 2026-07-18 | Staff-name uniqueness is stateless and indexed      | A seed-keyed bijection covers 40,000 slots without persisted history or rejection loops                         | Component 6.4      |
+| 2026-07-19 | Final Phase 6 release approved and normally merged  | Owner approved publication; PR #3 merged reviewed head `c14bd24` at `2ddf899` without bypass                    | Component 6.5      |
+| 2026-07-19 | Phase 6 public release is HOSTED PASS               | Exact Pages deployment and direct desktop/touch/PWA/persistence audits passed against the merge                 | Final release      |
 
 ## Drift log
 
@@ -78,8 +80,13 @@ Phase 6 cumulative local PASS — final hosted release gate pending human approv
 | 2026-07-18 | GitHub `main` has no configured protection rule         | Release used passing PR checks and a normal merge with no force/admin bypass; evidence states the actual setting             |
 | 2026-07-18 | In-app browser runtime unavailable                      | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths         |
 | 2026-07-18 | Additive TBA threads did not return a document mutation | User-authorized coordinator skeleton points the sole Implement agent to the approved root plan; no substitute role was added |
+| 2026-07-19 | Pages workflow emitted compatibility warnings           | Node action-runtime and upload-input annotations were non-blocking; jobs, deployment, assets, and public runtime all passed  |
 
 ## Deferred log
 
-None. Version 1 exclusions are explicit non-goals in `docs/requirements.md`, not
-deferred required behavior.
+- GitHub Actions runtime/input warning cleanup is non-blocking workflow
+  hardening; exact annotations are retained in
+  `docs/phase-6-release-evidence.md`. It does not defer required product
+  behavior.
+- Version 1 exclusions remain explicit non-goals in `docs/requirements.md`, not
+  deferred required behavior.
