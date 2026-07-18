@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Implementation — Phase 4 cumulative PASS; awaiting human merge decision
+Implementation — Phase 5 Component 5.1 complete; Component 5.2 starting
 
 ## Lean team contract
 
@@ -37,16 +37,17 @@ Implementation — Phase 4 cumulative PASS; awaiting human merge decision
 
 ## Active agents
 
-| Agent                     | Role                       | Status              | Owns                                                          |
-| ------------------------- | -------------------------- | ------------------- | ------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done                | `docs/phase-plan.md`                                          |
-| lean_full_build           | Implement                  | done — HOSTED PASS  | application, validation, release evidence                     |
-| sole_implement_phases_4_6 | Implement                  | done — Phase 4 PASS | Phase 4 source, tests, fixes, validation, docs, commits, push |
+| Agent                     | Role                       | Status             | Owns                                                          |
+| ------------------------- | -------------------------- | ------------------ | ------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                          |
+| lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                     |
+| sole_implement_phases_4_6 | Implement                  | active — Phase 5   | Phase 5 source, tests, fixes, validation, docs, commits, push |
 
 ## Human task gate
 
-- **Status:** AWAITING PHASE 4 MERGE DECISION — implementation and cumulative
-  validation pass; no setup, credential, or release action is required
+- **Status:** CLOSED for Phase 5 implementation — authorization is recorded and
+  no setup, credential, secret, service, or publication action is required;
+  approve/reject merge only after Component 5.5 PASS
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
 
 ## Decisions log
@@ -61,6 +62,8 @@ Implementation — Phase 4 cumulative PASS; awaiting human merge decision
 | 2026-07-18 | Additive Phases 4–6 approved                        | Desktop/mobile player feedback and approved root plan                                                           | Follow-up delivery |
 | 2026-07-18 | Phase 4 uses atomic relative planner commands       | Guarantees one exact persisted increment per activation without stale free-text state                           | Components 4.2–4.3 |
 | 2026-07-18 | `makeOrder` remains the sole actual-price authority | Static trace and regression proved the formula was already correct; Phase 4 fixes interaction and observability | Components 4.3–4.4 |
+| 2026-07-18 | Batches are Phase 5's sole inventory authority      | Prevents flat/batch divergence while pure selectors retain exact totals for UI and reports                      | Components 5.2–5.5 |
+| 2026-07-18 | Expiry occurs after the last usable rush            | Purchase Day 1 stock is usable Days 1–3; refrigeration adds +1/+2 chilled days                                  | Components 5.2–5.4 |
 
 ## Drift log
 

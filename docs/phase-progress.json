@@ -59,7 +59,7 @@
     {
       "phase": 5,
       "components": [
-        { "id": "5.1", "name": "Human Setup", "status": "queued" },
+        { "id": "5.1", "name": "Human Setup", "status": "committed" },
         { "id": "5.2", "name": "Schema-v3 Perishable Batch Inventory", "status": "queued" },
         { "id": "5.3", "name": "Weighted Planning Capacity", "status": "queued" },
         { "id": "5.4", "name": "Live Rush Stock and Expiry Reporting", "status": "queued" },
