@@ -133,11 +133,46 @@
   renderer engine-write, wall-clock/PRNG presentation coupling, stale/unbounded
   playback, colour-only meaning, name rejection/history, test-only completion,
   dependency, backend, secret, analytics, or external runtime request.
-- Created the cumulative test report and release-evidence handoff as **LOCAL
-  PASS — HOSTED PENDING**. Before final docs, `origin/main` was the direct
-  ancestor and Phase 6 was 13 commits ahead; no merge, workflow, deployment, or
-  public URL mutation occurred.
-- The remaining human task is explicit: approve/reject the final merge and
-  publication, then verify the deployed commit's public refresh, desktop,
-  360px, activity/name, autosave, service-worker, and offline behavior before
-  any hosted PASS claim.
+- Created the local cumulative test report and release-evidence handoff as
+  **LOCAL PASS — HOSTED PENDING**. At that boundary, `origin/main` was the
+  direct ancestor and Phase 6 was 13 commits ahead; no merge, workflow,
+  deployment, or public URL mutation had occurred.
+- At the local handoff, the remaining human task was explicit: approve/reject
+  the final merge and publication, then verify the deployed commit's public
+  refresh, desktop, 360px, activity/name, autosave, service-worker, and offline
+  behavior before any hosted PASS claim. The completion below closes that gate.
+
+### Hosted release completion — 19 July 2026
+
+- The repository owner approved the final release. PR #3 merged reviewed head
+  `c14bd24b3a79c144cdd77aa1f35ec57b5538ff9e` normally into `main` at merge
+  `2ddf8994866660caf37aa89a39618edcb15e67dd`; no force/admin bypass occurred.
+- Main drift run `29660220778`, Pages run `29660220814`, build job
+  `88121495602`, deploy job `88121873557`, and deployment `5505254011` all
+  completed successfully. The deployment API ties the exact merge SHA to
+  `https://sjmeehan9.github.io/tycoon/`.
+- A production-only public Playwright run executed 44 existing applicable
+  journeys with four intentional project skips and no failures/flaky tests. A
+  separate hosted-safe audit passed three applicable cases with one intentional
+  skip and no failures/flaky tests.
+- Direct load, cache-disabled hard refresh, document, manifest, current hashed
+  JS/CSS, worker, all icons, art, and audio returned non-empty 200 responses.
+  Chromium reported zero manifest/installability diagnostics.
+- Desktop and 360px touch proved queue 12/eight sprites/`+4`, service and cup,
+  `$7.25` actual sale, walkaway evidence, 4×/pause/reload/report, nine-row stock
+  and actual-charge reconciliation, fixed bounds, 44px controls, no hover
+  dependency, no overflow, and no unexpected console/page/request errors.
+- Compatible schema-v3 duplicate-name repair, hire/autosave/reload, final Day
+  10,000 unique candidates, version-2→version-3 migration, bounded activity and
+  inventory, exact autosave reload, deployed-worker control/update check,
+  checkpoint restore, and online-to-offline continuation all passed.
+- Runtime HTTP(S) traffic remained on `sjmeehan9.github.io`; no backend,
+  analytics, or external runtime path appeared. The active/controller worker is
+  the deployed `/tycoon/sw.js`, with no stale installing or waiting worker.
+- The successful workflow carries non-blocking Node 20 action-runtime
+  deprecation annotations and an unsupported `include-hidden-files` warning on
+  the pinned upload-artifact action. Direct artifact and public-runtime checks
+  prove these warnings did not degrade this release.
+- Component 6.5 is now **HOSTED PASS**. The evidence-only branch starts from the
+  deployed merge and changes no game source, dependency, workflow, or public
+  deployment.

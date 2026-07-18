@@ -1,127 +1,142 @@
-# Phase 6 Release Evidence — LOCAL PASS — HOSTED PENDING
+# Phase 6 Release Evidence — HOSTED PASS
 
-Generated on 18 July 2026 for the unmerged `phase-6` release candidate.
+Generated on 19 July 2026 after the approved Phase 6 merge and direct public
+verification.
 
-## Local release identity
+## Release identity
 
-- Feature branch: `phase-6`
-- Validated feature head: `cea3cc0d54a5cd55458e206959dc115ce776e84b`
-- Pushed remote-tracking feature ref: `origin/phase-6` at the same commit
-- Observed `origin/main`: `81e74dd5ff393229ba2f883747d07c5baa4c4986`
-- Relationship before the evidence commit: `origin/main` is the candidate's
-  ancestor; Phase 6 is 13 commits ahead and is not merged into `origin/main`
-- Existing public URL: `https://sjmeehan9.github.io/tycoon/`
-- Candidate publication status: **NOT DEPLOYED — HUMAN APPROVAL REQUIRED**
+| Field                  | Verified value                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Approved pull request  | [#3 — feat: deliver Tycoon feedback phases 4–6](https://github.com/sjmeehan9/tycoon/pull/3)                         |
+| Reviewed feature head  | `c14bd24b3a79c144cdd77aa1f35ec57b5538ff9e`                                                                          |
+| Merge method/result    | Normal PR merge; no force/admin bypass                                                                              |
+| Merge commit on `main` | `2ddf8994866660caf37aa89a39618edcb15e67dd`                                                                          |
+| Merged at              | `2026-07-18T20:42:35Z`                                                                                              |
+| Public release         | `https://sjmeehan9.github.io/tycoon/`                                                                               |
+| Pages workflow         | [run 29660220814](https://github.com/sjmeehan9/tycoon/actions/runs/29660220814) — `success` for the exact merge SHA |
+| Build/validation job   | [88121495602](https://github.com/sjmeehan9/tycoon/actions/runs/29660220814/job/88121495602) — `success`             |
+| Deploy job             | [88121873557](https://github.com/sjmeehan9/tycoon/actions/runs/29660220814/job/88121873557) — `success`             |
+| Pages deployment       | ID `5505254011`, final status ID `15653894767`, `success` at `2026-07-18T20:47:22Z`                                 |
+| Main drift check       | [run 29660220778](https://github.com/sjmeehan9/tycoon/actions/runs/29660220778) / job `88121495277` — `success`     |
 
-No repository setting, `main` ref, workflow, deployment, or public site was
-changed while producing this local evidence.
+GitHub reports Pages as public, HTTPS-enforced, workflow-built from `main` at
+the repository root. Deployment `5505254011` identifies both the environment
+URL above and merge SHA `2ddf8994866660caf37aa89a39618edcb15e67dd`.
 
-## Local gate
+## Cumulative gate
 
-| Evidence           | Result                                                   |
-| ------------------ | -------------------------------------------------------- |
-| Frozen install     | PASS — pnpm 10.15.0, lockfile unchanged                  |
-| Strict build       | PASS — TypeScript and Vite production bundle             |
-| Lint/format        | PASS — zero ESLint warnings, Prettier clean              |
-| Unit/component     | PASS — 119/119                                           |
-| Production browser | PASS — 47 applicable; 7 intentional routing skips        |
-| Desktop project    | PASS — 1280×800 Chromium                                 |
-| Touch project      | PASS — 360×780, touch, mobile Chromium                   |
-| PWA/offline/update | PASS locally against the production preview              |
-| Phase 4 pricing    | PASS — exact charge/revenue/cash reconciliation retained |
-| Phase 5 inventory  | PASS — dated LIFO/expiry/report conservation retained    |
+| Evidence                     | Result                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Frozen local install         | PASS — pnpm 10.15.0, lockfile unchanged                                 |
+| Strict local build           | PASS — TypeScript and Vite production bundle                            |
+| Local lint/format            | PASS — zero ESLint warnings, Prettier clean                             |
+| Local unit/component         | PASS — 119/119                                                          |
+| Local production browser     | PASS — 47 applicable; 7 intentional routing skips                       |
+| Hosted existing journeys     | PASS — 44; 4 intentional project-routing skips; 0 flaky/failures        |
+| Focused hosted release audit | PASS — 3 applicable; 1 intentional cross-project skip; 0 flaky/failures |
+| Hosted projects              | PASS — 1280×800 desktop and 360×780 touch-mobile Chromium               |
+| Final verdict                | **HOSTED PASS**                                                         |
 
-The exact command transcript and criterion mapping are recorded in
-`docs/phase-6-test-report.md`.
+The hosted runs used the public URL directly and had no local web server. The
+focused audit used a temporary production-only Playwright runner, removed before
+this evidence commit. The 44 existing journeys excluded only `pwa.spec.ts`
+because two of its update cases deliberately rewrite the local `dist/sw.js`;
+the hosted-safe worker, update-check, checkpoint, and offline paths were covered
+by the focused audit instead.
 
-## Phase 6 production-browser matrix
+## Public shell and asset evidence
 
-| Check                                                | Local result          |
-| ---------------------------------------------------- | --------------------- |
-| Ordered arrival/service/sale/walkaway evidence       | PASS                  |
-| All four walkaway reasons and exact readable labels  | PASS                  |
-| Exact queue 12, eight sprites, `+4`, counter segment | PASS                  |
-| Actual sale `$7.25` and stockout parity              | PASS                  |
-| 4× frame budget and pause freeze                     | PASS in both projects |
-| Reduced-motion static truth and reload               | PASS in both projects |
-| Bounded rush-end departures and stopped report RAF   | PASS in both projects |
-| Duplicate-name import repair and hire/reload         | PASS in both projects |
-| Final endless Day 10,000 candidate pool              | PASS in both projects |
-| 360px document containment                           | PASS                  |
+Direct network requests returned non-empty HTTP 200 bodies for the document,
+manifest, current hashed JavaScript/CSS, service worker, all manifest icons,
+title art, and every bundled audio file. A cache-disabled hard refresh also
+returned 200 at the exact `/tycoon/` subpath.
 
-Fresh captures were emitted by the final browser run:
+| Public artifact                                                        |   Bytes | SHA-256                                                            |
+| ---------------------------------------------------------------------- | ------: | ------------------------------------------------------------------ |
+| `https://sjmeehan9.github.io/tycoon/`                                  |     777 | `6f32083deb954269b9a2f9ad18f4c69670b4a64295ca1d4f450c2e67f1e4d490` |
+| `https://sjmeehan9.github.io/tycoon/manifest.webmanifest`              |     588 | `de33b57971d6bf6c206c6f690a557d23fb8a2fa6c33a370d65d62adc2017b4d9` |
+| `https://sjmeehan9.github.io/tycoon/sw.js`                             |   1,961 | `e5358a6c7d21c77adfb633c5ba6f4e9e12f542217e0d48d8bd2e9e2f4355b108` |
+| `https://sjmeehan9.github.io/tycoon/assets/index-CFde9aAe.js`          | 321,192 | `cee458749268240128d84cbd10f4cf5f57dd84cd7d57c4146662551530a0e6c3` |
+| `https://sjmeehan9.github.io/tycoon/assets/index-DWa43T0c.css`         |  23,345 | `b75a5bfc7270b54b9ad463ffdda97843460ffe62ad15568d9fa864afd63c1ff0` |
+| `https://sjmeehan9.github.io/tycoon/icon.svg`                          |     787 | `6dac2ffeebe69eb19d4f0f4fbe416217308b95dbfc95ba5b70146ce000f7f6e8` |
+| `https://sjmeehan9.github.io/tycoon/pwa-192x192.png`                   |   3,748 | `1475c6dd520779b81ef1194a6834f5ce2243a461d6a68b0afed4359678574e53` |
+| `https://sjmeehan9.github.io/tycoon/pwa-512x512.png`                   |  10,041 | `28621746f78be169b30abfe337db852b54313c443b7d3993cdd064a67f1d2b85` |
+| `https://sjmeehan9.github.io/tycoon/pwa-maskable-512x512.png`          |  10,041 | `28621746f78be169b30abfe337db852b54313c443b7d3993cdd064a67f1d2b85` |
+| `https://sjmeehan9.github.io/tycoon/assets/art/laneway-title.webp`     | 167,760 | `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37` |
+| `https://sjmeehan9.github.io/tycoon/assets/audio/confirm.wav`          |   9,746 | `0b845743db6da0fe6c428513c7a776d3aa0e26b90e11a8c498f287f3e36ebe6f` |
+| `https://sjmeehan9.github.io/tycoon/assets/audio/event.wav`            |  18,566 | `33ea1a26bef4a44d04f8b7070fab82bce6b94570884dea0a93efd869579f4332` |
+| `https://sjmeehan9.github.io/tycoon/assets/audio/laneway-ambience.wav` | 264,644 | `2c9282ece6d2c2ee8695ad7f756c2f5b3a1c81899e9c8de609fff867d989dde4` |
 
-- `test-results/living-rush-living-rush-sc-e8f68-n-truth-within-fixed-bounds-desktop-chromium/living-rush-static.png`
-- `test-results/living-rush-living-rush-sc-e8f68-n-truth-within-fixed-bounds-touch-mobile/living-rush-static.png`
+Chromium returned no app-manifest or installability errors. The manifest scope
+and start URL are both `/tycoon/`.
 
-Both were visually inspected. The responsive HUD, queue plaque, counter,
-segment-distinct people, overflow, sale, and walkaway evidence are readable and
-remain inside the Canvas in desktop and mobile captures. They are local runtime
-artifacts rather than platform-sensitive committed golden files.
+## Hosted gameplay matrix
 
-## Determinism and bounds audit
+| Public behavior             | Result                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| Queue deeper than eight     | PASS — exact queue 12, eight rendered sprites, readable `+4`                               |
+| Counter service/cup         | PASS — active enthusiast, drink service, and cup handoff visible/readable                  |
+| Actual sale/walkaway        | PASS — `$7.25` sale and out-of-stock evidence persist across reload                        |
+| Rush controls/report        | PASS — 4×, pause freeze, autosave reload, rush close, stopped report RAF                   |
+| Live stock/actual charges   | PASS — all nine rows, depletion/reload, LIFO expiry, conservation, report reconciliation   |
+| Desktop containment/runtime | PASS — fixed Canvas bounds, no document overflow, no console/page errors                   |
+| 360px touch parity          | PASS — same queue/service/sale/walkaway truth, coarse pointer, no hover dependency         |
+| Touch targets/layout        | PASS — visible controls at least 44×44 CSS pixels; no document overflow                    |
+| Compatible duplicate staff  | PASS — schema-v3 repair, hire, autosave, reload, all visible names unique                  |
+| Endless boundary            | PASS — Day 9,999 advances to Day 10,000 with four unique candidate names and reload parity |
+| Version compatibility       | PASS — v1 production import retained; focused v2→v3 migration retained dense rush truth    |
+| Save bounds                 | PASS — activity ≤80 and each ingredient ≤8 dated batches after migration/reload            |
 
-- Rush activity retains at most 80 ordered events with one monotonic sequence
-  authority. Renderer time does not create, reorder, or persist observations.
-- Canvas playback retains at most three transients and eight queue motions,
-  consumes sequence IDs once, and caps frame catch-up. It never dispatches an
-  engine command or writes cash, revenue, inventory, queue, or PRNG state.
-- Name allocation directly addresses 40,000 candidate ordinals inside a tested
-  65,536-name bijective namespace. It stores no seen-name history and performs
-  no rejection sampling.
-- Migration repair is stable, changes later duplicate names only, and draws from
-  a 25,536-name candidate-disjoint range. Its loop is finite; live people remain
-  bounded to eight hires plus four candidates.
-- Save schema remains version 3. Current and compatible version-1/version-2
-  migration, byte limits, backup recovery, export/import, activity validation,
-  dated inventory validation, and duplicate ID validation all pass.
+The focused desktop and touch screenshots were visually inspected. Each showed
+the eight queue sprites, separate active counter customer, cup handoff, `+4`,
+`SALE +$7.25`, and `OUT OF STOCK` within the fixed scene frame.
 
-## Pending human-approved release fields
+## Persistence, worker, offline, and runtime evidence
 
-These fields must remain pending until the repository owner explicitly approves
-the final release and the merged commit is deployed:
+- A compatible version-2 flat-inventory rush migrated through the production
+  upload control to schema/state version 3. Its seven ordered activity records,
+  nine dated inventory fields, exact queue/counter/sale/walkaway state, speed,
+  pause state, and bounded arrays survived autosave and reload.
+- The deployed worker is both the active worker and page controller at
+  `https://sjmeehan9.github.io/tycoon/sw.js`, state `activated`, scope
+  `/tycoon/`. No stale installing or waiting worker remained.
+- A real `registration.update()` check against the deployed worker completed
+  without interrupting play. A new planning run was checkpointed before the
+  check, reloaded, and restored with byte-equivalent active game state. The
+  hosted test did not fabricate a newer production worker; waiting-worker
+  deferral/acceptance remains separately proven by the local production PWA
+  tests.
+- After an online controlled visit, Chromium was taken offline. The public
+  subpath and title art reloaded from the release cache, and the same autosave
+  continued. Connectivity was restored after the assertion.
+- Every HTTP(S) runtime request was confined to
+  `https://sjmeehan9.github.io`. No backend, analytics, external asset, secret,
+  or third-party runtime path exists. Console and page-error collections were
+  empty. The only request cancellation observed was the expected same-origin
+  ambience preload abort during an intentional navigation; the audio file's
+  independent direct request returned 200 with the digest above.
 
-| Hosted field                               | Status / value     |
-| ------------------------------------------ | ------------------ |
-| Human merge/publication approval           | **PENDING**        |
-| Phase 6 pull request URL                   | **PENDING**        |
-| Reviewed merge commit on `main`            | **PENDING**        |
-| Required checks result                     | **PENDING**        |
-| GitHub Pages workflow run URL              | **PENDING**        |
-| Pages deployment ID/result                 | **PENDING**        |
-| Deployed commit matches approved merge     | **PENDING**        |
-| Public direct load `/tycoon/`              | **PENDING**        |
-| Public hard refresh and asset 200s         | **PENDING**        |
-| Hosted desktop living activity/scene       | **PENDING**        |
-| Hosted 360px activity/scene containment    | **PENDING**        |
-| Hosted unique staff import/hire/Day 10,000 | **PENDING**        |
-| Hosted autosave refresh/reload             | **PENDING**        |
-| Hosted service-worker control/update       | **PENDING**        |
-| Hosted offline reload/continuation         | **PENDING**        |
-| Hosted console/page/request health         | **PENDING**        |
-| Final hosted verdict                       | **HOSTED PENDING** |
+## Workflow annotations
 
-## Required hosted verification after approval
+The successful Pages run has three known non-blocking annotations:
 
-1. Merge the validated `phase-6` commit through the repository's normal review
-   and check workflow; do not force-push or bypass history.
-2. Observe the main-only Pages workflow and record its run, job, deployment, and
-   exact deployed commit.
-3. Load and hard-refresh the public `/tycoon/` subpath; verify the document,
-   manifest, icons, scene art, audio, JavaScript, CSS, and service worker return
-   successfully.
-4. On desktop, exercise the living rush through arrival/service/sale/walkaway,
-   pause/4×/reload/report, then import/hire/reload repaired staff names.
-5. At 360px touch, repeat queue overflow, sale/walkaway text parity, staff-name
-   flow, and containment without hover or clipping.
-6. After an online controlled visit, reload offline and continue the identical
-   autosave; return online and confirm update behavior and zero unexpected
-   console, page, or request errors.
-7. Replace every pending field with evidence and only then record **HOSTED
-   PASS**.
+- build warning: `actions/configure-pages@v5` and the pinned
+  `actions/upload-artifact` revision target Node.js 20 and were forced by the
+  runner onto Node.js 24;
+- build warning: the pinned upload-artifact revision does not recognise the
+  `include-hidden-files` input; the generated site artifact, validation job,
+  deploy job, and direct public asset audit all passed;
+- deploy warning: `actions/deploy-pages@v4` targets Node.js 20 and was forced
+  onto Node.js 24.
 
-## Local verdict
+The build job also published its Playwright notice: 47 passed and 7 skipped.
+These warnings did not change the deployed artifact or verdict; action/input
+cleanup is release-workflow hardening, not a hosted product defect.
 
-**LOCAL PASS — HOSTED PENDING.** The branch is ready for the final human
-approve/reject gate. This document does not authorize or claim a merge,
-publication, workflow run, deployment, or hosted result.
+## Verdict
+
+**HOSTED PASS.** Human approval, normal PR merge, main checks, exact deployment
+identity, public shell/assets, desktop/touch flows, staff uniqueness, schema
+compatibility, autosave, service-worker control/update check, offline
+continuation, and runtime health are all verified against merge
+`2ddf8994866660caf37aa89a39618edcb15e67dd`.

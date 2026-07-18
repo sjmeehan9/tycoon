@@ -1,16 +1,17 @@
-# Phase 6 Test Report — LOCAL PASS — HOSTED PENDING
+# Phase 6 Test Report — HOSTED PASS
 
 ## Release under test
 
-- Branch: `phase-6`
-- Validated feature head before final evidence records:
-  `cea3cc0d54a5cd55458e206959dc115ce776e84b`
-- Pushed feature ref: `origin/phase-6` at the same commit
+- Released feature branch: `phase-6`
+- Reviewed feature head: `c14bd24b3a79c144cdd77aa1f35ec57b5538ff9e`
+- Normal PR merge on `main`:
+  `2ddf8994866660caf37aa89a39618edcb15e67dd`
 - Runtime: Node.js 22.13.1, pnpm 10.15.0
 - Browser harness: Playwright 1.61.1 with managed Chromium
 - Projects: 1280×800 desktop Chromium and 360×780 touch-mobile Chromium
-- Public URL: `https://sjmeehan9.github.io/tycoon/` currently represents the
-  earlier `main` release, not this unmerged Phase 6 candidate
+- Public URL: `https://sjmeehan9.github.io/tycoon/`
+- Deployment: GitHub Pages workflow run `29660220814`, deployment
+  `5505254011`, `success` for the exact merge SHA
 
 ## Exact validation sequence
 
@@ -29,6 +30,34 @@ seven skips are explicit routing: desktop-only keyboard planner/accessibility,
 touch-only planner/accessibility, and three real service-worker lifecycle cases
 that run once in desktop Chromium. Both new living-rush and staff-name journeys
 ran and passed in both projects; no required target is hidden by a skip.
+
+## Hosted validation
+
+The approved merge was verified against the actual public URL with no local web
+server:
+
+| Hosted run                                                       | Result                                                                           |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Existing production E2E files except local worker-mutation cases | PASS — 44 applicable, 4 intentional project skips, 0 failures/flaky, 1.6 minutes |
+| Focused public shell/PWA/v2/runtime audit                        | PASS — 3 applicable, 1 intentional cross-project skip, 0 failures/flaky          |
+| GitHub Pages build-and-validate                                  | PASS — job `88121495602`                                                         |
+| GitHub Pages deploy                                              | PASS — job `88121873557`, deployment `5505254011`                                |
+| Main drift check                                                 | PASS — run `29660220778`, job `88121495277`                                      |
+
+The existing hosted run covered accessibility, outcomes, full cart and coffee
+days, living rush, staff/equipment/venue operations, exact persistence,
+planner pricing, presentation/audio consent, save transfer/recovery, unique
+staff, and dated stock/actual charges in their intended desktop/touch projects.
+
+The focused audit proved direct and cache-disabled refresh; 200 responses for
+the document, manifest, current JS/CSS, worker, icons, art, and audio; zero
+manifest/installability diagnostics; same-origin-only runtime traffic; active
+worker control and update check; exact checkpoint restore; online-to-offline
+reload/continuation; version-2 to version-3 migration; activity/inventory
+bounds; desktop/touch dense-rush truth; 44px touch targets; and zero unexpected
+console, page, or request failures. Full public URLs, digests, workflow
+annotations, and deployment identity live in
+`docs/phase-6-release-evidence.md`.
 
 ## Activity-stream evidence
 
@@ -134,9 +163,12 @@ bundle:
 - all other E2E files: complete days, operations, outcomes, persistence,
   accessibility, presentation, save transfer, and recovery.
 
-Hosted Pages checks cannot be automated truthfully until the human-approved
-merge deploys this branch. Their pending fields live in
-`docs/phase-6-release-evidence.md`.
+The hosted-safe audit intentionally did not rewrite the public service worker.
+It performed a real update check against the deployed worker, proved the
+current release controlled the page, checkpointed an active run, restored it
+after reload, and continued it offline. The separately passing local PWA cases
+remain the deterministic proof for a genuinely newer waiting worker's defer and
+accept paths.
 
 ## Self-review
 
@@ -163,17 +195,19 @@ merge deploys this branch. Their pending fields live in
 - `ccbe119` — Component 6.2, deterministic rush activity stream
 - `1ade6d9` — Component 6.3, expressive rush scene
 - `cea3cc0` — Component 6.4, campaign-unique staff names
-- Component 6.5 is this final local validation/evidence record; its SHA and clean
-  `origin/phase-6` push are reported by the completion handoff after commit.
+- `c14bd24` — Component 6.5, cumulative local QA and release evidence
+- `2ddf899` — normal PR #3 merge commit released from reviewed feature head
+  `c14bd24`
 
-Before this documentation commit, `origin/main` was the direct ancestor and the
-candidate was 13 commits ahead; the candidate was not an ancestor of
-`origin/main`. No merge, Pages workflow, deployment, or hosted mutation occurred.
+The hosted-evidence branch starts cleanly from deployed `origin/main` at
+`2ddf899`. It changes documentation only and does not create or mutate a Pages
+deployment.
 
 ## Verdict
 
-**LOCAL PASS — HOSTED PENDING.** Every Phase 6 acceptance criterion and every
-retained Phase 1–5 local target passes on the production bundle across desktop
-and touch-mobile. Human approval is now required before merge/publication; the
-branch must not claim hosted PASS until the deployed Phase 6 commit passes the
-explicit public checks.
+**HOSTED PASS.** Every Phase 6 acceptance criterion and retained Phase 1–5
+target passes locally and on the approved deployed release where applicable.
+The public document/assets, desktop/touch gameplay, staff-name repair and Day
+10,000 boundary, schema migration, autosave, worker control/update check,
+offline continuation, and runtime health pass against merge
+`2ddf8994866660caf37aa89a39618edcb15e67dd`.
