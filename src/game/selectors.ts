@@ -6,6 +6,7 @@ import {
   TICKS_PER_SECOND,
 } from '../content/gameContent';
 import { purchaseCost } from './engine';
+import { ingredientQuantity } from './inventory';
 import type { CompletedSaleActivity, GameState } from './types';
 
 /** Format integer cents as Australian dollars. */
@@ -50,7 +51,7 @@ export function stockedInventory(
 ): Array<{ label: string; amount: number; unit: string }> {
   return PURCHASE_PACKAGES.map((item) => ({
     label: item.label.split(' · ')[0] ?? item.label,
-    amount: state.inventory[item.ingredientId],
+    amount: ingredientQuantity(state.inventory, item.ingredientId),
     unit: item.unit,
   }));
 }

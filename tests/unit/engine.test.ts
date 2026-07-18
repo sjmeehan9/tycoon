@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { MILK_SURCHARGE_CENTS, SIZE_SURCHARGE_CENTS } from '../../src/content/gameContent';
+import {
+  INGREDIENT_IDS,
+  MILK_SURCHARGE_CENTS,
+  SIZE_SURCHARGE_CENTS,
+  emptyPurchases,
+} from '../../src/content/gameContent';
 import {
   GameRuleError,
   advanceTick,
@@ -71,6 +76,19 @@ describe('seeded cart engine', () => {
     expect(report).not.toBeNull();
     if (!report) return;
     expect(Object.values(report.remainingInventory).every((amount) => amount >= 0)).toBe(true);
+    expect(report.inventoryLifecycle).not.toBeNull();
+    if (!report.inventoryLifecycle) throw new Error('Expected schema-v3 inventory lifecycle.');
+    for (const ingredientId of INGREDIENT_IDS) {
+      const lifecycle = report.inventoryLifecycle;
+      expect(
+        lifecycle.opening[ingredientId] +
+          lifecycle.purchased[ingredientId] -
+          lifecycle.consumed[ingredientId] -
+          lifecycle.expired[ingredientId],
+      ).toBe(lifecycle.remaining[ingredientId]);
+      expect(lifecycle.remaining[ingredientId]).toBe(report.remainingInventory[ingredientId]);
+      expect(lifecycle.expired[ingredientId]).toBe(report.waste[ingredientId] ?? 0);
+    }
     expect(report.ingredientCostCents).toBeGreaterThan(0);
     expect(report.closingCashCents).toBe(report.openingCashCents + report.netCashFlowCents);
     const settled = closeDay(reportState);
@@ -164,6 +182,46 @@ describe('seeded cart engine', () => {
       (report?.openingCashCents ?? 0) + (report?.netCashFlowCents ?? 0),
     );
     expect(closeDay(completed).cashCents).toBe(report?.closingCashCents);
+  });
+
+  it('uses old stock through its final rush, then expires its untouched LIFO remainder once', () => {
+    const base = createCampaign({ seed: 5_503 });
+    const planning: GameState = {
+      ...base,
+      day: 3,
+      inventory: {
+        ...base.inventory,
+        dairyMilk: [{ quantity: 500, acquiredDay: 1, expiresAfterDay: 3 }],
+      },
+      plan: {
+        ...base.plan,
+        activeMenu: ['flatWhite'],
+        dialIn: 'quality',
+        purchases: {
+          ...emptyPurchases(),
+          houseBeans: 4,
+          dairyMilk: 4,
+          oatMilk: 4,
+          soyMilk: 4,
+        },
+      },
+    };
+
+    const completed = runToReport(startRush(planning));
+    const lifecycle = completed.report?.inventoryLifecycle;
+    if (!lifecycle) throw new Error('Expected completed inventory lifecycle.');
+    expect(completed.report?.served).toBeGreaterThan(0);
+    expect(lifecycle.opening.dairyMilk).toBe(500);
+    expect(lifecycle.purchased.dairyMilk).toBe(8_000);
+    expect(lifecycle.expired.dairyMilk).toBe(500);
+    expect(lifecycle.remaining.dairyMilk).toBe(8_000 - lifecycle.consumed.dairyMilk);
+    expect(completed.report?.waste.dairyMilk).toBe(500);
+    expect(completed.report?.explanations.join(' ')).toContain('Expiry waste after the Day 3 rush');
+
+    const settled = closeDay(completed);
+    const tomorrow = startNextDay(settled);
+    expect(tomorrow.inventory.dairyMilk).toEqual(completed.inventory.dairyMilk);
+    expect(settled.history.at(-1)?.waste.dairyMilk).toBe(500);
   });
 
   it('runs a 75-second simulated rush', () => {

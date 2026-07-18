@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Implementation — Phase 5 Component 5.1 complete; Component 5.2 starting
+Implementation — Phase 5 Components 5.1–5.2 complete; Component 5.3 starting
 
 ## Lean team contract
 
@@ -64,6 +64,7 @@ Implementation — Phase 5 Component 5.1 complete; Component 5.2 starting
 | 2026-07-18 | `makeOrder` remains the sole actual-price authority | Static trace and regression proved the formula was already correct; Phase 4 fixes interaction and observability | Components 4.3–4.4 |
 | 2026-07-18 | Batches are Phase 5's sole inventory authority      | Prevents flat/batch divergence while pure selectors retain exact totals for UI and reports                      | Components 5.2–5.5 |
 | 2026-07-18 | Expiry occurs after the last usable rush            | Purchase Day 1 stock is usable Days 1–3; refrigeration adds +1/+2 chilled days                                  | Components 5.2–5.4 |
+| 2026-07-18 | Schema v3 checks v2 keys before its first write     | Preserves primary/backup recovery and seeds a current backup before replacing browser storage                   | Component 5.2      |
 
 ## Drift log
 

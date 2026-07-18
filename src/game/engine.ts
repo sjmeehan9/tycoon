@@ -6,6 +6,7 @@ import {
   DRINK_MAP,
   EQUIPMENT,
   EQUIPMENT_IDS,
+  INGREDIENT_DETAILS,
   INGREDIENT_UNIT_COST_CENTS,
   INITIAL_CASH_CENTS,
   INITIAL_REPUTATION,
@@ -30,6 +31,16 @@ import {
   weatherForDay,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
+import {
+  addPlannedPurchases,
+  completeIngredientTotals,
+  consumeIngredientsLifo,
+  expireInventoryAfterRush,
+  extendInventoryRefrigeration,
+  hasIngredients,
+  inventoryTotals,
+  plannedPurchaseTotals,
+} from './inventory';
 import { nextRandom, randomInt } from './prng';
 import type {
   CampaignOptions,
@@ -47,7 +58,6 @@ import type {
   GameState,
   IngredientAmount,
   IngredientId,
-  IngredientInventory,
   MilkChoice,
   Order,
   PlanPatch,
@@ -127,7 +137,7 @@ export function createCampaign(options: CampaignOptions): GameState {
   const seed = Math.trunc(options.seed) >>> 0;
   const rngState = seed === 0 ? 0x6d2b79f5 : seed;
   return {
-    stateVersion: 2,
+    stateVersion: 3,
     campaignId: `laneway-${seed.toString(16).padStart(8, '0')}`,
     seed,
     rngState,
@@ -221,7 +231,14 @@ export function startRush(state: GameState): GameState {
   if (suppliesCost > state.cashCents - CAMPAIGN_RULES.overdraftFloorCents) {
     throw new GameRuleError('Reduce supply purchases before opening the business.');
   }
-  const inventory = addPurchases(state.inventory, state.plan);
+  const openingInventory = inventoryTotals(state.inventory);
+  const purchasedInventory = plannedPurchaseTotals(state.plan);
+  const inventory = addPlannedPurchases(
+    state.inventory,
+    state.plan,
+    state.day,
+    state.equipment.refrigeration,
+  );
   const effects = operationalEffects(state);
   const rush: RushState = {
     tick: 0,
@@ -242,6 +259,8 @@ export function startRush(state: GameState): GameState {
     purchaseCostCents: suppliesCost,
     wageCostCents: scheduledStaff(state).reduce((total, member) => total + member.wageCents, 0),
     operatingCostCents: effects.operatingCostCents,
+    openingInventory,
+    purchasedInventory,
     recentActivity: [],
     stats: emptyRushStats(),
   };
@@ -425,10 +444,15 @@ export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameSt
   if (state.cashCents < nextTier.costCents) {
     throw new GameRuleError(`${nextTier.name} costs ${formatCents(nextTier.costCents)}.`);
   }
+  const inventory =
+    equipmentId === 'refrigeration'
+      ? extendInventoryRefrigeration(state.inventory, state.day, currentLevel, nextTier.level)
+      : state.inventory;
   return {
     ...state,
     cashCents: state.cashCents - nextTier.costCents,
     equipment: { ...state.equipment, [equipmentId]: nextTier.level },
+    inventory,
   };
 }
 
@@ -549,7 +573,6 @@ export interface OperationalEffects {
   satisfactionBonus: number;
   demandMultiplier: number;
   patienceMultiplier: number;
-  wasteMultiplier: number;
   queueBonus: number;
   operatingCostCents: number;
 }
@@ -561,10 +584,8 @@ export function operationalEffects(state: GameState): OperationalEffects {
   let satisfactionBonus = 0;
   let demandMultiplier = 1;
   let patienceMultiplier = 1;
-  let wasteMultiplier = state.equipment.refrigeration === 2 ? 0.35 : 1;
   const queueBonus = state.equipment.serviceCounter * 2;
 
-  if (state.equipment.refrigeration === 1) wasteMultiplier = 0.65;
   qualityBonus += state.equipment.grinder === 2 ? 5 : state.equipment.grinder === 1 ? 2 : 0;
   if (state.equipment.pos === 1) {
     preparationMultiplier *= 0.96;
@@ -596,7 +617,6 @@ export function operationalEffects(state: GameState): OperationalEffects {
     }
     if (member.trait === 'steady') {
       preparationMultiplier *= 0.97;
-      wasteMultiplier *= 0.94;
     }
   }
 
@@ -612,7 +632,6 @@ export function operationalEffects(state: GameState): OperationalEffects {
     satisfactionBonus,
     demandMultiplier,
     patienceMultiplier,
-    wasteMultiplier,
     queueBonus,
     operatingCostCents: VENUES[state.venueId].operatingCostCents + equipmentOperatingCost,
   };
@@ -779,7 +798,7 @@ function startNextService(state: GameState): GameState {
       };
       continue;
     }
-    const consumed = consumeIngredients(working.inventory, customer.order.ingredientAmounts);
+    const consumed = consumeIngredientsLifo(working.inventory, customer.order.ingredientAmounts);
     const ingredientCost = recipeCost(customer.order.ingredientAmounts);
     const consumedTotals = { ...rush.stats.consumed };
     for (const item of customer.order.ingredientAmounts) {
@@ -1053,8 +1072,11 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
 function finishRush(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) throw new GameRuleError('No service rush is active.');
-  const waste = calculateWaste(state);
-  const inventory = consumeIngredients(state.inventory, toIngredientAmounts(waste));
+  const expiry = expireInventoryAfterRush(state.inventory, state.day);
+  const inventory = expiry.inventory;
+  const waste = nonZeroIngredientTotals(expiry.expired);
+  const remainingInventory = inventoryTotals(inventory);
+  const consumedInventory = completeIngredientTotals(rush.stats.consumed);
   const satisfaction =
     rush.stats.served > 0 ? Math.round(rush.stats.satisfactionTotal / rush.stats.served) : 35;
   const averageWaitSeconds =
@@ -1069,6 +1091,16 @@ function finishRush(state: GameState): GameState {
   const wageCost = rush.wageCostCents ?? 0;
   const closingCash =
     state.cashCents + rush.stats.revenueCents + eventCash - wageCost - rush.operatingCostCents;
+  const explanations = buildExplanations(state, rush, satisfaction);
+  const expiredNames = Object.entries(waste).map(
+    ([ingredientId, quantity]) =>
+      `${INGREDIENT_DETAILS[ingredientId as IngredientId].name} ${String(quantity)}`,
+  );
+  if (expiredNames.length > 0) {
+    explanations.push(
+      `Expiry waste after the Day ${state.day} rush: ${expiredNames.join(', ')}; older stock stayed usable through this rush before expiring.`,
+    );
+  }
   const report: DayReport = {
     day: state.day,
     weather: state.weather,
@@ -1094,25 +1126,26 @@ function finishRush(state: GameState): GameState {
     satisfactionPercent: satisfaction,
     reputationChange,
     waste,
-    remainingInventory: inventory,
+    remainingInventory,
+    inventoryLifecycle: {
+      opening: rush.openingInventory,
+      purchased: rush.purchasedInventory,
+      consumed: consumedInventory,
+      expired: expiry.expired,
+      remaining: remainingInventory,
+    },
     servedBySegment: rush.stats.servedBySegment,
     bottleneck: determineBottleneck(state, rush),
-    explanations: buildExplanations(state, rush, satisfaction),
+    explanations,
     settled: false,
   };
   return { ...state, phase: 'report', inventory, report };
 }
 
-function calculateWaste(state: GameState): Partial<Record<IngredientId, number>> {
-  const wasteMultiplier = operationalEffects(state).wasteMultiplier;
-  const dairyWaste = Math.floor(state.inventory.dairyMilk * 0.02 * wasteMultiplier);
-  const oatWaste = Math.floor(state.inventory.oatMilk * 0.015 * wasteMultiplier);
-  const soyWaste = Math.floor(state.inventory.soyMilk * 0.012 * wasteMultiplier);
-  return {
-    ...(dairyWaste > 0 ? { dairyMilk: dairyWaste } : {}),
-    ...(oatWaste > 0 ? { oatMilk: oatWaste } : {}),
-    ...(soyWaste > 0 ? { soyMilk: soyWaste } : {}),
-  };
+function nonZeroIngredientTotals(
+  totals: ReturnType<typeof completeIngredientTotals>,
+): Partial<Record<IngredientId, number>> {
+  return Object.fromEntries(Object.entries(totals).filter(([, quantity]) => quantity > 0));
 }
 
 function determineBottleneck(state: GameState, rush: RushState): string {
@@ -1231,36 +1264,6 @@ export function demandRate(state: GameState): number {
     0.005,
     0.3,
   );
-}
-
-function addPurchases(inventory: IngredientInventory, plan: DayPlan): IngredientInventory {
-  const updated = { ...inventory };
-  for (const item of PURCHASE_PACKAGES) {
-    updated[item.ingredientId] += item.amount * plan.purchases[item.ingredientId];
-  }
-  return updated;
-}
-
-function hasIngredients(inventory: IngredientInventory, ingredients: IngredientAmount[]): boolean {
-  return ingredients.every((item) => inventory[item.ingredientId] >= item.amount);
-}
-
-function consumeIngredients(
-  inventory: IngredientInventory,
-  ingredients: IngredientAmount[],
-): IngredientInventory {
-  const updated = { ...inventory };
-  for (const item of ingredients) {
-    updated[item.ingredientId] = Math.max(0, updated[item.ingredientId] - item.amount);
-  }
-  return updated;
-}
-
-function toIngredientAmounts(values: Partial<Record<IngredientId, number>>): IngredientAmount[] {
-  return Object.entries(values).map(([ingredientId, amount]) => ({
-    ingredientId: ingredientId as IngredientId,
-    amount,
-  }));
 }
 
 function recipeCost(ingredients: IngredientAmount[]): number {

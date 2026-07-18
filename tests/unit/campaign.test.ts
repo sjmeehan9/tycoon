@@ -7,6 +7,7 @@ import {
   closeDay,
   continueEndless,
   createCampaign,
+  ingredientQuantity,
   hireStaff,
   prepareDay,
   promoteVenue,
@@ -179,7 +180,7 @@ function simulateCampaign(seed: number, dialIn: DialIn, priceOffset: number): Ga
         batchBrew: 550 + priceOffset,
       },
       purchases: {
-        houseBeans: state.inventory.houseBeans < 280 ? 1 : 0,
+        houseBeans: ingredientQuantity(state.inventory, 'houseBeans') < 280 ? 1 : 0,
         dairyMilk: 0,
       },
       dialIn,

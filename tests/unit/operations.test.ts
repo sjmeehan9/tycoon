@@ -4,6 +4,7 @@ import { ALL_DRINK_IDS, EQUIPMENT, EQUIPMENT_IDS } from '../../src/content/gameC
 import {
   advanceTick,
   buyEquipment,
+  batchExpiryDay,
   candidatePoolForDay,
   closeDay,
   createCampaign,
@@ -106,7 +107,7 @@ describe('staff operations', () => {
     expect(frontOfHouse.demandMultiplier).toBeGreaterThan(baseline.demandMultiplier);
     expect(frontOfHouse.satisfactionBonus).toBeGreaterThan(baseline.satisfactionBonus);
     expect(perfectionist.qualityBonus).toBeGreaterThan(barista.qualityBonus);
-    expect(steady.wasteMultiplier).toBeLessThan(baseline.wasteMultiplier);
+    expect(steady.preparationMultiplier).toBeLessThan(baseline.preparationMultiplier);
   });
 
   it('charges scheduled payroll and exposes its causal service contribution', () => {
@@ -133,7 +134,7 @@ describe('equipment and venue growth', () => {
     expect(equipmentPreparationMultiplier(withEquipment(base, 'batchBrewer'), 'batchBrew')).toBe(
       0.75,
     );
-    expect(operationalEffects(withEquipment(base, 'refrigeration')).wasteMultiplier).toBe(0.65);
+    expect(batchExpiryDay('dairyMilk', 1, 1)).toBe(4);
     const withPos = operationalEffects(withEquipment(base, 'pos'));
     expect(withPos.demandMultiplier).toBeGreaterThan(1);
     expect(withPos.preparationMultiplier).toBeLessThan(1);
@@ -150,23 +151,13 @@ describe('equipment and venue growth', () => {
     expect(reportState.report?.explanations.join(' ')).toContain(EQUIPMENT[equipmentId].name);
   });
 
-  it('moves demand, preparation, waste, and capacity in their intended directions', () => {
+  it('moves demand and chilled-stock shelf life in their intended directions', () => {
     const base = startRush(createCampaign({ seed: 2 }));
     const pos = startRush(withEquipment(createCampaign({ seed: 2 }), 'pos'));
     expect(demandRate(pos)).toBeGreaterThan(demandRate(base));
-    const refrigerated = runToReport(
-      startRush(
-        prepareDay(withEquipment(createCampaign({ seed: 2 }), 'refrigeration'), {
-          purchases: { dairyMilk: 4 },
-        }),
-      ),
-    );
-    const unrefrigerated = runToReport(
-      startRush(prepareDay(createCampaign({ seed: 2 }), { purchases: { dairyMilk: 4 } })),
-    );
-    expect(refrigerated.report?.waste.dairyMilk ?? 0).toBeLessThan(
-      unrefrigerated.report?.waste.dairyMilk ?? 0,
-    );
+    expect(batchExpiryDay('dairyMilk', 1, 1)).toBe(batchExpiryDay('dairyMilk', 1, 0) + 1);
+    expect(batchExpiryDay('dairyMilk', 1, 2)).toBe(batchExpiryDay('dairyMilk', 1, 0) + 2);
+    expect(batchExpiryDay('houseBeans', 1, 2)).toBe(batchExpiryDay('houseBeans', 1, 0));
   });
 
   it('enforces tier availability, affordability, and both promotion gates', () => {

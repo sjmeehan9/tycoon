@@ -1,5 +1,11 @@
 import { CAMPAIGN_RULES } from '../../src/content/gameContent';
-import { createCampaign, type DayReport, type GameState, type SaveEnvelope } from '../../src/game';
+import {
+  createCampaign,
+  inventoryTotals,
+  type DayReport,
+  type GameState,
+  type SaveEnvelope,
+} from '../../src/game';
 import {
   createDefaultMeta,
   createDefaultPreferences,
@@ -66,7 +72,9 @@ export function versionOneVictorySave(): string {
   const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as MutableLegacyEnvelope;
   legacy.schemaVersion = 1;
   legacy.activeRun.stateVersion = 1;
+  legacy.activeRun.inventory = inventoryTotals(nearVictoryEnvelope().activeRun!.inventory);
   delete legacy.activeRun.report.wageCostCents;
+  delete legacy.activeRun.report.inventoryLifecycle;
   return JSON.stringify(legacy);
 }
 
@@ -74,6 +82,7 @@ interface MutableLegacyEnvelope {
   schemaVersion: number;
   activeRun: {
     stateVersion: number;
+    inventory: unknown;
     report: Partial<DayReport>;
   };
 }
@@ -103,7 +112,8 @@ function fixtureReport(base: GameState, day: number, closingCashCents: number): 
     satisfactionPercent: 88,
     reputationChange: 0,
     waste: {},
-    remainingInventory: base.inventory,
+    remainingInventory: inventoryTotals(base.inventory),
+    inventoryLifecycle: null,
     servedBySegment: { commuter: 6, student: 4, enthusiast: 4, regular: 4 },
     bottleneck: 'No major bottleneck — the cafe flowed well',
     explanations: ['Validated deterministic outcome fixture ready for final settlement.'],

@@ -71,7 +71,16 @@ export interface PurchasePackage {
   unit: 'g' | 'ml' | 'serve';
 }
 
-export type IngredientInventory = Record<IngredientId, number>;
+/** One dated quantity in the canonical per-ingredient inventory. */
+export interface InventoryBatch {
+  quantity: number;
+  acquiredDay: number;
+  /** Inclusive last trading day; expiry is applied after this day's rush. */
+  expiresAfterDay: number;
+}
+
+export type IngredientInventory = Record<IngredientId, InventoryBatch[]>;
+export type IngredientTotals = Record<IngredientId, number>;
 export type IngredientPurchases = Record<IngredientId, number>;
 export type DrinkPrices = Record<DrinkId, number>;
 
@@ -181,6 +190,8 @@ export interface RushState {
   purchaseCostCents: number;
   wageCostCents: number;
   operatingCostCents: number;
+  openingInventory: IngredientTotals;
+  purchasedInventory: IngredientTotals;
   recentActivity: CompletedSaleActivity[];
   stats: RushStats;
 }
@@ -263,11 +274,21 @@ export interface DayReport {
   satisfactionPercent: number;
   reputationChange: number;
   waste: Partial<Record<IngredientId, number>>;
-  remainingInventory: IngredientInventory;
+  remainingInventory: IngredientTotals;
+  inventoryLifecycle: InventoryLifecycleReport | null;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
   bottleneck: string;
   explanations: string[];
   settled: boolean;
+}
+
+/** Exact per-ingredient conservation evidence captured for a completed v3 rush. */
+export interface InventoryLifecycleReport {
+  opening: IngredientTotals;
+  purchased: IngredientTotals;
+  consumed: IngredientTotals;
+  expired: IngredientTotals;
+  remaining: IngredientTotals;
 }
 
 export interface CampaignOutcome {
@@ -277,7 +298,7 @@ export interface CampaignOutcome {
 }
 
 export interface GameState {
-  stateVersion: 2;
+  stateVersion: 3;
   campaignId: string;
   seed: number;
   rngState: number;
@@ -328,7 +349,7 @@ export interface MetaProgress {
 }
 
 export interface SaveEnvelope {
-  schemaVersion: 2;
+  schemaVersion: 3;
   savedAt: string;
   activeRun: GameState | null;
   preferences: Preferences;

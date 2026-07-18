@@ -27,6 +27,21 @@ export {
 export { GameRuleError } from './errors';
 export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
 export {
+  addPlannedPurchases,
+  batchExpiryDay,
+  completeIngredientTotals,
+  consumeIngredientsLifo,
+  earliestInventoryExpiry,
+  expireInventoryAfterRush,
+  extendInventoryRefrigeration,
+  hasIngredients,
+  ingredientQuantity,
+  inventoryFromLegacyTotals,
+  inventoryTotals,
+  plannedPurchaseTotals,
+  refrigerationExtensionDays,
+} from './inventory';
+export {
   canOpen,
   completedSaleLabel,
   formatMoney,

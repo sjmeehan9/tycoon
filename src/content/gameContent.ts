@@ -10,6 +10,7 @@ import type {
   IngredientId,
   IngredientInventory,
   IngredientPurchases,
+  IngredientTotals,
   MilkChoice,
   PurchasePackage,
   ScenarioId,
@@ -39,6 +40,39 @@ export const INGREDIENT_IDS: IngredientId[] = [
   'ice',
   'coldBrewConcentrate',
 ];
+
+export interface IngredientDetails {
+  name: string;
+  unit: PurchasePackage['unit'];
+  shelfLifeRushes: number;
+  chilled: boolean;
+}
+
+/** Canonical display and shelf-life rules shared by engine, persistence, and UI. */
+export const INGREDIENT_DETAILS: Record<IngredientId, IngredientDetails> = {
+  houseBeans: { name: 'House blend', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  singleOriginBeans: {
+    name: 'Single origin',
+    unit: 'g',
+    shelfLifeRushes: 3,
+    chilled: false,
+  },
+  darkRoastBeans: { name: 'Dark roast', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  dairyMilk: { name: 'Dairy milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  oatMilk: { name: 'Oat milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  soyMilk: { name: 'Soy milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  chocolate: { name: 'Chocolate', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  ice: { name: 'Ice', unit: 'serve', shelfLifeRushes: 3, chilled: false },
+  coldBrewConcentrate: {
+    name: 'Cold brew concentrate',
+    unit: 'ml',
+    shelfLifeRushes: 3,
+    chilled: true,
+  },
+};
+
+/** Defensive import bound; reachable stock retains at most five daily batches. */
+export const MAX_INVENTORY_BATCHES_PER_INGREDIENT = 8;
 
 export const ALL_DRINK_IDS: DrinkId[] = [
   'espresso',
@@ -330,10 +364,10 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
   refrigeration: equipment(
     'refrigeration',
     'Refrigeration',
-    'Protects milk and cold-drink stock from end-of-day spoilage.',
+    'Extends the usable life of milk and cold-brew concentrate.',
     [
-      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '35% less chilled waste'),
-      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '65% less chilled waste'),
+      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '+1 chilled-stock day'),
+      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '+2 chilled-stock days total'),
     ],
   ),
   pos: equipment(
@@ -391,7 +425,7 @@ export const STAFF_TRAIT_DETAILS: Record<StaffTrait, { name: string; effect: str
   quickHands: { name: 'Quick hands', effect: 'Works 10% faster.' },
   peoplePerson: { name: 'People person', effect: 'Lifts demand and satisfaction.' },
   perfectionist: { name: 'Perfectionist', effect: 'Adds quality but takes extra care.' },
-  steady: { name: 'Steady', effect: 'Works consistently and trims avoidable waste.' },
+  steady: { name: 'Steady', effect: 'Works consistently and keeps service moving.' },
 };
 export const SIZE_SURCHARGE_CENTS = 90;
 export const MILK_SURCHARGE_CENTS: Record<MilkChoice, number> = {
@@ -424,7 +458,22 @@ export const CAMPAIGN_RULES = {
 
 /** Create a full inventory record with zero stock. */
 export function emptyInventory(): IngredientInventory {
-  return Object.fromEntries(INGREDIENT_IDS.map((id) => [id, 0])) as IngredientInventory;
+  return {
+    houseBeans: [],
+    singleOriginBeans: [],
+    darkRoastBeans: [],
+    dairyMilk: [],
+    oatMilk: [],
+    soyMilk: [],
+    chocolate: [],
+    ice: [],
+    coldBrewConcentrate: [],
+  };
+}
+
+/** Create a complete flat ingredient-total record for selectors and reports. */
+export function emptyIngredientTotals(): IngredientTotals {
+  return Object.fromEntries(INGREDIENT_IDS.map((id) => [id, 0])) as IngredientTotals;
 }
 
 /** Create a full purchase record with zero selected packages. */
