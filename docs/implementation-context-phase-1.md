@@ -44,3 +44,14 @@
   proving last-known-good behavior and exact-once close-day settlement.
 - Exact cumulative validation passed: 18 unit/component tests and four
   desktop/touch-mobile Playwright tests.
+
+## Component 1.4 — Phase Validation & Documentation
+
+- Self-reviewed source and tests for placeholders, unsafe typing, runtime
+  services, engine/render coupling, and persistence boundary violations; none
+  were found.
+- Re-ran the exact project-profile validation sequence with cumulative PASS.
+- Added the Phase 1 test report and agent runbook with reproducible install,
+  development, production-preview, E2E, deterministic-engine, and recovery
+  instructions.
+- Phase 1 is validated locally and ready to serve as the parent of `phase-2`.
