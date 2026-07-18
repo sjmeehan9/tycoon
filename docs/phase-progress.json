@@ -28,7 +28,7 @@
         { "id": "3.2", "name": "Cohesive Pixel Scene and Local Audio", "status": "committed" },
         { "id": "3.3", "name": "Onboarding, Accessibility, and Mobile Polish", "status": "committed" },
         { "id": "3.4", "name": "Offline-Safe PWA and Release Artifacts", "status": "committed" },
-        { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "local-pass-awaiting-human-release" }
+        { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "hosted-pass" }
       ]
     }
   ]
