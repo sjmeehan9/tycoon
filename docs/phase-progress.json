@@ -80,7 +80,7 @@
         {
           "id": "6.5",
           "name": "Cumulative QA, Documentation, and Hosted Verification",
-          "status": "queued"
+          "status": "local-pass-hosted-pending"
         }
       ]
     }

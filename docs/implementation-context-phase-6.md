@@ -110,3 +110,34 @@
 - Exact component validation passed: frozen install, production build,
   lint/format, 119 Vitest/RTL tests, and 47 Playwright browser passes with seven
   intentional project skips.
+
+## Component 6.5 — Cumulative QA, Documentation, and Release Evidence
+
+- Re-ran the project-profile sequence after every Phase 6 source/test commit:
+  frozen install, strict production build, lint/format, 119 Vitest/RTL tests,
+  and 47 applicable Playwright browser cases passed; seven project-routing
+  cases intentionally skipped in non-matching desktop/touch environments.
+- Exercised all Phase 6 activity ordering/reasons/bounds/reload, exact scene
+  overflow/counter/actual-sale/walkaway parity, 4× budget, pause, reduced motion,
+  report-loop stop, 65,536-name exhaustion, 40,000 candidate slots, migration,
+  hire/reject/endless Day 10,000, reload/import, and bounded-save targets.
+- Retained Phase 4 actual-price/revenue/cash reconciliation, Phase 5 dated
+  inventory/LIFO/expiry/conservation, full campaign balance, save recovery,
+  accessibility, desktop/360px, offline cache, and real service-worker update
+  journeys all pass cumulatively against the production bundle.
+- Inspected fresh desktop and touch static living-rush captures. The complete
+  HUD, exact queue/overflow, counter, eight people, sale, and walkaway evidence
+  are readable and contained. Application JS is 321.19 kB raw/100.27 kB gzip;
+  the 17-entry production precache is 817.27 KiB.
+- Self-review found no placeholder, second accounting/inventory authority,
+  renderer engine-write, wall-clock/PRNG presentation coupling, stale/unbounded
+  playback, colour-only meaning, name rejection/history, test-only completion,
+  dependency, backend, secret, analytics, or external runtime request.
+- Created the cumulative test report and release-evidence handoff as **LOCAL
+  PASS — HOSTED PENDING**. Before final docs, `origin/main` was the direct
+  ancestor and Phase 6 was 13 commits ahead; no merge, workflow, deployment, or
+  public URL mutation occurred.
+- The remaining human task is explicit: approve/reject the final merge and
+  publication, then verify the deployed commit's public refresh, desktop,
+  360px, activity/name, autosave, service-worker, and offline behavior before
+  any hosted PASS claim.

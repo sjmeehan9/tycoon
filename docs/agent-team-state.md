@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Implementation — Phase 6 Component 6.1 complete; Component 6.2 starting
+Phase 6 cumulative local PASS — final hosted release gate pending human approval
 
 ## Lean team contract
 
@@ -33,22 +33,23 @@ Implementation — Phase 6 Component 6.1 complete; Component 6.2 starting
 - [x] User approves additive Phases 4–6 and lean two-role execution
 - [x] Sole Implement agent delivers Phase 4 and cumulative validation PASS
 - [x] Sole Implement agent delivers Phase 5 and cumulative validation PASS
-- [ ] Sole Implement agent delivers Phase 6 and hosted cumulative validation PASS
+- [x] Sole Implement agent delivers Phase 6 cumulative local validation PASS
+- [ ] Human approves final merge and Phase 6 hosted cumulative verification
 
 ## Active agents
 
-| Agent                     | Role                       | Status             | Owns                                                          |
-| ------------------------- | -------------------------- | ------------------ | ------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                          |
-| lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                     |
-| sole_implement_phases_4_6 | Implement                  | active — Phase 6   | Phase 6 source, tests, fixes, validation, docs, commits, push |
+| Agent                     | Role                       | Status                             | Owns                                                          |
+| ------------------------- | -------------------------- | ---------------------------------- | ------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done                               | `docs/phase-plan.md`                                          |
+| lean_full_build           | Implement                  | done — HOSTED PASS                 | application, validation, release evidence                     |
+| sole_implement_phases_4_6 | Implement                  | done — LOCAL PASS / HOSTED PENDING | Phase 6 source, tests, fixes, validation, docs, commits, push |
 
 ## Human task gate
 
-- **Status:** CLOSED for local Phase 6 implementation — authorization is
-  recorded and no setup/credential/secret/service action is required; after
-  Component 6.5 local PASS, human approve/reject merge and Pages confirmation
-  are required before hosted PASS
+- **Status:** OPEN — Phase 6 local PASS is complete; the human must now
+  approve/reject merge and Pages publication, then confirm public desktop,
+  360px, activity/name, refresh/autosave, service-worker, and offline behavior
+  before hosted PASS
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
 
 ## Decisions log
@@ -66,8 +67,8 @@ Implementation — Phase 6 Component 6.1 complete; Component 6.2 starting
 | 2026-07-18 | Batches are Phase 5's sole inventory authority      | Prevents flat/batch divergence while pure selectors retain exact totals for UI and reports                      | Components 5.2–5.5 |
 | 2026-07-18 | Expiry occurs after the last usable rush            | Purchase Day 1 stock is usable Days 1–3; refrigeration adds +1/+2 chilled days                                  | Components 5.2–5.4 |
 | 2026-07-18 | Schema v3 checks v2 keys before its first write     | Preserves primary/backup recovery and seeds a current backup before replacing browser storage                   | Component 5.2      |
-| 2026-07-18 | Rush activity is canonical engine observation      | One bounded deterministic stream can drive Canvas/text without becoming a second accounting ledger              | Components 6.2–6.3 |
-| 2026-07-18 | Staff-name uniqueness is stateless and indexed     | A seed-keyed bijection covers 40,000 slots without persisted history or rejection loops                         | Component 6.4      |
+| 2026-07-18 | Rush activity is canonical engine observation       | One bounded deterministic stream can drive Canvas/text without becoming a second accounting ledger              | Components 6.2–6.3 |
+| 2026-07-18 | Staff-name uniqueness is stateless and indexed      | A seed-keyed bijection covers 40,000 slots without persisted history or rejection loops                         | Component 6.4      |
 
 ## Drift log
 
