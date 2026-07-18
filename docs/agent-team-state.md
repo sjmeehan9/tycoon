@@ -25,7 +25,7 @@ Implementation: all three phases, sequential lean handoff
 - [x] Coordinator creates lean implementation pointer/spec documents
 - [x] Sole Implement agent delivers Phase 1 and cumulative validation PASS
 - [x] Sole Implement agent delivers Phase 2 and cumulative validation PASS
-- [ ] Sole Implement agent delivers Phase 3 and cumulative validation PASS
+- [x] Sole Implement agent delivers Phase 3 and cumulative local validation PASS
 - [ ] Human desktop/mobile play validation
 - [ ] Human approves phase merges and public GitHub Pages release
 
@@ -34,11 +34,11 @@ Implementation: all three phases, sequential lean handoff
 | Agent | Role | Status | Owns |
 |---|---|---|---|
 | three_phase_plan_retry | Technical Business Analyst | done | `docs/phase-plan.md` |
-| lean_full_build | Implement | active — Component 3.4 validated; Component 3.5 next | application, tests, validation, release docs |
+| lean_full_build | Implement | blocked — local PASS; awaiting public release gate | hosted verification and final report append |
 
 ## Human task gate
 
-- **Status:** documented; deliberately deferred until Component 3.5 local PASS
+- **Status:** OPEN — Component 3.5 local PASS; explicit approval now required
 - **Required at release:** approve public visibility and GitHub Pages publication
 
 ## Decisions log

@@ -5,17 +5,17 @@ validating the release does not authorize publication or a visibility change.
 
 ## Automated release candidate
 
-- [ ] The exact validation sequence passes from a frozen lockfile.
-- [ ] Production preview loads at `/tycoon/` on desktop and 360px touch-mobile.
-- [ ] One online load supports an offline relaunch and saved-run continuation.
-- [ ] Update deferral preserves active play; accepted update verifies a save
+- [x] The exact validation sequence passes from a frozen lockfile.
+- [x] Production preview loads at `/tycoon/` on desktop and 360px touch-mobile.
+- [x] One online load supports an offline relaunch and saved-run continuation.
+- [x] Update deferral preserves active play; accepted update verifies a save
       before activation and restores it after reload.
-- [ ] Manifest, 192px/512px/maskable icons, scene, and all audio load from the
+- [x] Manifest, 192px/512px/maskable icons, scene, and all audio load from the
       repository subpath.
-- [ ] Lighthouse mobile meets the project-profile thresholds where exposed.
-- [ ] Bundle inspection confirms there is no runtime external request, secret,
+- [x] Lighthouse mobile meets the project-profile thresholds where exposed.
+- [x] Bundle inspection confirms there is no runtime external request, secret,
       telemetry, advertising, or personal-data path.
-- [ ] `docs/phase-3-test-report.md` records local PASS.
+- [x] `docs/phase-3-test-report.md` records local PASS.
 
 ## Required human gate
 

@@ -11,6 +11,7 @@
   },
   "scripts": {
     "assets:audio": "node --experimental-strip-types scripts/generate-audio.ts",
+    "audit:lighthouse": "pnpm dlx lighthouse@12.8.2 http://127.0.0.1:4173/tycoon/ --output=json --output-path=docs/evidence/lighthouse-mobile.json --only-categories=performance,accessibility,best-practices --form-factor=mobile --chrome-flags='--headless=new --no-sandbox --disable-gpu' --quiet",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint . --max-warnings 0 && prettier --check src tests *.ts *.json *.html",

@@ -20,6 +20,16 @@ test.describe('offline-safe production release', () => {
     await openControlledRelease(page);
     await expect(page).toHaveURL(/\/tycoon\/$/);
 
+    const cdp = await context.newCDPSession(page);
+    const [browserManifest, installability] = await Promise.all([
+      cdp.send('Page.getAppManifest'),
+      cdp.send('Page.getInstallabilityErrors'),
+    ]);
+    expect(browserManifest.errors).toEqual([]);
+    expect(browserManifest.url).toMatch(/\/tycoon\/manifest\.webmanifest$/);
+    expect(installability.installabilityErrors).toEqual([]);
+    await cdp.detach();
+
     const release = await page.evaluate(async () => {
       const manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
       if (!manifestLink) throw new Error('Release manifest link is missing.');

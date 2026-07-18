@@ -90,3 +90,29 @@
 - Cumulative validation passes 70 Vitest tests and 29 Playwright tests with five
   intentional browser-profile skips; generated precache is 17 entries / about
   780 KiB and application JavaScript is about 90 KiB gzip.
+
+## Component 3.5 — Cumulative QA, Phase Documentation, and Public Verification
+
+- Re-ran every Phase 1–3 engine, balance, persistence, component, desktop,
+  touch-mobile, accessibility, subpath, offline, and update scenario against the
+  production release. Exact validation passes 70 Vitest tests and 29 applicable
+  Playwright journeys; five non-matching-project entries are explicit skips.
+- Extended the PWA release proof with Chromium's manifest/installability
+  diagnostics (zero errors) and retained real waiting-worker lifecycle tests.
+- Ran mobile Lighthouse against `/tycoon/`. A minor incompatible `aside` status
+  override was corrected; final scores are Performance 95, Accessibility 100,
+  and Best Practices 100, with FCP 1.5 s, LCP 2.9 s, TBT 10 ms, and CLS 0.
+- Used transient Lighthouse 12.8.2 because current 13.4 requires Node 22.19,
+  above the approved 22.12 baseline. The raw report and checksum are committed;
+  no Lighthouse PWA score is exposed, so real Chromium installability/offline
+  proof supplies that gate.
+- Regenerated original audio, inventoried the full 17-entry / 779.57 KiB
+  precache, parsed the Pages workflow, reviewed runtime requests/privacy, and
+  ran a complete moderate-level dependency audit with no known findings.
+- Created the cumulative local test report, evidence summary, release runbook,
+  completed local checklist, and component handoff. All explicit requirements
+  and non-goals were self-reviewed with no missing or silently deferred local
+  behavior.
+- Status is LOCAL PASS / HOSTED PENDING. Publication is blocked on the Component
+  3.1 human gate; no push, merge, visibility change, Pages configuration,
+  workflow dispatch, deployment, or hosted claim was made.

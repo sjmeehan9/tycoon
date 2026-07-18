@@ -67,25 +67,25 @@ export function PwaUpdatePrompt(): React.JSX.Element | null {
 
   if (offlineReady) {
     return (
-      <aside className="pwa-notice" role="status">
+      <div className="pwa-notice" role="status">
         <strong>Ready for offline play</strong>
         <p>The complete game is cached on this device. Saves remain in this browser.</p>
         <button className="button" onClick={() => setOfflineReady(false)} type="button">
           Got it
         </button>
-      </aside>
+      </div>
     );
   }
 
   if (registrationError) {
     return (
-      <aside className="pwa-notice" role="status">
+      <div className="pwa-notice" role="status">
         <strong>Online-only for now</strong>
         <p>{registrationError}</p>
         <button className="button" onClick={() => setRegistrationError(null)} type="button">
           Dismiss
         </button>
-      </aside>
+      </div>
     );
   }
 
