@@ -14,6 +14,7 @@ export function RushPanel(): React.JSX.Element {
   const { rush } = game;
   const progress = Math.round((rush.tick / rush.durationTicks) * 100);
   const lastSale = rush.recentActivity.findLast((event) => event.type === 'sale');
+  const lastWalkaway = rush.recentActivity.findLast((event) => event.type === 'walkaway');
   const recentActivity = rush.recentActivity.slice(-6);
 
   return (
@@ -83,6 +84,11 @@ export function RushPanel(): React.JSX.Element {
         <p aria-atomic="true" aria-live="polite" className="last-sale-note">
           Last sale: {completedSaleLabel(lastSale)} — {formatMoney(lastSale.priceCents)} actual
           charge.
+        </p>
+      ) : null}
+      {lastWalkaway ? (
+        <p className="last-walkaway-note" data-reason={lastWalkaway.reason}>
+          Latest walkaway: {describeRushActivity(lastWalkaway)}
         </p>
       ) : null}
       {recentActivity.length > 0 ? (

@@ -21,11 +21,12 @@ import {
 import {
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
+  livingRushEnvelope,
   stockLifecyclePlanningEnvelope,
 } from '../fixtures/campaignFixtures';
 
-function renderGame(): void {
-  render(
+function renderGame(): ReturnType<typeof render> {
+  return render(
     <GameProvider>
       <App />
     </GameProvider>,
@@ -98,6 +99,25 @@ describe('playable cart UI', () => {
     const activity = screen.getByRole('list', { name: 'Recent rush activity' });
     expect(within(activity).getAllByRole('listitem').length).toBeGreaterThan(0);
     expect(activity).toHaveTextContent(/customer d1-c\d+ arrived/i);
+  });
+
+  it('reloads a paused dense rush at current truth without presenting old evidence as motion', async () => {
+    new BrowserSaveStore(window.localStorage).save(livingRushEnvelope({ paused: true }));
+    const user = userEvent.setup();
+    const firstView = renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const firstScene = screen.getByRole('img', { name: /12 customers waiting/ });
+    expect(firstScene).toHaveAttribute('data-last-event', 'd1-e6');
+    expect(firstScene).toHaveAttribute('data-animation', 'still');
+    firstView.unmount();
+
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const restoredScene = screen.getByRole('img', { name: /12 customers waiting/ });
+    expect(restoredScene).toHaveAttribute('data-last-event', 'd1-e6');
+    expect(restoredScene).toHaveAttribute('data-animation', 'still');
+    expect(screen.getByText('SALE +$7.25')).toBeVisible();
+    expect(screen.getByText('OUT OF STOCK')).toBeVisible();
   });
 
   it('shows every exact live stock item with active ingredients first', async () => {

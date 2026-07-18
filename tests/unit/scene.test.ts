@@ -13,6 +13,17 @@ import {
   describeScene,
   shouldAnimateScene,
 } from '../../src/scene/sceneModel';
+import {
+  MAX_SCENE_QUEUE_SPRITES,
+  MAX_SCENE_TRANSIENTS,
+  QUEUE_SHIFT_DURATION_MS,
+  advanceScenePlayback,
+  createScenePlayback,
+  interpolatedQueueIndex,
+  syncScenePlayback,
+  walkawayVisualLabel,
+} from '../../src/scene/scenePlayback';
+import { livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 describe('snapshot-driven pixel scene', () => {
   it('uses one fixed logical resolution and exposes weather/venue textual parity', () => {
@@ -150,6 +161,139 @@ describe('snapshot-driven pixel scene', () => {
       'Student customer d1-c1 left because their order was out of stock.',
       'Student customer d1-c1 left when the rush ended.',
     ]);
+    expect(
+      (['patience', 'queueFull', 'stockout', 'rushEnded'] as const).map(walkawayVisualLabel),
+    ).toEqual(['WAITED TOO LONG', 'QUEUE FULL', 'OUT OF STOCK', 'RUSH CLOSED']);
+  });
+
+  it('initializes from persisted truth without replaying retained activity', () => {
+    const game = livingRushEnvelope().activeRun;
+    if (!game) throw new Error('Expected living-rush fixture.');
+    const snapshot = createSceneSnapshot(game, false, ['classicAwning']);
+    const playback = createScenePlayback(snapshot);
+    expect(playback.lastSequence).toBe(6);
+    expect(playback.transients).toEqual([]);
+    expect(playback.queueMotions).toHaveLength(MAX_SCENE_QUEUE_SPRITES);
+    expect(playback.queueMotions.every((motion) => motion.fromIndex === motion.toIndex)).toBe(true);
+    expect(Object.isFrozen(playback)).toBe(true);
+    expect(Object.isFrozen(playback.queueMotions)).toBe(true);
+  });
+
+  it('coalesces unseen identities and bounds high-speed transient playback', () => {
+    const game = livingRushEnvelope({ paused: false }).activeRun;
+    if (!game?.rush) throw new Error('Expected living-rush fixture.');
+    const initial = createSceneSnapshot(game, false, ['classicAwning']);
+    let playback = createScenePlayback(initial);
+    const newActivity: RushActivityEvent[] = [
+      {
+        id: 'd1-e7',
+        sequence: 7,
+        tick: 49,
+        customerId: 'd1-c29',
+        segment: 'regular',
+        type: 'arrival',
+      },
+      {
+        id: 'd1-e8',
+        sequence: 8,
+        tick: 49,
+        customerId: 'd1-c29',
+        segment: 'regular',
+        type: 'walkaway',
+        reason: 'queueFull',
+      },
+      ...Array.from({ length: 7 }, (_, index) => ({
+        id: `d1-e${index + 9}`,
+        sequence: index + 9,
+        tick: 50,
+        customerId: `d1-c${index + 30}`,
+        segment: 'student' as const,
+        type: 'sale' as const,
+        drinkId: 'flatWhite' as const,
+        size: 'large' as const,
+        milk: 'oat' as const,
+        priceCents: 725 + index,
+      })),
+    ];
+    const arrivalGame = {
+      ...game,
+      rush: {
+        ...game.rush,
+        nextActivitySequence: 8,
+        recentActivity: [...game.rush.recentActivity, newActivity[0]!],
+      },
+    };
+    const arrival = createSceneSnapshot(arrivalGame, false, ['classicAwning']);
+    playback = syncScenePlayback(playback, arrival);
+    expect(playback.transients).toEqual([
+      expect.objectContaining({ sequence: 7, kind: 'arrival', customerId: 'd1-c29' }),
+    ]);
+
+    const queueFullGame = {
+      ...arrivalGame,
+      rush: {
+        ...arrivalGame.rush,
+        nextActivitySequence: 9,
+        recentActivity: [...arrivalGame.rush.recentActivity, newActivity[1]!],
+      },
+    };
+    const queueFull = createSceneSnapshot(queueFullGame, false, ['classicAwning']);
+    playback = syncScenePlayback(playback, queueFull);
+    expect(playback.transients).toEqual([
+      expect.objectContaining({
+        sequence: 8,
+        kind: 'walkaway',
+        customerId: 'd1-c29',
+        reason: 'queueFull',
+      }),
+    ]);
+
+    const updated = createSceneSnapshot(
+      {
+        ...queueFullGame,
+        rush: {
+          ...queueFullGame.rush,
+          nextActivitySequence: 16,
+          recentActivity: [...queueFullGame.rush.recentActivity, ...newActivity.slice(2)],
+        },
+      },
+      false,
+      ['classicAwning'],
+    );
+    playback = syncScenePlayback(playback, updated);
+    expect(playback.lastSequence).toBe(15);
+    expect(playback.transients).toHaveLength(MAX_SCENE_TRANSIENTS);
+    expect(playback.transients.map(({ sequence }) => sequence)).toEqual([13, 14, 15]);
+    expect(playback.transients.every(({ kind }) => kind === 'sale')).toBe(true);
+    const advanced = advanceScenePlayback(playback, updated, 100);
+    expect(advanced.transients[0]?.ageMs).toBe(400);
+    const cleared = advanceScenePlayback(advanced, updated, 250);
+    expect(cleared.transients).toEqual([]);
+  });
+
+  it('eases queue shifts while pause freezes and reduced motion settles immediately', () => {
+    const game = livingRushEnvelope({ paused: false }).activeRun;
+    if (!game?.rush) throw new Error('Expected living-rush fixture.');
+    const initial = createSceneSnapshot(game, false, ['classicAwning']);
+    const playback = createScenePlayback(initial);
+    const shiftedGame = { ...game, rush: { ...game.rush, queue: game.rush.queue.slice(1) } };
+    const shifted = createSceneSnapshot(shiftedGame, false, ['classicAwning']);
+    const moving = syncScenePlayback(playback, shifted);
+    const front = moving.queueMotions[0];
+    if (!front) throw new Error('Expected a shifting front customer.');
+    expect(front).toMatchObject({ fromIndex: 1, toIndex: 0, ageMs: 0 });
+    expect(interpolatedQueueIndex(front)).toBe(1);
+
+    const paused = createSceneSnapshot(
+      { ...shiftedGame, rush: { ...shiftedGame.rush, isPaused: true } },
+      false,
+      ['classicAwning'],
+    );
+    expect(advanceScenePlayback(moving, paused, QUEUE_SHIFT_DURATION_MS)).toEqual(moving);
+
+    const settled = syncScenePlayback(moving, createSceneSnapshot(shiftedGame, true, []));
+    expect(settled.transients).toEqual([]);
+    expect(settled.queueMotions.every((motion) => motion.fromIndex === motion.toIndex)).toBe(true);
   });
 });
 

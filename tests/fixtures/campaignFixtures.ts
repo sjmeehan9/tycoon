@@ -2,6 +2,8 @@ import { CAMPAIGN_RULES, emptyPurchases } from '../../src/content/gameContent';
 import {
   createCampaign,
   inventoryTotals,
+  startRush,
+  type Customer,
   type DayReport,
   type GameState,
   type SaveEnvelope,
@@ -93,6 +95,123 @@ export function stockLifecyclePlanningEnvelope(): SaveEnvelope {
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
 
+export interface LivingRushOptions {
+  endingSoon?: boolean;
+  paused?: boolean;
+  reducedMotion?: boolean;
+}
+
+/** Deterministic dense rush used to prove queue overflow, evidence, and static parity. */
+export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelope {
+  const started = startRush(createCampaign({ seed: 6_303 }));
+  if (!started.rush) throw new Error('Living-rush fixture requires an active rush.');
+  const activeCustomer = livingRushCustomer('d1-c1', 'enthusiast');
+  const queue = Array.from({ length: 12 }, (_, index) =>
+    livingRushCustomer(
+      `d1-c${index + 2}`,
+      (['commuter', 'student', 'enthusiast', 'regular'] as const)[index % 4] ?? 'regular',
+    ),
+  );
+  const rush = {
+    ...started.rush,
+    tick: 48,
+    durationTicks: options.endingSoon ? 49 : started.rush.durationTicks,
+    speed: options.endingSoon ? (1 as const) : (4 as const),
+    isPaused: options.paused ?? true,
+    queue,
+    activeService: { customer: activeCustomer, remainingTicks: 12, totalTicks: 20 },
+    eventTriggerTicks: [],
+    nextCustomerId: 30,
+    nextActivitySequence: 7,
+    recentActivity: [
+      {
+        id: 'd1-e0',
+        sequence: 0,
+        tick: 20,
+        customerId: 'd1-c20',
+        segment: 'student' as const,
+        type: 'arrival' as const,
+      },
+      {
+        id: 'd1-e1',
+        sequence: 1,
+        tick: 21,
+        customerId: 'd1-c20',
+        segment: 'student' as const,
+        type: 'serviceStarted' as const,
+        drinkId: 'flatWhite' as const,
+        size: 'large' as const,
+        milk: 'oat' as const,
+      },
+      {
+        id: 'd1-e2',
+        sequence: 2,
+        tick: 40,
+        customerId: 'd1-c20',
+        segment: 'student' as const,
+        type: 'sale' as const,
+        drinkId: 'flatWhite' as const,
+        size: 'large' as const,
+        milk: 'oat' as const,
+        priceCents: 725,
+      },
+      {
+        id: 'd1-e3',
+        sequence: 3,
+        tick: 42,
+        customerId: 'd1-c21',
+        segment: 'commuter' as const,
+        type: 'arrival' as const,
+      },
+      {
+        id: 'd1-e4',
+        sequence: 4,
+        tick: 42,
+        customerId: 'd1-c21',
+        segment: 'commuter' as const,
+        type: 'walkaway' as const,
+        reason: 'stockout' as const,
+      },
+      {
+        id: 'd1-e5',
+        sequence: 5,
+        tick: 45,
+        customerId: activeCustomer.id,
+        segment: activeCustomer.segment,
+        type: 'arrival' as const,
+      },
+      {
+        id: 'd1-e6',
+        sequence: 6,
+        tick: 46,
+        customerId: activeCustomer.id,
+        segment: activeCustomer.segment,
+        type: 'serviceStarted' as const,
+        drinkId: activeCustomer.order.drinkId,
+        size: activeCustomer.order.size,
+        milk: activeCustomer.order.milk,
+      },
+    ],
+    stats: {
+      ...started.rush.stats,
+      arrivals: 15,
+      served: 1,
+      abandoned: 1,
+      stockouts: 1,
+      revenueCents: 725,
+      soldByDrink: { flatWhite: 1 },
+      arrivalsBySegment: { commuter: 4, student: 4, enthusiast: 4, regular: 3 },
+      servedBySegment: { student: 1 },
+      peakQueue: 12,
+    },
+  };
+  return createSaveEnvelope(
+    { ...started, rush },
+    { ...fixturePreferences(), reducedMotion: options.reducedMotion ?? false },
+    createDefaultMeta(),
+  );
+}
+
 /** Supported version-1 fixture used to prove migration through the production upload control. */
 export function versionOneVictorySave(): string {
   const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as MutableLegacyEnvelope;
@@ -115,6 +234,27 @@ interface MutableLegacyEnvelope {
 
 function fixturePreferences(): ReturnType<typeof createDefaultPreferences> {
   return { ...createDefaultPreferences(), onboardingComplete: true };
+}
+
+function livingRushCustomer(id: string, segment: Customer['segment']): Customer {
+  return {
+    id,
+    segment,
+    order: {
+      drinkId: 'flatWhite',
+      size: 'large',
+      milk: 'oat',
+      priceCents: 725,
+      ingredientAmounts: [
+        { ingredientId: 'houseBeans', amount: 18 },
+        { ingredientId: 'oatMilk', amount: 250 },
+      ],
+      preparationTicks: 20,
+    },
+    arrivedAtTick: 20,
+    patienceTicks: 1_000,
+    waitedTicks: 10,
+  };
 }
 
 function fixtureReport(base: GameState, day: number, closingCashCents: number): DayReport {

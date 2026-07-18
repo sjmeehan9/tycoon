@@ -49,3 +49,33 @@
 - No spec deviation or deferred behavior. `queueCustomers` anticipates the
   already-specified eight-sprite Component 6.3 consumer while `queueSegments`
   remains compatible with the existing Canvas during this boundary.
+
+## Component 6.3 — Expressive Queue, Sale, Exit, and Walkaway Scene
+
+- Added an immutable presentation-only playback controller that consumes each
+  stable event sequence once, coalesces by customer, retains no more than three
+  transients/eight queue motions, speeds ages at 1×/2×/4×, and never lets
+  renderer timing enter engine state.
+- Rebuilt the fixed 320×180 Canvas rush layer with walking arrivals, cubic queue
+  shifts, eight segment-distinct detailed sprites, exact `QUEUE N`, `+N`
+  overflow, active counter/cup handoff, actual `+$X.XX`, served coffee exits,
+  and four direction/icon/label-distinct walkaway treatments.
+- Added a responsive visible HUD plus exact Canvas name/figcaption and RushPanel
+  latest-sale/walkaway evidence. All meaning is duplicated in text rather than
+  depending on movement, colour, or an icon.
+- Reload initializes from persisted current truth without replaying retained
+  history. Pause freezes motion; reduced motion settles immediately with static
+  exact queue/counter/sale/walkaway evidence. Live rush-end departures finish as
+  a bounded report transient, then the RAF stops; report reload has no replay.
+- Added a deterministic dense-rush fixture and pure playback, Canvas draw,
+  accessibility, reload, desktop, and 360px journeys. The production tests
+  enforce fixed Canvas size, exact 12-person/`+4` truth, actual $7.25, stockout,
+  4× frame budget, pause freeze, closing playback clearance, and no document
+  overflow. Stable runtime captures are emitted under `test-results/living-rush-*`.
+- Visual inspection of the desktop paused/reduced capture confirmed the entire
+  HUD, counter, eight sprites, overflow, and evidence remain readable inside
+  the frame. No external dependency, network asset, or gameplay change was
+  introduced.
+- Exact component validation passed: frozen install, production build,
+  lint/format, 107 Vitest/RTL tests, and 43 Playwright browser passes with seven
+  intentional project skips.

@@ -5,11 +5,12 @@ import type {
   GamePhase,
   GameState,
   RushActivityEvent,
+  RushSpeed,
   StaffRole,
   VenueId,
   WeatherId,
 } from '../game';
-import { VENUES } from '../content/gameContent';
+import { DRINK_MAP, VENUES } from '../content/gameContent';
 import { describeRushActivity } from '../game/selectors';
 
 export const LOGICAL_SCENE_SIZE = Object.freeze({ width: 320, height: 180 });
@@ -19,6 +20,9 @@ export interface SceneSnapshot {
   readonly venueId: VenueId;
   readonly weather: WeatherId;
   readonly phase: GamePhase;
+  readonly rushTick: number;
+  readonly rushSpeed: RushSpeed;
+  readonly isPaused: boolean;
   readonly queueCount: number;
   readonly queueCustomers: readonly SceneCustomerSnapshot[];
   readonly queueSegments: readonly CustomerSegment[];
@@ -79,6 +83,9 @@ export function createSceneSnapshot(
     venueId: game.venueId,
     weather: game.weather,
     phase: game.phase,
+    rushTick: game.rush?.tick ?? 0,
+    rushSpeed: game.rush?.speed ?? 1,
+    isPaused: game.rush?.isPaused ?? false,
     queueCount: game.rush?.queue.length ?? 0,
     queueCustomers: Object.freeze(queueCustomers),
     queueSegments: Object.freeze(queueCustomers.map(({ segment }) => segment)),
@@ -103,13 +110,34 @@ export function describeScene(snapshot: SceneSnapshot): string {
   const team = snapshot.scheduledRoles.length;
   const activity = snapshot.isServing ? 'serving a drink' : 'between drinks';
   const latest = snapshot.recentActivity.at(-1);
+  const latestSale = snapshot.recentActivity.findLast((event) => event.type === 'sale');
+  const latestWalkaway = snapshot.recentActivity.findLast((event) => event.type === 'walkaway');
   const base = `${VENUES[snapshot.venueId].shortName} in ${weatherLabel(snapshot.weather)} weather. Day ${snapshot.day}, ${snapshot.phase} phase, ${queue} customers waiting, ${team} staff scheduled, ${activity}.`;
-  return latest ? `${base} Latest activity: ${describeRushActivity(latest)}` : base;
+  const details = [
+    snapshot.activeCustomer ? activeCustomerDescription(snapshot.activeCustomer) : null,
+    latest ? `Latest activity: ${describeRushActivity(latest)}` : null,
+    latestSale && latestSale !== latest ? `Latest sale: ${describeRushActivity(latestSale)}` : null,
+    latestWalkaway && latestWalkaway !== latest
+      ? `Latest walkaway: ${describeRushActivity(latestWalkaway)}`
+      : null,
+  ].filter((detail): detail is string => detail !== null);
+  return [base, ...details].join(' ');
 }
 
 /** Animate visual flourishes only while service is moving and motion is allowed. */
 export function shouldAnimateScene(snapshot: SceneSnapshot): boolean {
-  return !snapshot.reducedMotion && (snapshot.phase === 'rush' || snapshot.phase === 'event');
+  return !snapshot.reducedMotion && !snapshot.isPaused && snapshot.phase === 'rush';
+}
+
+function activeCustomerDescription(customer: SceneActiveCustomerSnapshot): string {
+  const drink = DRINK_MAP.get(customer.order.drinkId)?.name ?? customer.order.drinkId;
+  const size = customer.order.size === 'large' ? 'large' : 'regular';
+  const milk = customer.order.milk === 'none' ? '' : ` ${customer.order.milk}`;
+  return `At the counter: ${segmentLabel(customer.segment)} customer ${customer.id} is being served a ${size}${milk} ${drink}.`;
+}
+
+function segmentLabel(segment: CustomerSegment): string {
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
 function weatherLabel(weather: WeatherId): string {
