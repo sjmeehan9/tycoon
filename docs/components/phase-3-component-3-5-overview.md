@@ -22,7 +22,8 @@ paused at the owner-controlled release gate.
 
 ## Files owned
 
-- `src/pwa/PwaUpdatePrompt.tsx`, `tests/e2e/pwa.spec.ts`
+- `src/pwa/PwaUpdatePrompt.tsx`, `src/styles.css`
+- `tests/e2e/pwa.spec.ts`, `tests/e2e/accessibility.spec.ts`
 - `package.json`, `pnpm-lock.yaml`
 - `docs/evidence/lighthouse-mobile.json`, `docs/evidence/release-audit.md`
 - `docs/phase-3-test-report.md`, `docs/release-runbook.md`
@@ -44,6 +45,9 @@ of 95 Performance / 100 Accessibility / 100 Best Practices.
   worker to prove caching, offline relaunch, defer, activation, and recovery.
 - The live offline-ready element is a neutral `div role="status"`; Lighthouse
   caught and the component corrected an incompatible role override on `aside`.
+- Responsive evidence checks the rainy forecast badge's actual bounding box at
+  360px, because a root scroll-width check alone can hide visual overshoot when
+  the body clips horizontal overflow.
 - The complete lockfile audit is clean. Lighthouse remains transient because
   the current CLI's retained dependency tree carries an unrelated QA-only
   advisory and its Node floor exceeds the project baseline.

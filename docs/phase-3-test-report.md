@@ -3,7 +3,7 @@
 ## Release under test
 
 - Branch: `phase-3`
-- Validated feature head before this report: `2ead081`
+- Validated release baseline before follow-up fixes: `9a85186`
 - Runtime: Node.js 22.13.1, pnpm 10.15.0
 - Browser harness: Playwright 1.61.1, Chromium 149
 - Projects: 1280×800 desktop Chromium and 360×780 touch-mobile Chromium
@@ -35,8 +35,8 @@ Chromium. No required scenario is skipped in its intended environment.
   and independent consent, persists settings, and fails safely when unavailable.
 - First-day onboarding follows real phases and can be skipped or replayed.
   Keyboard/touch flows cover focus traps/restoration, automatic tabs, 44px
-  targets, 360px overflow, reduced motion, non-colour cues, textual outcomes,
-  and axe serious/critical checks.
+  targets, root and visible-element boundaries at 360px, reduced motion,
+  non-colour cues, textual outcomes, and axe serious/critical checks.
 - The production manifest and complete same-origin runtime install without
   Chromium manifest/installability errors. One online visit supports offline
   relaunch and autosave continuation. A real waiting worker can be deferred;
@@ -60,15 +60,21 @@ the installability/offline gate. Full evidence and bundle sizes are in
 `docs/evidence/release-audit.md`; the raw report is
 `docs/evidence/lighthouse-mobile.json`.
 
+A subsequent 360px browser smoke found the rainy forecast badge ending at
+365.546875px despite the root scroll metric appearing clipped in automated
+Chromium. A new element-boundary assertion reproduced that exact failure, then
+passed after the mobile badge was constrained and allowed to wrap. The exact
+validation sequence and Lighthouse audit above were rerun after the correction.
+
 ## Manual tests automated
 
 The human-readable desktop/mobile day, operations, outcome, save-recovery,
 accessibility, responsive, subpath, offline, and update paths live in every file
 under `tests/e2e/`. They drive the production UI with real keyboard/touch input,
 production imports, browser storage, downloads/uploads, Canvas, media consent,
-and generated service workers. `pnpm assets:audio`, Chromium's manifest checks,
-the asset inventory, workflow parse, and full dependency audit were also
-executed programmatically and passed.
+generated service workers, root scroll metrics, and visible element boundaries.
+`pnpm assets:audio`, Chromium's manifest checks, the asset inventory, workflow
+parse, and full dependency audit were also executed programmatically and passed.
 
 ## Self-review
 

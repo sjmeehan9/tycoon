@@ -55,6 +55,16 @@ test.describe('accessible primary flow', () => {
     test.setTimeout(90_000);
     await page.goto('./');
     await page.getByRole('button', { name: 'Start new campaign' }).tap();
+    const forecastBounds = await page.locator('.forecast-badge').evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        left: bounds.left,
+        right: bounds.right,
+        viewportWidth: document.documentElement.clientWidth,
+      };
+    });
+    expect(forecastBounds.left).toBeGreaterThanOrEqual(0);
+    expect(forecastBounds.right).toBeLessThanOrEqual(forecastBounds.viewportWidth);
     await page.getByRole('button', { name: 'Show current step' }).tap();
     await page.getByRole('tab', { name: 'Supplies' }).tap();
     await expect(page.getByRole('tabpanel', { name: 'Supplies' })).toBeVisible();

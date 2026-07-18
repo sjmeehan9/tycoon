@@ -1136,6 +1136,11 @@ legend {
     display: inline-block;
     margin-top: 0.5rem;
   }
+  .forecast-badge {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
   .menu-grid,
   .supply-list,
   .staff-grid,

@@ -106,9 +106,13 @@
   above the approved 22.12 baseline. The raw report and checksum are committed;
   no Lighthouse PWA score is exposed, so real Chromium installability/offline
   proof supplies that gate.
-- Regenerated original audio, inventoried the full 17-entry / 779.57 KiB
+- Regenerated original audio, inventoried the full 17-entry / 779.64 KiB
   precache, parsed the Pages workflow, reviewed runtime requests/privacy, and
   ran a complete moderate-level dependency audit with no known findings.
+- Corrected a real-browser 360px follow-up where the rainy forecast badge
+  reached 365.546875px. Mobile CSS now constrains and wraps that badge, while
+  the touch journey asserts its actual bounding rectangle in addition to root
+  scroll metrics; the assertion was proven red before the fix and green after.
 - Created the cumulative local test report, evidence summary, release runbook,
   completed local checklist, and component handoff. All explicit requirements
   and non-goals were self-reviewed with no missing or silently deferred local
