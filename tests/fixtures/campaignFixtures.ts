@@ -1,4 +1,4 @@
-import { CAMPAIGN_RULES } from '../../src/content/gameContent';
+import { CAMPAIGN_RULES, emptyPurchases } from '../../src/content/gameContent';
 import {
   createCampaign,
   inventoryTotals,
@@ -63,6 +63,32 @@ export function growthReadyEnvelope(): SaveEnvelope {
     cashCents: 100_000,
     reputation: 70,
     lastSettledDay: 18,
+  };
+  return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
+}
+
+/** Valid Day 3 planning fixture proving live LIFO depletion and post-rush expiry. */
+export function stockLifecyclePlanningEnvelope(): SaveEnvelope {
+  const base = createCampaign({ seed: 50_504 });
+  const state: GameState = {
+    ...base,
+    day: 3,
+    inventory: {
+      ...base.inventory,
+      dairyMilk: [{ quantity: 500, acquiredDay: 1, expiresAfterDay: 3 }],
+    },
+    plan: {
+      ...base.plan,
+      activeMenu: ['flatWhite'],
+      dialIn: 'quality',
+      purchases: {
+        ...emptyPurchases(),
+        houseBeans: 2,
+        dairyMilk: 4,
+        oatMilk: 4,
+        soyMilk: 4,
+      },
+    },
   };
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }

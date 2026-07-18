@@ -217,6 +217,15 @@ describe('seeded cart engine', () => {
     expect(lifecycle.remaining.dairyMilk).toBe(8_000 - lifecycle.consumed.dairyMilk);
     expect(completed.report?.waste.dairyMilk).toBe(500);
     expect(completed.report?.explanations.join(' ')).toContain('Expiry waste after the Day 3 rush');
+    expect(lifecycle.opening.dairyMilk + lifecycle.purchased.dairyMilk).toBe(
+      lifecycle.consumed.dairyMilk + lifecycle.expired.dairyMilk + lifecycle.remaining.dairyMilk,
+    );
+    expect(lifecycle.consumed.dairyMilk).toBeGreaterThan(0);
+    expect(
+      completed.inventory.dairyMilk.every(
+        (batch) => batch.acquiredDay === 3 && batch.expiresAfterDay > 3,
+      ),
+    ).toBe(true);
 
     const settled = closeDay(completed);
     const tomorrow = startNextDay(settled);

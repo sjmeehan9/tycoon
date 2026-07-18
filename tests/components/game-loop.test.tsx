@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -18,7 +18,11 @@ import {
   createSaveEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
-import { nearBankruptcyEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
+import {
+  nearBankruptcyEnvelope,
+  nearVictoryEnvelope,
+  stockLifecyclePlanningEnvelope,
+} from '../fixtures/campaignFixtures';
 
 function renderGame(): void {
   render(
@@ -38,6 +42,25 @@ function stateAtReport(): GameState {
   let state = stateAtEvent();
   state = resolveEvent(state, 'protect-queue');
   while (state.phase === 'rush') state = advanceTick(state);
+  return state;
+}
+
+function stockLifecycleReportState(): GameState {
+  const planning = stockLifecyclePlanningEnvelope().activeRun;
+  if (!planning) throw new Error('Expected stock-lifecycle planning fixture.');
+  let state = startRush(planning);
+  let safety = 0;
+  while (state.phase !== 'report' && safety < 1_000) {
+    if (state.phase === 'event') {
+      const choiceId = state.rush?.pendingEvent?.choices[0]?.id;
+      if (!choiceId) throw new Error('Expected a resolvable rush event.');
+      state = resolveEvent(state, choiceId);
+    } else {
+      state = advanceTick(state);
+    }
+    safety += 1;
+  }
+  if (state.phase !== 'report') throw new Error('Stock-lifecycle fixture did not finish.');
   return state;
 }
 
@@ -63,6 +86,34 @@ describe('playable cart UI', () => {
     expect(screen.getByRole('button', { name: 'Resume' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: '4×' }));
     expect(screen.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('shows every exact live stock item with active ingredients first', async () => {
+    const planning = stockLifecyclePlanningEnvelope().activeRun;
+    if (!planning) throw new Error('Expected stock-lifecycle planning fixture.');
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(startRush(planning)));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+
+    const grid = screen.getByRole('list', { name: 'Live rush stock' });
+    const items = within(grid).getAllByRole('listitem');
+    expect(items).toHaveLength(9);
+    expect(items.slice(0, 4).map((item) => item.querySelector('strong')?.textContent)).toEqual([
+      'House blend',
+      'Dairy milk',
+      'Oat milk',
+      'Soy milk',
+    ]);
+    expect(within(grid).getByText('8,500 ml', { selector: 'strong' })).toBeVisible();
+    const dairy = grid.querySelector('[data-ingredient="dairyMilk"]');
+    if (!dairy) throw new Error('Expected the dairy live-stock row.');
+    expect(dairy).toHaveTextContent(/~\d+ serves/);
+    expect(dairy).toHaveTextContent('500 ml expires after this Day 3 rush');
+    const chocolate = grid.querySelector('[data-ingredient="chocolate"]');
+    expect(chocolate).toHaveTextContent('0 g remaining');
+    expect(chocolate).toHaveTextContent('Out of stock');
+    expect(chocolate).toHaveTextContent('Not used today');
   });
 
   it('provides touch-sized mobile planning tabs without hiding actions from the DOM', async () => {
@@ -119,12 +170,31 @@ describe('playable cart UI', () => {
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
     expect(screen.getByRole('list', { name: 'Recent actual sale charges' })).toBeVisible();
     expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Inventory lifecycle reconciliation' })).toBeVisible();
+    expect(screen.getByText('Opening + bought − used − expired = rolled forward.')).toBeVisible();
     expect(screen.getByText('Bottleneck')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle the day' }));
     expect(
       await screen.findByRole('heading', { name: 'Reinvest or call it a night' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Plan Day 2' })).toBeEnabled();
+  });
+
+  it('renders exact lifecycle conservation and the causal expiry day without losing charges', async () => {
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(stockLifecycleReportState()));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+
+    const dairy = screen.getByRole('row', { name: /^Dairy milk/ });
+    expect(dairy).toHaveTextContent('500 ml');
+    expect(dairy).toHaveTextContent('8,000 ml');
+    expect(dairy).toHaveTextContent(/500 ml \+ 8,000 ml − [\d,]+ ml − 500 ml = [\d,]+ ml/);
+    expect(document.querySelector('.expiry-cause')).toHaveTextContent(
+      /after the Day 3 rush, Dairy milk 500 ml reached the inclusive last usable day/i,
+    );
+    expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
+    expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
   });
 
   it('hires both roles and schedules a daily team with visible payroll', async () => {
@@ -185,6 +255,7 @@ describe('playable cart UI', () => {
       }),
     );
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    expect(screen.getByText(/Lifecycle detail is unavailable for this older save/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle the day' }));
     expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
     expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();

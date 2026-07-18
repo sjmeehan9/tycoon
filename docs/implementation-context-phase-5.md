@@ -74,3 +74,32 @@
   substitutions, batch/purchase/expiry projection, and immediate announcements.
   The focused planning-capacity browser journey passes desktop and touch-mobile,
   including 360px containment and explicit no-false-exactness assertions.
+
+## Component 5.4 — Live Rush Stock and Expiry Reporting
+
+- Added a semantic nine-item stock grid to the scene column for both rush and
+  event phases. Intended-demand ingredients sort first, exact remaining amounts
+  update at engine reservation, weighted capacity retains the `~` marker, and
+  unused, zero/stockout, and earliest post-rush expiry states remain explicit.
+- The grid reads the immutable state snapshot only. It dispatches no tick,
+  creates no secondary inventory, and has no live region that could announce at
+  service frequency. Existing autosave checkpoints plus pause persistence restore
+  the exact same row quantities and service speed after reload.
+- Added a semantic report lifecycle table for every ingredient touched or still
+  held. Each row displays exact opening, bought, used, expired waste, and rolled
+  quantities plus the complete conservation equation with configured units.
+  Expired rows generate a causal Day N explanation based on persisted report
+  totals; old migrated reports with null evidence state that detail is unavailable.
+- Retained the Phase 4 latest-sale and report charge grouping, observed revenue,
+  cash reconciliation, and settlement behavior unchanged. The lifecycle surface
+  is additive and the production journey verifies both evidence families together.
+- Reused a module-level ingredient number formatter to keep the constant nine-row
+  tick render inexpensive. The responsive grid collapses to one column at 360px;
+  the wide semantic lifecycle table stays keyboard/touch scrollable inside a
+  bounded container without introducing document overflow.
+- Production build and zero-warning lint pass. Fifteen Vitest/RTL files pass 94
+  tests, including exact live ordering/states, conservation, once-only expiry,
+  surviving-batch eligibility, causal reporting, and honest legacy omission.
+  The production Day 3 flow passes desktop and touch-mobile through planning,
+  depletion, pause/reload restoration, event parity, report, LIFO expiry, actual
+  charges, visible bounds, and 360px no-overflow assertions.

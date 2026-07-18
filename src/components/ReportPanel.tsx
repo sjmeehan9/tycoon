@@ -1,5 +1,13 @@
+import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
-import { completedSaleLabel, formatMoney, type CompletedSaleActivity } from '../game';
+import {
+  completedSaleLabel,
+  formatIngredientQuantity,
+  formatMoney,
+  type CompletedSaleActivity,
+  type DayReport,
+  type IngredientId,
+} from '../game';
 
 /** Reconciled end-of-day trading report. */
 export function ReportPanel(): React.JSX.Element {
@@ -10,6 +18,7 @@ export function ReportPanel(): React.JSX.Element {
   const chargeGroups = groupSaleCharges(recentSales);
   const observedTotal = recentSales.reduce((total, sale) => total + sale.priceCents, 0);
   const includesEverySale = recentSales.length === report.served;
+  const lifecycleRows = lifecycleReportRows(report);
   return (
     <section className="panel report-panel" aria-labelledby="report-title">
       <div className="panel-heading">
@@ -112,6 +121,7 @@ export function ReportPanel(): React.JSX.Element {
           </p>
         </section>
       ) : null}
+      <InventoryLifecycle report={report} rows={lifecycleRows} />
       <div className="bottleneck-card">
         <strong>Bottleneck</strong>
         <span>{report.bottleneck}</span>
@@ -140,6 +150,110 @@ export function ReportPanel(): React.JSX.Element {
       </button>
     </section>
   );
+}
+
+interface LifecycleRow {
+  ingredientId: IngredientId;
+  opening: number;
+  purchased: number;
+  consumed: number;
+  expired: number;
+  remaining: number;
+}
+
+function InventoryLifecycle({
+  report,
+  rows,
+}: {
+  report: DayReport;
+  rows: LifecycleRow[];
+}): React.JSX.Element {
+  if (!report.inventoryLifecycle) {
+    return (
+      <section className="inventory-lifecycle" aria-labelledby="inventory-lifecycle-title">
+        <h3 id="inventory-lifecycle-title">Stock lifecycle</h3>
+        <p className="lifecycle-unavailable">
+          Lifecycle detail is unavailable for this older save. No historical stock quantities were
+          reconstructed.
+        </p>
+      </section>
+    );
+  }
+  const expired = rows.filter((row) => row.expired > 0);
+  return (
+    <section className="inventory-lifecycle" aria-labelledby="inventory-lifecycle-title">
+      <h3 id="inventory-lifecycle-title">Stock lifecycle</h3>
+      <p className="lifecycle-formula">Opening + bought − used − expired = rolled forward.</p>
+      <div className="lifecycle-table-scroll" tabIndex={0}>
+        <table>
+          <caption>Inventory lifecycle reconciliation</caption>
+          <thead>
+            <tr>
+              <th scope="col">Ingredient</th>
+              <th scope="col">Opening</th>
+              <th scope="col">Bought</th>
+              <th scope="col">Used</th>
+              <th scope="col">Expired waste</th>
+              <th scope="col">Rolled</th>
+              <th scope="col">Conservation check</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const details = INGREDIENT_DETAILS[row.ingredientId];
+              return (
+                <tr key={row.ingredientId}>
+                  <th scope="row">{details.name}</th>
+                  <td>{formatIngredientQuantity(row.opening, details.unit)}</td>
+                  <td>{formatIngredientQuantity(row.purchased, details.unit)}</td>
+                  <td>{formatIngredientQuantity(row.consumed, details.unit)}</td>
+                  <td>{formatIngredientQuantity(row.expired, details.unit)}</td>
+                  <td>{formatIngredientQuantity(row.remaining, details.unit)}</td>
+                  <td className="lifecycle-equation">{quantityEquation(row, details.unit)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {expired.length > 0 ? (
+        <p className="expiry-cause">
+          <strong>Expiry cause:</strong> after the Day {report.day} rush,{' '}
+          {expired
+            .map((row) => {
+              const details = INGREDIENT_DETAILS[row.ingredientId];
+              return `${details.name} ${formatIngredientQuantity(row.expired, details.unit)}`;
+            })
+            .join(', ')}{' '}
+          reached the inclusive last usable day and was removed before the next trading day.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function lifecycleReportRows(report: DayReport): LifecycleRow[] {
+  const lifecycle = report.inventoryLifecycle;
+  if (!lifecycle) return [];
+  return INGREDIENT_IDS.map((ingredientId) => ({
+    ingredientId,
+    opening: lifecycle.opening[ingredientId],
+    purchased: lifecycle.purchased[ingredientId],
+    consumed: lifecycle.consumed[ingredientId],
+    expired: lifecycle.expired[ingredientId],
+    remaining: lifecycle.remaining[ingredientId],
+  })).filter((row) =>
+    [row.opening, row.purchased, row.consumed, row.expired, row.remaining].some(
+      (quantity) => quantity > 0,
+    ),
+  );
+}
+
+function quantityEquation(
+  row: LifecycleRow,
+  unit: (typeof INGREDIENT_DETAILS)[IngredientId]['unit'],
+): string {
+  return `${formatIngredientQuantity(row.opening, unit)} + ${formatIngredientQuantity(row.purchased, unit)} − ${formatIngredientQuantity(row.consumed, unit)} − ${formatIngredientQuantity(row.expired, unit)} = ${formatIngredientQuantity(row.remaining, unit)}`;
 }
 
 interface SaleChargeGroup {

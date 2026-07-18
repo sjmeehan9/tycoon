@@ -26,6 +26,7 @@ import type {
 } from './types';
 
 const SEGMENTS = Object.keys(SEGMENT_DEMAND_SHARES) as CustomerSegment[];
+const INGREDIENT_NUMBER_FORMAT = new Intl.NumberFormat('en-AU', { maximumFractionDigits: 2 });
 
 /** Stable capacity row consumed by planning and live-stock presentation. */
 export interface IngredientCapacity {
@@ -133,7 +134,7 @@ export function formatIngredientQuantity(
   quantity: number,
   unit: IngredientCapacity['unit'],
 ): string {
-  const formatted = new Intl.NumberFormat('en-AU', { maximumFractionDigits: 2 }).format(quantity);
+  const formatted = INGREDIENT_NUMBER_FORMAT.format(quantity);
   if (unit === 'serve') return `${formatted} ${quantity === 1 ? 'serve' : 'serves'}`;
   return `${formatted} ${unit}`;
 }
