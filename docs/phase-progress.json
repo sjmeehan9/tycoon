@@ -1,0 +1,35 @@
+{
+  "leanTeamOverride": true,
+  "permittedRoles": ["technical-business-analyst", "implement"],
+  "phases": [
+    {
+      "phase": 1,
+      "components": [
+        { "id": "1.1", "name": "Human Setup", "status": "committed" },
+        { "id": "1.2", "name": "Complete Seeded Cart Day", "status": "implementing" },
+        { "id": "1.3", "name": "Responsive Autosaved Continuation", "status": "spec-validated" },
+        { "id": "1.4", "name": "Phase Validation & Documentation", "status": "spec-validated" }
+      ]
+    },
+    {
+      "phase": 2,
+      "components": [
+        { "id": "2.1", "name": "Human Setup", "status": "spec-validated" },
+        { "id": "2.2", "name": "Full Coffee Trading Day", "status": "spec-validated" },
+        { "id": "2.3", "name": "Staff, Equipment, and Venue Growth", "status": "spec-validated" },
+        { "id": "2.4", "name": "Campaign Outcomes, Meta Progress, and Save Transfer", "status": "spec-validated" },
+        { "id": "2.5", "name": "Phase Validation & Documentation", "status": "spec-validated" }
+      ]
+    },
+    {
+      "phase": 3,
+      "components": [
+        { "id": "3.1", "name": "Human Setup & Public Release Gate", "status": "spec-validated" },
+        { "id": "3.2", "name": "Cohesive Pixel Scene and Local Audio", "status": "spec-validated" },
+        { "id": "3.3", "name": "Onboarding, Accessibility, and Mobile Polish", "status": "spec-validated" },
+        { "id": "3.4", "name": "Offline-Safe PWA and Release Artifacts", "status": "spec-validated" },
+        { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "spec-validated" }
+      ]
+    }
+  ]
+}
