@@ -19,6 +19,7 @@ import {
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import {
+  duplicateStaffNamesEnvelope,
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
   livingRushEnvelope,
@@ -246,6 +247,36 @@ describe('playable cart UI', () => {
     expect(screen.getByText(/payroll at close/)).toBeVisible();
   });
 
+  it('imports, hires, autosaves, and reloads repaired campaign-unique staff names', async () => {
+    const user = userEvent.setup();
+    const firstView = renderGame();
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([JSON.stringify(duplicateStaffNamesEnvelope())], 'duplicate-staff.json', {
+        type: 'application/json',
+      }),
+    );
+    expect(await screen.findByText('Imported Day 10000 safely.')).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+
+    const importedNames = visibleTeamNames();
+    expect(importedNames).toHaveLength(6);
+    expect(new Set(importedNames).size).toBe(6);
+    expect(importedNames[0]).toBe('Ari Nguyen');
+    await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
+    const hiredNames = visibleTeamNames();
+    expect(hiredNames).toHaveLength(6);
+    expect(new Set(hiredNames).size).toBe(6);
+    firstView.unmount();
+
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+    expect(visibleTeamNames()).toEqual(hiredNames);
+  });
+
   it('buys equipment and promotes the same venue through kiosk to cafe', async () => {
     const reinvest = {
       ...closeDay(stateAtReport()),
@@ -346,3 +377,9 @@ describe('playable cart UI', () => {
     expect(window.localStorage.getItem(SAVE_KEY)).toBe(serializeEnvelope(first));
   });
 });
+
+function visibleTeamNames(): string[] {
+  return [...document.querySelectorAll('.staff-card strong, .candidate-card strong')].map(
+    (element) => element.textContent ?? '',
+  );
+}

@@ -26,6 +26,19 @@ export {
 } from './engine';
 export { GameRuleError } from './errors';
 export {
+  CANDIDATES_PER_DAY,
+  LEGACY_STAFF_NAMES,
+  MAX_STAFF_NAME_DAY,
+  RESERVED_STAFF_NAME_COUNT,
+  STAFF_NAME_NAMESPACE_SIZE,
+  STAFF_NAMES_PER_TIER,
+  SUPPORTED_CANDIDATE_NAME_COUNT,
+  candidateStaffName,
+  candidateStaffOrdinal,
+  reservedStaffName,
+  staffNameAtOrdinal,
+} from './staffNames';
+export {
   baseDrinkChoiceWeight,
   drinkWeatherChoiceMultiplier,
   milkForDraw,

@@ -79,3 +79,34 @@
 - Exact component validation passed: frozen install, production build,
   lint/format, 107 Vitest/RTL tests, and 43 Playwright browser passes with seven
   intentional project skips.
+
+## Component 6.4 — Campaign-Unique Staff Names
+
+- Added a direct-index 65,536-name namespace from 64 culturally varied given
+  names, 64 surnames, and 16 display-disjoint tiers. Each tier applies a
+  seed-keyed odd affine permutation over 4,096 pair indexes; Day/index maps
+  directly to `(day - 1) × 4 + index` through Day 10,000.
+- Reserved ordinals 40,000–65,535 solely for migration repair. Supported
+  candidates use 0–39,999, the first tier is initial-free, later tiers carry a
+  readable middle initial, and generated output cannot equal any of the 12
+  legacy curated names.
+- Rewired daily candidate names without changing IDs, alternating roles, stat
+  draws, wages, or traits. The old now-unused 12-way draw remains intentionally
+  consumed so established economics and seeded campaign balance are exact.
+- Extended schema-v3 normalization to process hires then candidates in stable
+  order. It preserves the first occurrence and every originally unique name,
+  deterministically repairs all later duplicates, retains every non-name field,
+  and serializes the canonical normalized form without repair history.
+- Added combined hired/candidate ID and exact-name uniqueness validation. Invalid
+  duplicate IDs remain rejected; compatible duplicate names repair before
+  validation in planning, rush, report, reinvestment, outcome, reload, and
+  import states.
+- Added exhaustive 65,536-namespace and 40,000-slot proofs plus unchanged
+  economics, hire/reject/next-day, fresh reset, Day 10,000, migration ordering,
+  save bounds, balance, RTL autosave, and desktop/360px production journeys.
+  The focused boundary passes 64 Vitest/RTL checks and four Playwright cases.
+- No dependency, schema-version, game-balance, UI-layout, or external-service
+  change was introduced. The supported endless boundary remains Day 10,000.
+- Exact component validation passed: frozen install, production build,
+  lint/format, 119 Vitest/RTL tests, and 47 Playwright browser passes with seven
+  intentional project skips.

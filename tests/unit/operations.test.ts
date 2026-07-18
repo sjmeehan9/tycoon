@@ -16,6 +16,7 @@ import {
   promoteVenue,
   resolveEvent,
   serviceQueueCapacity,
+  startNextDay,
   startRush,
   type EquipmentId,
   type GameState,
@@ -71,6 +72,59 @@ describe('staff operations', () => {
     expect(first.filter((candidate) => candidate.role === 'barista')).toHaveLength(2);
     expect(first.filter((candidate) => candidate.role === 'frontOfHouse')).toHaveLength(2);
     expect(new Set(first.map((candidate) => candidate.id)).size).toBe(4);
+    expect(new Set(first.map((candidate) => candidate.name)).size).toBe(4);
+    expect(
+      first.map((member) => ({
+        role: member.role,
+        speed: member.speed,
+        skill: member.skill,
+        wageCents: member.wageCents,
+        trait: member.trait,
+      })),
+    ).toEqual([
+      {
+        role: 'barista',
+        speed: 58,
+        skill: 51,
+        wageCents: 2_150,
+        trait: 'perfectionist',
+      },
+      {
+        role: 'frontOfHouse',
+        speed: 55,
+        skill: 51,
+        wageCents: 2_150,
+        trait: 'quickHands',
+      },
+      {
+        role: 'barista',
+        speed: 62,
+        skill: 81,
+        wageCents: 2_500,
+        trait: 'quickHands',
+      },
+      {
+        role: 'frontOfHouse',
+        speed: 54,
+        skill: 69,
+        wageCents: 2_300,
+        trait: 'perfectionist',
+      },
+    ]);
+  });
+
+  it('keeps hired and rejected identities disjoint from every later daily pool', () => {
+    let state = createCampaign({ seed: 83 });
+    const hired = state.candidateStaff[0];
+    const rejected = state.candidateStaff[3];
+    if (!hired || !rejected) throw new Error('Expected four deterministic candidates.');
+    state = hireStaff(state, hired.id);
+    state = startNextDay({ ...state, phase: 'reinvest', lastSettledDay: state.day });
+
+    const retainedAndNew = [...state.staff, ...state.candidateStaff];
+    expect(new Set(retainedAndNew.map((member) => member.id)).size).toBe(retainedAndNew.length);
+    expect(new Set(retainedAndNew.map((member) => member.name)).size).toBe(retainedAndNew.length);
+    expect(state.candidateStaff.map((member) => member.name)).not.toContain(rejected.name);
   });
 
   it('hires, schedules, and enforces venue staff capacity', () => {

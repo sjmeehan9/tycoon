@@ -12,10 +12,12 @@ import {
   hireStaff,
   inventoryTotals,
   prepareDay,
+  reservedStaffName,
   resolveEvent,
   setRushSpeed,
   startRush,
   togglePause,
+  type StaffMember,
 } from '../../src/game';
 import {
   BACKUP_SAVE_KEY,
@@ -30,7 +32,7 @@ import {
   parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
-import { nearVictoryEnvelope } from '../fixtures/campaignFixtures';
+import { duplicateStaffNamesEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
 
 interface MutableLegacyEnvelope {
   schemaVersion: number;
@@ -89,6 +91,58 @@ describe('versioned save envelope', () => {
     expect(parsed?.activeRun?.candidateStaff).toHaveLength(3);
     expect(parsed?.activeRun?.equipment).toMatchObject({ grinder: 1, espressoMachine: 1, pos: 1 });
     expect(parsed?.activeRun?.venueId).toBe('kiosk');
+  });
+
+  it('repairs duplicate schema-v3 names in hires-then-candidates order', () => {
+    const source = duplicateStaffNamesEnvelope();
+    const sourceRun = source.activeRun;
+    if (!sourceRun) throw new Error('Expected duplicate staff fixture.');
+    const migrated = importEnvelope(JSON.stringify(source));
+    const migratedRun = migrated.activeRun;
+    if (!migratedRun) throw new Error('Expected migrated staff fixture.');
+
+    const sourcePeople = [...sourceRun.staff, ...sourceRun.candidateStaff];
+    const migratedPeople = [...migratedRun.staff, ...migratedRun.candidateStaff];
+    const migratedNames = migratedPeople.map((member) => member.name);
+    expect(migratedNames[0]).toBe(sourcePeople[0]?.name);
+    expect(migratedNames[1]).not.toBe(sourcePeople[1]?.name);
+    expect(migratedNames[2]).toBe(reservedStaffName(sourceRun.seed, 0));
+    expect(migratedNames[3]).not.toBe(sourcePeople[3]?.name);
+    expect(migratedNames[4]).toBe('Marnie Unique');
+    expect(migratedNames[5]).not.toBe(sourcePeople[5]?.name);
+    expect(new Set(migratedNames).size).toBe(migratedPeople.length);
+    expect(migratedPeople.map(staffIdentityWithoutName)).toEqual(
+      sourcePeople.map(staffIdentityWithoutName),
+    );
+    expect(importEnvelope(JSON.stringify(source)).activeRun).toEqual(migratedRun);
+    expect(parseEnvelope(serializeEnvelope(migrated))?.activeRun).toEqual(migratedRun);
+  });
+
+  it('rejects duplicate staff IDs after name normalization', () => {
+    const envelope = createSaveEnvelope(createCampaign({ seed: 8_088 }));
+    const run = envelope.activeRun;
+    if (!run) throw new Error('Expected active campaign.');
+    const firstId = run.candidateStaff[0]?.id;
+    if (!firstId || !run.candidateStaff[1]) throw new Error('Expected candidate IDs.');
+    const candidateStaff = run.candidateStaff.map((member, index) =>
+      index === 1 ? { ...member, id: firstId } : member,
+    );
+
+    expect(() =>
+      importEnvelope(JSON.stringify({ ...envelope, activeRun: { ...run, candidateStaff } })),
+    ).toThrow('Staff and candidate IDs must be unique');
+  });
+
+  it('keeps repaired saves bounded without persisted name-allocation history', () => {
+    const normalized = importEnvelope(JSON.stringify(duplicateStaffNamesEnvelope()));
+    const serialized = serializeEnvelope(normalized);
+
+    expect(new TextEncoder().encode(serialized).byteLength).toBeLessThan(
+      CAMPAIGN_RULES.maximumSaveBytes,
+    );
+    expect(serialized).not.toMatch(/seenNames|nameHistory|usedStaffNames/i);
+    expect(normalized.activeRun).not.toHaveProperty('seenNames');
+    expect(normalized.activeRun).not.toHaveProperty('staffNameHistory');
   });
 
   it('rejects malformed or wrong-version payloads', () => {
@@ -420,6 +474,18 @@ describe('versioned save envelope', () => {
     expect(store.load().envelope).toEqual(previous);
   });
 });
+
+function staffIdentityWithoutName(member: StaffMember): Omit<StaffMember, 'name'> {
+  return {
+    id: member.id,
+    role: member.role,
+    speed: member.speed,
+    skill: member.skill,
+    wageCents: member.wageCents,
+    trait: member.trait,
+    hiredOnDay: member.hiredOnDay,
+  };
+}
 
 function versionTwoFixture(envelope: ReturnType<typeof createSaveEnvelope>): MutableLegacyEnvelope {
   if (!envelope.activeRun) throw new Error('Legacy fixture requires an active run.');

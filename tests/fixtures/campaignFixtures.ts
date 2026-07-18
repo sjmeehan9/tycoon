@@ -1,7 +1,10 @@
 import { CAMPAIGN_RULES, emptyPurchases } from '../../src/content/gameContent';
 import {
+  LEGACY_STAFF_NAMES,
+  candidatePoolForDay,
   createCampaign,
   inventoryTotals,
+  reservedStaffName,
   startRush,
   type Customer,
   type DayReport,
@@ -93,6 +96,59 @@ export function stockLifecyclePlanningEnvelope(): SaveEnvelope {
     },
   };
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
+}
+
+/** Schema-v3 planning save with exact duplicate names for deterministic repair proof. */
+export function duplicateStaffNamesEnvelope(): SaveEnvelope {
+  const seed = 6_404;
+  const base = createCampaign({ seed });
+  const duplicateName = LEGACY_STAFF_NAMES[0];
+  const staff = candidatePoolForDay(seed, 1)
+    .slice(0, 2)
+    .map((member, index) => ({
+      ...member,
+      hiredOnDay: 1,
+      name: duplicateName,
+      id: `legacy-hire-${index + 1}`,
+    }));
+  const candidateStaff = candidatePoolForDay(seed, 10_000).map((member, index) => ({
+    ...member,
+    name: index === 0 ? reservedStaffName(seed, 0) : index === 2 ? 'Marnie Unique' : duplicateName,
+  }));
+  return createSaveEnvelope(
+    {
+      ...base,
+      mode: 'endless',
+      day: 10_000,
+      staff,
+      candidateStaff,
+    },
+    fixturePreferences(),
+    createDefaultMeta(),
+  );
+}
+
+/** Valid endless reinvestment save ready to generate the final supported daily pool. */
+export function endlessDay9_999Envelope(): SaveEnvelope {
+  const seed = 6_499;
+  const base = createCampaign({ seed });
+  const staff = base.candidateStaff.slice(0, 2).map((member) => ({
+    ...member,
+    hiredOnDay: 1,
+  }));
+  return createSaveEnvelope(
+    {
+      ...base,
+      mode: 'endless',
+      phase: 'reinvest',
+      day: 9_999,
+      lastSettledDay: 9_999,
+      staff,
+      candidateStaff: candidatePoolForDay(seed, 9_999),
+    },
+    fixturePreferences(),
+    createDefaultMeta(),
+  );
 }
 
 export interface LivingRushOptions {

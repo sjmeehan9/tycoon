@@ -76,7 +76,7 @@
           "name": "Expressive Queue, Sale, Exit, and Walkaway Scene",
           "status": "committed"
         },
-        { "id": "6.4", "name": "Campaign-Unique Staff Names", "status": "queued" },
+        { "id": "6.4", "name": "Campaign-Unique Staff Names", "status": "committed" },
         {
           "id": "6.5",
           "name": "Cumulative QA, Documentation, and Hosted Verification",

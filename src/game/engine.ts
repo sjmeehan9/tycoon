@@ -42,6 +42,12 @@ import {
   plannedPurchaseTotals,
 } from './inventory';
 import { nextRandom, randomInt } from './prng';
+import {
+  CANDIDATES_PER_DAY,
+  LEGACY_STAFF_NAMES,
+  MAX_STAFF_NAME_DAY,
+  candidateStaffName,
+} from './staffNames';
 import type {
   CampaignOptions,
   Customer,
@@ -73,20 +79,6 @@ import type {
 } from './types';
 
 const MAX_HIRED_STAFF = 8;
-const CANDIDATE_NAMES = [
-  'Ari Nguyen',
-  'Billie Tran',
-  'Casey Morgan',
-  'Dev Singh',
-  'Evie Chen',
-  'Frankie Russo',
-  'Georgie Walker',
-  'Harper Kim',
-  'Indi Patel',
-  'Jules Martin',
-  'Kit O’Connor',
-  'Lou Haddad',
-] as const;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
 const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
 
@@ -659,12 +651,19 @@ export function serviceQueueCapacity(state: GameState): number {
 
 /** Produce the same four-person candidate pool for a given seed and day. */
 export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
-  let rngState = (seed ^ Math.imul(day, 0x9e3779b1)) >>> 0;
+  if (!Number.isFinite(seed)) throw new GameRuleError('Candidate seed must be a number.');
+  if (!Number.isInteger(day) || day < 1 || day > MAX_STAFF_NAME_DAY) {
+    throw new GameRuleError(`Candidate day must be an integer from 1 to ${MAX_STAFF_NAME_DAY}.`);
+  }
+  const normalizedSeed = Math.trunc(seed) >>> 0;
+  let rngState = (normalizedSeed ^ Math.imul(day, 0x9e3779b1)) >>> 0;
   if (rngState === 0) rngState = 0x6d2b79f5;
   const candidates: StaffMember[] = [];
-  for (let index = 0; index < 4; index += 1) {
-    const nameDraw = randomInt(rngState, 0, CANDIDATE_NAMES.length - 1);
-    rngState = nameDraw.state;
+  for (let index = 0; index < CANDIDATES_PER_DAY; index += 1) {
+    // Retain the historical name draw so existing speed, skill, wage, and trait
+    // sequences remain byte-for-byte deterministic after names move to direct indexing.
+    const legacyNameDraw = randomInt(rngState, 0, LEGACY_STAFF_NAMES.length - 1);
+    rngState = legacyNameDraw.state;
     const speedDraw = randomInt(rngState, 52, 88);
     rngState = speedDraw.state;
     const skillDraw = randomInt(rngState, 50, 90);
@@ -674,8 +673,8 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
     const role = index % 2 === 0 ? 'barista' : 'frontOfHouse';
     const wageCents = Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50;
     candidates.push({
-      id: `staff-${seed.toString(16)}-${day}-${index}`,
-      name: CANDIDATE_NAMES[nameDraw.value] ?? `Candidate ${index + 1}`,
+      id: `staff-${normalizedSeed.toString(16)}-${day}-${index}`,
+      name: candidateStaffName(normalizedSeed, day, index),
       role,
       speed: speedDraw.value,
       skill: skillDraw.value,

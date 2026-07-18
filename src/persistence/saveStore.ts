@@ -8,6 +8,7 @@ import {
   RUSH_ACTIVITY_LIMIT,
 } from '../content/gameContent';
 import { batchExpiryDay } from '../game/inventory';
+import { RESERVED_STAFF_NAME_COUNT, reservedStaffName } from '../game/staffNames';
 import type {
   AchievementId,
   CampaignOutcome,
@@ -301,7 +302,8 @@ export function parseEnvelope(serialized: string): SaveEnvelope | null {
 
 /** Produce canonical, bounded JSON for browser storage and file export. */
 export function serializeEnvelope(envelope: SaveEnvelope): string {
-  const serialized = JSON.stringify(envelope, null, 2);
+  const normalized = importEnvelope(JSON.stringify(envelope));
+  const serialized = JSON.stringify(normalized, null, 2);
   importEnvelope(serialized);
   return serialized;
 }
@@ -412,17 +414,72 @@ function migrateVersionTwoReport(value: unknown): unknown {
 }
 
 function normalizeVersionThree(value: Record<string, unknown>): Record<string, unknown> {
-  if (!isRecord(value.activeRun) || !isRecord(value.activeRun.rush)) return value;
+  if (!isRecord(value.activeRun)) return value;
   const activeRun = value.activeRun;
-  const rush = activeRun.rush;
-  if (!isRecord(rush)) return value;
-  const day = boundedIntegerOr(activeRun.day, 1, 1, 10_000);
+  const people = normalizeStaffNames(activeRun);
+  const rush = isRecord(activeRun.rush)
+    ? normalizeRushActivity(activeRun.rush, boundedIntegerOr(activeRun.day, 1, 1, 10_000))
+    : activeRun.rush;
   return {
     ...value,
     activeRun: {
       ...activeRun,
-      rush: normalizeRushActivity(rush, day),
+      ...people,
+      rush,
     },
+  };
+}
+
+function normalizeStaffNames(
+  activeRun: Record<string, unknown>,
+): Pick<Record<string, unknown>, 'staff' | 'candidateStaff'> {
+  const staff = activeRun.staff;
+  const candidateStaff = activeRun.candidateStaff;
+  const seed = activeRun.seed;
+  if (
+    !isUnknownArray(staff) ||
+    !isUnknownArray(candidateStaff) ||
+    typeof seed !== 'number' ||
+    !Number.isInteger(seed) ||
+    seed < 0 ||
+    seed > 0xffff_ffff
+  ) {
+    return { staff, candidateStaff };
+  }
+
+  const people = [...staff, ...candidateStaff];
+  const originalNames = new Set(
+    people.flatMap((person) =>
+      isRecord(person) && typeof person.name === 'string' ? [person.name] : [],
+    ),
+  );
+  const retainedNames = new Set<string>();
+  let repairIndex = 0;
+
+  const normalizePeople = (records: unknown[]): unknown[] =>
+    records.map((person) => {
+      if (!isRecord(person) || typeof person.name !== 'string') return person;
+      if (!retainedNames.has(person.name)) {
+        retainedNames.add(person.name);
+        return person;
+      }
+
+      while (repairIndex < RESERVED_STAFF_NAME_COUNT) {
+        const repairedName = reservedStaffName(seed, repairIndex);
+        repairIndex += 1;
+        if (originalNames.has(repairedName) || retainedNames.has(repairedName)) continue;
+        retainedNames.add(repairedName);
+        return { ...person, name: repairedName };
+      }
+      throw new SaveValidationError(
+        'Duplicate staff names exceed the deterministic repair namespace.',
+        'invalidSchema',
+      );
+    });
+
+  return {
+    staff: normalizePeople(staff),
+    candidateStaff: normalizePeople(candidateStaff),
   };
 }
 
@@ -612,12 +669,9 @@ function validateGameState(value: unknown): asserts value is GameState {
   if (state.rush !== null) validateRush(state.rush, state.day);
   if (state.report !== null) validateReport(state.report, 'activeRun.report');
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
-  expectArray(state.staff, 'activeRun.staff', 8).forEach((member, index) =>
-    validateStaff(member, `activeRun.staff[${index}]`),
-  );
-  expectArray(state.candidateStaff, 'activeRun.candidateStaff', 4).forEach((member, index) =>
-    validateStaff(member, `activeRun.candidateStaff[${index}]`),
-  );
+  const staff = validateStaffArray(state.staff, 'activeRun.staff', 8);
+  const candidateStaff = validateStaffArray(state.candidateStaff, 'activeRun.candidateStaff', 4);
+  validateStaffIdentities(staff, candidateStaff);
   validateEquipment(state.equipment);
   const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
   improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
@@ -924,6 +978,25 @@ function validateStaff(value: unknown, path: string): asserts value is StaffMemb
   assertNumber(member.hiredOnDay, `${path}.hiredOnDay`, 0, 10_000, true);
 }
 
+function validateStaffArray(value: unknown, path: string, maximum: number): StaffMember[] {
+  return expectArray(value, path, maximum).map((member, index) => {
+    validateStaff(member, `${path}[${index}]`);
+    return member;
+  });
+}
+
+function validateStaffIdentities(staff: StaffMember[], candidateStaff: StaffMember[]): void {
+  const people = [...staff, ...candidateStaff];
+  assert(
+    new Set(people.map((member) => member.id)).size === people.length,
+    'Staff and candidate IDs must be unique.',
+  );
+  assert(
+    new Set(people.map((member) => member.name)).size === people.length,
+    'Staff and candidate names must be unique after normalization.',
+  );
+}
+
 function validateEquipment(value: unknown): void {
   const equipment = expectRecord(value, 'activeRun.equipment');
   for (const id of EQUIPMENT_IDS) assertNumber(equipment[id], `equipment.${id}`, 0, 2, true);
@@ -1016,4 +1089,8 @@ function finiteOr(value: unknown, fallback: number): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
 }

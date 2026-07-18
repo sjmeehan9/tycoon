@@ -109,6 +109,42 @@ describe('campaign outcome boundaries', () => {
     expect(endless).toMatchObject({ phase: 'planning', mode: 'endless', day: 31, outcome: null });
     expect(endless.candidateStaff).toHaveLength(4);
   });
+
+  it('reaches supported endless Day 10,000 with fresh names and stops beyond it', () => {
+    const base = createCampaign({ seed: 10_000 });
+    const retainedStaff = base.candidateStaff.slice(0, 2).map((member) => ({
+      ...member,
+      hiredOnDay: 1,
+    }));
+    const day9_999: GameState = {
+      ...base,
+      mode: 'endless',
+      phase: 'reinvest',
+      day: 9_999,
+      lastSettledDay: 9_999,
+      staff: retainedStaff,
+      candidateStaff: [],
+    };
+
+    const day10_000 = startNextDay(day9_999);
+    const people = [...day10_000.staff, ...day10_000.candidateStaff];
+    expect(day10_000).toMatchObject({ day: 10_000, phase: 'planning', mode: 'endless' });
+    expect(day10_000.candidateStaff).toHaveLength(4);
+    expect(new Set(people.map((member) => member.id)).size).toBe(people.length);
+    expect(new Set(people.map((member) => member.name)).size).toBe(people.length);
+    expect(() => startNextDay({ ...day10_000, phase: 'reinvest', lastSettledDay: 10_000 })).toThrow(
+      'from 1 to 10000',
+    );
+  });
+
+  it('resets one seed reproducibly while a fresh seed permutes candidate names', () => {
+    const first = createCampaign({ seed: 4_404 }).candidateStaff.map((member) => member.name);
+    const reset = createCampaign({ seed: 4_404 }).candidateStaff.map((member) => member.name);
+    const freshSeed = createCampaign({ seed: 4_405 }).candidateStaff.map((member) => member.name);
+
+    expect(reset).toEqual(first);
+    expect(freshSeed).not.toEqual(first);
+  });
 });
 
 describe('cosmetic-only meta progress', () => {
