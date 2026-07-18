@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Phase 5 cumulative validation PASS — awaiting human approve/reject review; Phase 6 not started
+Implementation — Phase 6 Component 6.1 complete; Component 6.2 starting
 
 ## Lean team contract
 
@@ -41,13 +41,14 @@ Phase 5 cumulative validation PASS — awaiting human approve/reject review; Pha
 | ------------------------- | -------------------------- | ------------------ | ------------------------------------------------------------- |
 | three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                          |
 | lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                     |
-| sole_implement_phases_4_6 | Implement                  | Phase 5 PASS       | Phase 5 source, tests, fixes, validation, docs, commits, push |
+| sole_implement_phases_4_6 | Implement                  | active — Phase 6   | Phase 6 source, tests, fixes, validation, docs, commits, push |
 
 ## Human task gate
 
-- **Status:** OPEN for Phase 5 approve/reject review — cumulative local PASS is
-  recorded; no setup, credential, secret, service, or publication action is
-  required, and Phase 6 has not started
+- **Status:** CLOSED for local Phase 6 implementation — authorization is
+  recorded and no setup/credential/secret/service action is required; after
+  Component 6.5 local PASS, human approve/reject merge and Pages confirmation
+  are required before hosted PASS
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
 
 ## Decisions log
@@ -65,6 +66,8 @@ Phase 5 cumulative validation PASS — awaiting human approve/reject review; Pha
 | 2026-07-18 | Batches are Phase 5's sole inventory authority      | Prevents flat/batch divergence while pure selectors retain exact totals for UI and reports                      | Components 5.2–5.5 |
 | 2026-07-18 | Expiry occurs after the last usable rush            | Purchase Day 1 stock is usable Days 1–3; refrigeration adds +1/+2 chilled days                                  | Components 5.2–5.4 |
 | 2026-07-18 | Schema v3 checks v2 keys before its first write     | Preserves primary/backup recovery and seeds a current backup before replacing browser storage                   | Component 5.2      |
+| 2026-07-18 | Rush activity is canonical engine observation      | One bounded deterministic stream can drive Canvas/text without becoming a second accounting ledger              | Components 6.2–6.3 |
+| 2026-07-18 | Staff-name uniqueness is stateless and indexed     | A seed-keyed bijection covers 40,000 slots without persisted history or rejection loops                         | Component 6.4      |
 
 ## Drift log
 
