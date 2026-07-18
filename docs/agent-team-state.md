@@ -34,11 +34,11 @@ Implementation: all three phases, sequential lean handoff
 | Agent | Role | Status | Owns |
 |---|---|---|---|
 | three_phase_plan_retry | Technical Business Analyst | done | `docs/phase-plan.md` |
-| lean_full_build | Implement | active — Phase 2 PASS; Component 3.1 next | application, tests, validation, release docs |
+| lean_full_build | Implement | active — Component 3.1 gate documented; Component 3.2 next | application, tests, validation, release docs |
 
 ## Human task gate
 
-- **Status:** not applicable until Phase 3 release
+- **Status:** documented; deliberately deferred until Component 3.5 local PASS
 - **Required at release:** approve public visibility and GitHub Pages publication
 
 ## Decisions log

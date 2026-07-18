@@ -24,8 +24,8 @@
     {
       "phase": 3,
       "components": [
-        { "id": "3.1", "name": "Human Setup & Public Release Gate", "status": "implementing" },
-        { "id": "3.2", "name": "Cohesive Pixel Scene and Local Audio", "status": "spec-validated" },
+        { "id": "3.1", "name": "Human Setup & Public Release Gate", "status": "committed" },
+        { "id": "3.2", "name": "Cohesive Pixel Scene and Local Audio", "status": "implementing" },
         { "id": "3.3", "name": "Onboarding, Accessibility, and Mobile Polish", "status": "spec-validated" },
         { "id": "3.4", "name": "Offline-Safe PWA and Release Artifacts", "status": "spec-validated" },
         { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "spec-validated" }
