@@ -1,4 +1,4 @@
-# Phase 3 Local Release Audit Evidence
+# Phase 3 Release Audit Evidence
 
 Generated on 18 July 2026 against the production `/tycoon/` preview on Node.js
 22.13.1, pnpm 10.15.0, Chromium 149, and Lighthouse 12.8.2.
@@ -70,4 +70,15 @@ green.
 - `.github/workflows/deploy-pages.yml` parses as YAML, uploads only `dist/`,
   deploys only from `main`, and requests only standard Pages permissions.
 - No repository setting, remote branch, workflow, deployment, or public URL was
-  changed during local validation.
+  changed during local validation. The separately authorized release actions
+  and hosted results are recorded below.
+
+## Hosted release
+
+- Public URL: `https://sjmeehan9.github.io/tycoon/`
+- Merge commit: `2e011eb63b75530a610adb177e352a1bd52f2538`
+- Successful workflow: `https://github.com/sjmeehan9/tycoon/actions/runs/29631697939`
+- Successful GitHub Pages deployment: `5499050417`
+- Full browser and deployment evidence: `docs/evidence/hosted-verification.md`
+
+Verdict: **HOSTED PASS** on 18 July 2026.

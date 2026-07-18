@@ -117,6 +117,13 @@
   completed local checklist, and component handoff. All explicit requirements
   and non-goals were self-reviewed with no missing or silently deferred local
   behavior.
-- Status is LOCAL PASS / HOSTED PENDING. Publication is blocked on the Component
-  3.1 human gate; no push, merge, visibility change, Pages configuration,
-  workflow dispatch, deployment, or hosted claim was made.
+- The owner approved the public gate. PR #1 merged normally after its check at
+  `2e011eb63b75530a610adb177e352a1bd52f2538`; the repository is public and
+  workflow-based, HTTPS-enforced Pages deployed successfully through run
+  `29631697939` and deployment `5499050417`.
+- Hosted Chromium verification passed direct/refresh and every manifest,
+  icon/art/audio request; desktop settings, event/report, online autosave, and
+  offline restore; active service-worker/installability diagnostics; and the
+  360px touch flow with exact no-overflow bounds and no runtime errors.
+- Status is HOSTED PASS at `https://sjmeehan9.github.io/tycoon/`. Full evidence
+  is recorded in `docs/evidence/hosted-verification.md`.

@@ -2,15 +2,16 @@
 
 ## What was delivered
 
-A user now has a locally validated release candidate with reproducible evidence
-across the full campaign, desktop/mobile accessibility, offline/update safety,
-subpath deployment, security, and performance; public verification is correctly
-paused at the owner-controlled release gate.
+A user can now play the publicly deployed release at
+`https://sjmeehan9.github.io/tycoon/`, with reproducible local and hosted
+evidence across the full campaign, desktop/mobile accessibility, offline/update
+safety, subpath deployment, security, and performance.
 
 ## Public interfaces / contracts exposed
 
-- `docs/phase-3-test-report.md` is the cumulative local verdict and the append
-  target for hosted verification after approval.
+- `docs/phase-3-test-report.md` is the final cumulative HOSTED PASS verdict.
+- `docs/evidence/hosted-verification.md` records the release identity, workflow,
+  deployment, public URL, and browser results.
 - `docs/evidence/lighthouse-mobile.json` is the raw mobile audit artifact;
   `docs/evidence/release-audit.md` records its checksum, scores, bundle, cache,
   security, privacy, and workflow findings.
@@ -26,6 +27,7 @@ paused at the owner-controlled release gate.
 - `tests/e2e/pwa.spec.ts`, `tests/e2e/accessibility.spec.ts`
 - `package.json`, `pnpm-lock.yaml`
 - `docs/evidence/lighthouse-mobile.json`, `docs/evidence/release-audit.md`
+- `docs/evidence/hosted-verification.md`
 - `docs/phase-3-test-report.md`, `docs/release-runbook.md`
 - `docs/public-release-checklist.md`
 - `docs/implementation-context-phase-3.md`, `docs/agent-team-state.md`,
@@ -36,7 +38,9 @@ paused at the owner-controlled release gate.
 Run the exact validation sequence in `docs/project-profile.md`, then follow the
 two-terminal Lighthouse step in `docs/release-runbook.md`. Local evidence passes
 70 Vitest tests, 29 applicable production Playwright journeys, and mobile scores
-of 95 Performance / 100 Accessibility / 100 Best Practices.
+of 95 Performance / 100 Accessibility / 100 Best Practices. The live release is
+`https://sjmeehan9.github.io/tycoon/`; hosted evidence is in
+`docs/evidence/hosted-verification.md`.
 
 ## Integration notes & gotchas
 
@@ -51,5 +55,7 @@ of 95 Performance / 100 Accessibility / 100 Best Practices.
 - The complete lockfile audit is clean. Lighthouse remains transient because
   the current CLI's retained dependency tree carries an unrelated QA-only
   advisory and its Node floor exceeds the project baseline.
-- Local PASS is not hosted PASS. No push, merge, visibility, Pages setting,
-  workflow run, deployment, or public URL mutation was performed.
+- PR #1 merged normally after its check, and Pages run `29631697939` deployed
+  merge commit `2e011eb63b75530a610adb177e352a1bd52f2538`. Hosted desktop,
+  touch-mobile, persistence, offline, asset, manifest, installability, and
+  runtime-error checks pass.

@@ -1,9 +1,11 @@
-# Phase 3 Test Report — LOCAL PASS / HOSTED PENDING
+# Phase 3 Test Report — HOSTED PASS
 
 ## Release under test
 
 - Branch: `phase-3`
 - Validated release baseline before follow-up fixes: `9a85186`
+- Public merge commit: `2e011eb63b75530a610adb177e352a1bd52f2538`
+- Public URL: `https://sjmeehan9.github.io/tycoon/`
 - Runtime: Node.js 22.13.1, pnpm 10.15.0
 - Browser harness: Playwright 1.61.1, Chromium 149
 - Projects: 1280×800 desktop Chromium and 360×780 touch-mobile Chromium
@@ -47,8 +49,8 @@ Chromium. No required scenario is skipped in its intended environment.
   two successful 30-day strategies, bankruptcy, target miss, endless mode,
   records/unlocks, migration, import/export, and recovery tests remain green.
 - README, contribution guide, MIT license, privacy/offline/save guidance,
-  `/tycoon/` configuration, protected-main Pages workflow, and public release
-  checklist are complete. No publication was performed.
+  `/tycoon/` configuration, main-only Pages workflow, and public release
+  checklist are complete. The repository and game are publicly available.
 
 ## Performance and release evidence
 
@@ -93,16 +95,29 @@ parse, and full dependency audit were also executed programmatically and passed.
   weekly rosters, multiple locations, cloud accounts, multiplayer,
   localization, paid content, analytics, or live services.
 
-## Hosted gate
+## Hosted verification
 
-Hosted verification is **PENDING**, not PASS. Component 3.1 requires the owner
-to approve the public release, merge through protected `main`, make
-`sjmeehan9/tycoon` public, select GitHub Actions as the Pages source, and confirm
-the resulting URL. After that approval, execute `docs/release-runbook.md` and
-append hosted results here.
+Hosted verification completed **PASS** on 18 July 2026:
+
+- PR `https://github.com/sjmeehan9/tycoon/pull/1` merged normally at
+  `2e011eb63b75530a610adb177e352a1bd52f2538` after its release check passed.
+- The public, HTTPS-enforced, workflow-based Pages release deployed through
+  `https://github.com/sjmeehan9/tycoon/actions/runs/29631697939` and deployment
+  `5499050417`.
+- Direct load and refresh returned `200`; manifest, three icons, original title
+  art, and all three audio files also returned `200` from `/tycoon/`.
+- Chromium reported zero manifest/installability errors. The desktop Day 1
+  event/report survived online and offline reloads with the same autosave under
+  active service-worker control.
+- The 360px touch flow completed planning/settings/service controls without
+  hover. `clientWidth` and `scrollWidth` were both 360px; the rainy badge stayed
+  within 27.78125px–332.21875px, and no visible control was undersized.
+- Desktop and mobile visual review found no clipping; both profiles had zero
+  console errors, page errors, or unexpected online request failures.
+
+Complete hosted evidence is in `docs/evidence/hosted-verification.md`.
 
 ## Verdict
 
-**LOCAL PASS.** Every locally executable Phase 3 and retained Phase 1–2 target
-passes. The release is correctly blocked at the human publication gate; no
-hosted result is represented as complete.
+**HOSTED PASS.** Every local Phase 1–3 gate, deployment check, and hosted
+desktop/mobile/offline target passes at the public release URL.

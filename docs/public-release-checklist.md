@@ -1,7 +1,7 @@
 # Laneway Tycoon Public Release Checklist
 
-This checklist is deliberately split at the human gate. Preparing and locally
-validating the release does not authorize publication or a visibility change.
+This checklist records the local candidate, explicitly approved publication,
+and hosted verification completed on 18 July 2026.
 
 ## Automated release candidate
 
@@ -19,19 +19,19 @@ validating the release does not authorize publication or a visibility change.
 
 ## Required human gate
 
-- [ ] Approve Phase 3 and the public free/open-source release.
-- [ ] Merge the validated phase branch through the protected-main workflow.
-- [ ] Change `sjmeehan9/tycoon` visibility to **Public**.
-- [ ] In Settings → Pages, choose **GitHub Actions** as the publishing source.
-- [ ] Run or observe the `Deploy Laneway Tycoon to Pages` workflow on `main`.
-- [ ] Confirm the deployment environment reports
+- [x] Approve Phase 3 and the public free/open-source release.
+- [x] Merge the validated phase branch through the normal PR/check workflow.
+- [x] Change `sjmeehan9/tycoon` visibility to **Public**.
+- [x] Configure GitHub Pages with the **GitHub Actions** workflow source.
+- [x] Run and observe the `Deploy Laneway Tycoon to Pages` workflow on `main`.
+- [x] Confirm the deployment environment reports
       `https://sjmeehan9.github.io/tycoon/`.
 
 ## Hosted verification
 
-- [ ] Load the public URL directly and confirm all `/tycoon/` assets return 200.
-- [ ] Start a campaign, change settings, reload, and continue the same autosave.
-- [ ] Complete the compact desktop and 360px touch flows without clipping.
-- [ ] Reload offline after one online visit and continue the saved campaign.
-- [ ] Confirm no console/service-worker registration errors and record hosted
+- [x] Load the public URL directly and confirm all `/tycoon/` assets return 200.
+- [x] Start a campaign, change settings, reload, and continue the same autosave.
+- [x] Complete the compact desktop and 360px touch flows without clipping.
+- [x] Reload offline after one online visit and continue the saved campaign.
+- [x] Confirm no console/service-worker registration errors and record hosted
       PASS in `docs/phase-3-test-report.md`.
