@@ -5,13 +5,19 @@ import type {
   DrinkConfig,
   DrinkId,
   DrinkPrices,
+  EquipmentConfig,
+  EquipmentId,
   IngredientId,
   IngredientInventory,
   IngredientPurchases,
   MilkChoice,
   PurchasePackage,
   ScenarioId,
+  StaffRole,
+  StaffTrait,
+  VenueConfig,
   VenueId,
+  VenuePromotion,
   WeatherId,
 } from '../game/types';
 
@@ -226,8 +232,144 @@ export const SEGMENT_DRINK_APPEAL: Record<CustomerSegment, Record<DrinkId, numbe
   regular: weights({ flatWhite: 1.55, latte: 1.3, cappuccino: 1.45, longBlack: 1.2 }),
 };
 
-export const VENUE_MENU_CAPACITY: Record<VenueId, number> = { cart: 3, kiosk: 6, cafe: 10 };
-export const VENUE_DEMAND_FACTOR: Record<VenueId, number> = { cart: 1, kiosk: 1.18, cafe: 1.38 };
+/** Functional venue stages used by planning, service, settlement, and the scene. */
+export const VENUES: Record<VenueId, VenueConfig> = {
+  cart: {
+    id: 'cart',
+    name: 'Hardware Lane Cart',
+    shortName: 'Coffee Cart',
+    description: 'One compact bar, close conversation, and no spare elbow room.',
+    menuCapacity: 3,
+    staffCapacity: 2,
+    queueCapacity: 8,
+    demandFactor: 1,
+    operatingCostCents: 450,
+  },
+  kiosk: {
+    id: 'kiosk',
+    name: 'Laneway Coffee Kiosk',
+    shortName: 'Coffee Kiosk',
+    description: 'A permanent counter with storage, shelter, and a faster service lane.',
+    menuCapacity: 6,
+    staffCapacity: 3,
+    queueCapacity: 11,
+    demandFactor: 1.18,
+    operatingCostCents: 700,
+  },
+  cafe: {
+    id: 'cafe',
+    name: 'Laneway Specialty Cafe',
+    shortName: 'Specialty Cafe',
+    description: 'A full neighbourhood cafe with room for every coffee on the board.',
+    menuCapacity: 10,
+    staffCapacity: 5,
+    queueCapacity: 15,
+    demandFactor: 1.38,
+    operatingCostCents: 1_100,
+  },
+};
+
+export const VENUE_MENU_CAPACITY: Record<VenueId, number> = {
+  cart: VENUES.cart.menuCapacity,
+  kiosk: VENUES.kiosk.menuCapacity,
+  cafe: VENUES.cafe.menuCapacity,
+};
+export const VENUE_STAFF_CAPACITY: Record<VenueId, number> = {
+  cart: VENUES.cart.staffCapacity,
+  kiosk: VENUES.kiosk.staffCapacity,
+  cafe: VENUES.cafe.staffCapacity,
+};
+export const VENUE_DEMAND_FACTOR: Record<VenueId, number> = {
+  cart: VENUES.cart.demandFactor,
+  kiosk: VENUES.kiosk.demandFactor,
+  cafe: VENUES.cafe.demandFactor,
+};
+
+/** Two practical tiers for every required equipment family. */
+export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
+  grinder: equipment('grinder', 'Grinder', 'Controls dose consistency and extraction clarity.', [
+    tier(1, 'Stepless grinder', 2_500, 90, 'cart', '+2 cup quality'),
+    tier(2, 'Precision twin grinder', 5_500, 170, 'kiosk', '+5 cup quality total'),
+  ]),
+  espressoMachine: equipment(
+    'espressoMachine',
+    'Espresso machine',
+    'Adds stable pressure and faster recovery between espresso drinks.',
+    [
+      tier(1, 'Dual-boiler machine', 3_500, 140, 'cart', '8% faster espresso service'),
+      tier(2, 'Three-group workhorse', 7_500, 280, 'kiosk', '18% faster espresso service'),
+    ],
+  ),
+  batchBrewer: equipment('batchBrewer', 'Batch brewer', 'Keeps filter coffee ready at peak time.', [
+    tier(1, 'Bench batch brewer', 2_200, 85, 'kiosk', '25% faster batch brew'),
+    tier(2, 'Twin thermal brewer', 4_800, 150, 'cafe', '45% faster batch brew'),
+  ]),
+  refrigeration: equipment(
+    'refrigeration',
+    'Refrigeration',
+    'Protects milk and cold-drink stock from end-of-day spoilage.',
+    [
+      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '35% less chilled waste'),
+      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '65% less chilled waste'),
+    ],
+  ),
+  pos: equipment(
+    'pos',
+    'Point of sale',
+    'Moves orders cleanly from the till to the coffee station.',
+    [
+      tier(1, 'Touch POS', 1_800, 65, 'cart', '4% faster hand-off and +2% demand'),
+      tier(2, 'Integrated order rail', 4_000, 120, 'kiosk', '9% faster hand-off and +4% demand'),
+    ],
+  ),
+  serviceCounter: equipment(
+    'serviceCounter',
+    'Service counter',
+    'Creates a clearer collection point and more room for a patient queue.',
+    [
+      tier(1, 'Marked collection rail', 1_600, 45, 'cart', '+2 queue spaces, 3% faster service'),
+      tier(
+        2,
+        'Dedicated service counter',
+        3_800,
+        90,
+        'kiosk',
+        '+4 queue spaces, 7% faster service',
+      ),
+    ],
+  ),
+};
+
+export const EQUIPMENT_IDS = Object.keys(EQUIPMENT) as EquipmentId[];
+
+export const VENUE_PROMOTIONS: Record<Exclude<VenueId, 'cafe'>, VenuePromotion> = {
+  cart: {
+    from: 'cart',
+    to: 'kiosk',
+    costCents: 8_000,
+    reputationRequired: 38,
+    requiredEquipment: { grinder: 1, espressoMachine: 1 },
+  },
+  kiosk: {
+    from: 'kiosk',
+    to: 'cafe',
+    costCents: 20_000,
+    reputationRequired: 55,
+    requiredEquipment: { grinder: 2, espressoMachine: 2, refrigeration: 1, pos: 1 },
+  },
+};
+
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  barista: 'Barista',
+  frontOfHouse: 'Front of house',
+};
+
+export const STAFF_TRAIT_DETAILS: Record<StaffTrait, { name: string; effect: string }> = {
+  quickHands: { name: 'Quick hands', effect: 'Works 10% faster.' },
+  peoplePerson: { name: 'People person', effect: 'Lifts demand and satisfaction.' },
+  perfectionist: { name: 'Perfectionist', effect: 'Adds quality but takes extra care.' },
+  steady: { name: 'Steady', effect: 'Works consistently and trims avoidable waste.' },
+};
 export const SIZE_SURCHARGE_CENTS = 90;
 export const MILK_SURCHARGE_CENTS: Record<MilkChoice, number> = {
   none: 0,
@@ -320,4 +462,24 @@ function weights(overrides: Partial<Record<DrinkId, number>>): Record<DrinkId, n
     DrinkId,
     number
   >;
+}
+
+function equipment(
+  id: EquipmentId,
+  name: string,
+  description: string,
+  tiers: EquipmentConfig['tiers'],
+): EquipmentConfig {
+  return { id, name, description, tiers };
+}
+
+function tier(
+  level: 1 | 2,
+  name: string,
+  costCents: number,
+  operatingCostCents: number,
+  requiresVenue: VenueId,
+  effect: string,
+): EquipmentConfig['tiers'][number] {
+  return { level, name, costCents, operatingCostCents, requiresVenue, effect };
 }

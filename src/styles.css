@@ -467,6 +467,66 @@ legend {
 .planner-total small {
   color: #6d5548;
 }
+.team-planner {
+  margin-bottom: 1.25rem;
+}
+.team-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding: 0.7rem;
+  border-left: 5px solid var(--green);
+  background: #dfe9d8;
+}
+.staff-grid,
+.candidate-grid,
+.equipment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+.staff-card,
+.candidate-card,
+.equipment-card {
+  padding: 0.7rem;
+  border: 2px solid #a48b78;
+  background: var(--paper);
+}
+.staff-card {
+  display: flex;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+.staff-card.is-selected {
+  border-color: var(--green);
+  background: #d8e7d2;
+}
+.staff-card input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+.staff-card small,
+.candidate-card small,
+.equipment-card small {
+  margin-top: 0.24rem;
+  color: #6d5548;
+}
+.candidate-card,
+.equipment-card {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.empty-note {
+  padding: 0.7rem;
+  border: 1px dashed #8e7463;
+  background: var(--paper);
+}
 .progress-track {
   height: 18px;
   overflow: hidden;
@@ -671,6 +731,53 @@ legend {
   font-size: 1.5rem;
   font-weight: 900;
 }
+.equipment-card h4 {
+  margin: 0.25rem 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+.equipment-card.is-owned,
+.promotion-card.is-owned {
+  background: #d8e7d2;
+}
+.level-badge {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
+  color: #fff;
+  background: var(--green);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.promotion-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 3px solid var(--ink);
+  background: #faedca;
+}
+.promotion-card ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.promotion-card li {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #9c5542;
+  background: #f2b3a5;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.promotion-card li.met {
+  border-color: #547961;
+  background: #cce0c6;
+}
 .game-footer {
   padding: 0.8rem 1rem 1.2rem;
   color: #654b3f;
@@ -730,12 +837,15 @@ legend {
     margin-top: 0.5rem;
   }
   .menu-grid,
-  .supply-list {
+  .supply-list,
+  .staff-grid,
+  .candidate-grid,
+  .equipment-grid {
     grid-template-columns: 1fr;
   }
   .mobile-tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     margin: 0 0 1rem;
     border: 2px solid var(--ink);
   }
@@ -790,6 +900,14 @@ legend {
   }
   .upgrade-card .button {
     grid-column: 1 / -1;
+  }
+  .team-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .promotion-card {
+    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 }
 

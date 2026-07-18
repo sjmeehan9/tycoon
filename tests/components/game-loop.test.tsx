@@ -6,6 +6,7 @@ import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
 import {
   advanceTick,
+  closeDay,
   createCampaign,
   resolveEvent,
   startRush,
@@ -111,5 +112,51 @@ describe('playable cart UI', () => {
       await screen.findByRole('heading', { name: 'Reinvest or call it a night' }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Plan Day 2' })).toBeEnabled();
+  });
+
+  it('hires both roles and schedules a daily team with visible payroll', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    await user.click(await screen.findByRole('tab', { name: 'Team' }));
+    await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
+    await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
+    const barista = screen.getByRole('checkbox', { name: /Barista · speed/ });
+    const frontOfHouse = screen.getByRole('checkbox', { name: /Front of house · speed/ });
+    await user.click(barista);
+    await user.click(frontOfHouse);
+    expect(barista).toBeChecked();
+    expect(frontOfHouse).toBeChecked();
+    expect(screen.getByText(/2\/2 scheduled/)).toBeVisible();
+    expect(screen.getByText(/payroll at close/)).toBeVisible();
+  });
+
+  it('buys equipment and promotes the same venue through kiosk to cafe', async () => {
+    const reinvest = {
+      ...closeDay(stateAtReport()),
+      cashCents: 100_000,
+      reputation: 60,
+    };
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(reinvest));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const firstPromotion = screen.getByRole('button', { name: 'Promote to Coffee Kiosk' });
+    expect(firstPromotion).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /Buy Grinder level 1/ }));
+    await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 1/ }));
+    expect(firstPromotion).toBeEnabled();
+    await user.click(firstPromotion);
+    expect(screen.getByRole('heading', { name: /Day 1 · Coffee Kiosk/ })).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /Buy Grinder level 2/ }));
+    await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 2/ }));
+    await user.click(screen.getByRole('button', { name: /Buy Refrigeration level 1/ }));
+    await user.click(screen.getByRole('button', { name: /Buy Point of sale level 1/ }));
+    const cafePromotion = screen.getByRole('button', { name: 'Promote to Specialty Cafe' });
+    expect(cafePromotion).toBeEnabled();
+    await user.click(cafePromotion);
+    expect(screen.getByRole('heading', { name: /Day 1 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByText('Laneway Specialty Cafe')).toBeVisible();
   });
 });

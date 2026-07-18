@@ -167,6 +167,7 @@ export interface RushState {
   eventReputationDelta: number;
   openingCashCents: number;
   purchaseCostCents: number;
+  wageCostCents: number;
   operatingCostCents: number;
   stats: RushStats;
 }
@@ -189,6 +190,44 @@ export interface EquipmentState {
   refrigeration: number;
   pos: number;
   serviceCounter: number;
+}
+
+export type EquipmentId = keyof EquipmentState;
+
+export interface EquipmentTierConfig {
+  level: 1 | 2;
+  name: string;
+  costCents: number;
+  operatingCostCents: number;
+  requiresVenue: VenueId;
+  effect: string;
+}
+
+export interface EquipmentConfig {
+  id: EquipmentId;
+  name: string;
+  description: string;
+  tiers: [EquipmentTierConfig, EquipmentTierConfig];
+}
+
+export interface VenueConfig {
+  id: VenueId;
+  name: string;
+  shortName: string;
+  description: string;
+  menuCapacity: number;
+  staffCapacity: number;
+  queueCapacity: number;
+  demandFactor: number;
+  operatingCostCents: number;
+}
+
+export interface VenuePromotion {
+  from: Exclude<VenueId, 'cafe'>;
+  to: Exclude<VenueId, 'cart'>;
+  costCents: number;
+  reputationRequired: number;
+  requiredEquipment: Partial<Record<EquipmentId, number>>;
 }
 
 export interface DayReport {
@@ -306,5 +345,8 @@ export type GameCommand =
   | { type: 'resolveEvent'; choiceId: string }
   | { type: 'closeDay' }
   | { type: 'buyImprovement'; improvementId: string }
+  | { type: 'hireStaff'; candidateId: string }
+  | { type: 'buyEquipment'; equipmentId: EquipmentId }
+  | { type: 'promoteVenue' }
   | { type: 'startNextDay' }
   | { type: 'continueEndless' };

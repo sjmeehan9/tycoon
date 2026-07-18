@@ -4,11 +4,13 @@ import {
   BEAN_DETAILS,
   DRINKS,
   PURCHASE_PACKAGES,
+  VENUES,
   VENUE_MENU_CAPACITY,
   WEATHER_DETAILS,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
+import { TeamPlanner } from './TeamPlanner';
 
 const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
   { id: 'speed', label: 'Speed', detail: 'Quicker cups, less finesse' },
@@ -19,7 +21,7 @@ const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
 /** Morning menu, pricing, supply, and espresso dial-in controls. */
 export function Planner(): React.JSX.Element {
   const { command, game } = useGame();
-  const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial'>('menu');
+  const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial' | 'team'>('menu');
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
   const weather = WEATHER_DETAILS[game.weather];
@@ -37,7 +39,7 @@ export function Planner(): React.JSX.Element {
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Morning planning</p>
-          <h2 id="planner-title">Set up the cart</h2>
+          <h2 id="planner-title">Set up the {game.venueId}</h2>
         </div>
         <p className="forecast-badge">
           {weather.name} · {weather.note}
@@ -50,6 +52,7 @@ export function Planner(): React.JSX.Element {
             ['menu', 'Menu'],
             ['supplies', 'Supplies'],
             ['dial', 'Dial-in'],
+            ['team', 'Team'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -119,6 +122,16 @@ export function Planner(): React.JSX.Element {
           })}
         </div>
       </fieldset>
+
+      <section
+        aria-labelledby="planner-team-tab"
+        className={`planner-section ${activeSection === 'team' ? 'mobile-active' : ''}`}
+        id="planner-team"
+        role="tabpanel"
+      >
+        <h3>Hire and schedule</h3>
+        <TeamPlanner />
+      </section>
 
       <fieldset
         aria-labelledby="planner-supplies-tab"
@@ -204,6 +217,10 @@ export function Planner(): React.JSX.Element {
           <li>Higher prices reduce arrivals, especially price-sensitive students.</li>
           <li>Reputation {game.reputation}/100 currently supports passing demand.</li>
           <li>{BEAN_DETAILS[game.plan.beanId].description}</li>
+          <li>
+            {VENUES[game.venueId].shortName} supports {VENUES[game.venueId].staffCapacity} scheduled
+            staff and {VENUES[game.venueId].menuCapacity} menu items.
+          </li>
           <li>Visible queues and unavailable recipes turn customers away.</li>
         </ul>
       </aside>
@@ -220,7 +237,7 @@ export function Planner(): React.JSX.Element {
           onClick={() => command({ type: 'startRush' })}
           type="button"
         >
-          Open the cart
+          Open the {game.venueId}
         </button>
       </div>
     </section>

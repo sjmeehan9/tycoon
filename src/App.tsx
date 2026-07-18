@@ -7,6 +7,7 @@ import { ReportPanel } from './components/ReportPanel';
 import { RushPanel } from './components/RushPanel';
 import { TitleScreen } from './components/TitleScreen';
 import { CanvasScene } from './scene/CanvasScene';
+import { VENUES } from './content/gameContent';
 
 /** Root game composition. */
 export default function App(): React.JSX.Element {
@@ -28,8 +29,8 @@ export default function App(): React.JSX.Element {
         <div className="scene-column">
           <CanvasScene />
           <section className="scene-caption" aria-label="Current venue">
-            <strong>Hardware Lane Cart</strong>
-            <span>One group head, one brave owner, absolutely no room for food.</span>
+            <strong>{VENUES[game.venueId].name}</strong>
+            <span>{VENUES[game.venueId].description}</span>
           </section>
         </div>
         <div className="control-column">

@@ -34,7 +34,11 @@ export function ReportPanel(): React.JSX.Element {
               <td>+{formatMoney(report.revenueCents)}</td>
             </tr>
             <tr>
-              <th scope="row">Cart operating cost</th>
+              <th scope="row">Staff wages</th>
+              <td>−{formatMoney(report.wageCostCents)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Venue and equipment costs</th>
               <td>−{formatMoney(report.operatingCostCents)}</td>
             </tr>
             <tr className="report-total">

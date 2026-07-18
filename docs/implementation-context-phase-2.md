@@ -30,3 +30,24 @@
 - No deviation from the approved Component 2.2 scope. Staff, equipment, venue
   promotion, and campaign endings remain intentionally assigned to 2.3–2.4.
 
+## Component 2.3 — Staff, Equipment, and Venue Growth
+
+- Added a deterministic rotating pool of four candidates per day, balanced
+  across barista and front-of-house roles. Hired staff expose speed, skill,
+  daily wage, and one of four readable traits; only scheduled staff cost money
+  and affect the day's real service calculations.
+- Added venue-capacity scheduling and operational effects for preparation,
+  quality, demand, customer patience/satisfaction, queue space, and waste.
+- Added two sequential tiers for grinders, espresso machines, batch brewers,
+  refrigeration, POS, and service counters, with affordability, venue access,
+  daily operating cost, and maximum-level enforcement.
+- Added atomic cart→kiosk→cafe promotion gates for cash, reputation, and
+  equipment. Each venue changes menu/staff/queue capacity, demand, operating
+  cost, planning copy, header/caption, and its functional Canvas scene.
+- Extended report reconciliation with exact wage and venue/equipment costs and
+  causal staff/equipment explanations. Existing autosave round-trips all new
+  state, and old in-progress rushes safely default absent wage snapshots to 0.
+- Exact validation passed: frozen install, build, lint, 42 Vitest tests, and
+  eight Playwright project tests across desktop and touch-mobile Chromium.
+- No scope deviation. Weekly rosters, manual drink making, multiple locations,
+  and permanent economic meta bonuses remain explicit non-goals.

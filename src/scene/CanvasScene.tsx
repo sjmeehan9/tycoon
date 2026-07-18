@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { useGame } from '../app/GameContext';
+import { VENUES } from '../content/gameContent';
 
 const WIDTH = 320;
 const HEIGHT = 180;
@@ -27,8 +28,8 @@ export function CanvasScene(): React.JSX.Element {
 
   const queueLength = game?.rush?.queue.length ?? 0;
   const description = game
-    ? `Side-on coffee cart scene. Day ${game.day}, ${game.phase} phase, ${queueLength} customers waiting.`
-    : 'Side-on coffee cart scene.';
+    ? `Side-on ${VENUES[game.venueId].shortName} scene. Day ${game.day}, ${game.phase} phase, ${queueLength} customers waiting.`
+    : 'Side-on coffee business scene.';
 
   return (
     <figure className="scene-frame">
@@ -45,7 +46,9 @@ function drawScene(
 ): void {
   context.clearRect(0, 0, WIDTH, HEIGHT);
   drawBackground(context);
-  drawCart(context, game.improvements.includes('street-sign'));
+  if (game.venueId === 'cart') drawCart(context, game.improvements.includes('street-sign'));
+  else if (game.venueId === 'kiosk') drawKiosk(context);
+  else drawCafe(context);
   drawBarista(
     context,
     game.rush?.activeService !== null && game.rush?.activeService !== undefined,
@@ -105,6 +108,44 @@ function drawCart(context: CanvasRenderingContext2D, hasSign: boolean): void {
     context.fillText('GOOD', 79, 121);
     context.fillText('COFFEE', 76, 130);
   }
+}
+
+function drawKiosk(context: CanvasRenderingContext2D): void {
+  context.fillStyle = '#2f2118';
+  context.fillRect(82, 48, 150, 98);
+  context.fillStyle = '#e7b65b';
+  context.fillRect(88, 56, 138, 78);
+  context.fillStyle = '#f7ddaa';
+  context.fillRect(100, 69, 114, 42);
+  context.fillStyle = '#4d3024';
+  context.fillRect(105, 75, 104, 31);
+  context.fillStyle = '#85a978';
+  context.fillRect(118, 82, 77, 18);
+  context.fillStyle = '#2f2118';
+  context.font = 'bold 10px monospace';
+  context.fillText('LANEWAY KIOSK', 113, 94);
+  context.fillStyle = '#6b5245';
+  context.fillRect(84, 134, 146, 9);
+}
+
+function drawCafe(context: CanvasRenderingContext2D): void {
+  context.fillStyle = '#30231d';
+  context.fillRect(35, 29, 229, 119);
+  context.fillStyle = '#e9c679';
+  context.fillRect(42, 37, 215, 103);
+  context.fillStyle = '#8f452f';
+  context.fillRect(42, 37, 215, 20);
+  context.fillStyle = '#f7ddaa';
+  context.fillRect(61, 66, 72, 54);
+  context.fillRect(158, 66, 79, 54);
+  context.fillStyle = '#536f72';
+  context.fillRect(66, 71, 62, 44);
+  context.fillRect(163, 71, 69, 44);
+  context.fillStyle = '#2f2118';
+  context.font = 'bold 11px monospace';
+  context.fillText('LANEWAY SPECIALTY', 77, 51);
+  context.fillStyle = '#6b5245';
+  context.fillRect(37, 140, 225, 7);
 }
 
 function drawBarista(context: CanvasRenderingContext2D, isWorking: boolean, time: number): void {

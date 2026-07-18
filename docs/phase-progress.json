@@ -16,8 +16,8 @@
       "components": [
         { "id": "2.1", "name": "Human Setup", "status": "committed" },
         { "id": "2.2", "name": "Full Coffee Trading Day", "status": "committed" },
-        { "id": "2.3", "name": "Staff, Equipment, and Venue Growth", "status": "implementing" },
-        { "id": "2.4", "name": "Campaign Outcomes, Meta Progress, and Save Transfer", "status": "spec-validated" },
+        { "id": "2.3", "name": "Staff, Equipment, and Venue Growth", "status": "committed" },
+        { "id": "2.4", "name": "Campaign Outcomes, Meta Progress, and Save Transfer", "status": "implementing" },
         { "id": "2.5", "name": "Phase Validation & Documentation", "status": "spec-validated" }
       ]
     },

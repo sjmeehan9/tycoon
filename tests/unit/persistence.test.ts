@@ -4,6 +4,8 @@ import {
   advanceTick,
   closeDay,
   createCampaign,
+  hireStaff,
+  prepareDay,
   resolveEvent,
   setRushSpeed,
   startRush,
@@ -37,6 +39,25 @@ describe('Phase 1 save envelope', () => {
     expect(restored.source).toBe('backup');
     expect(restored.envelope?.activeRun?.seed).toBe(1);
     expect(restored.warning).toContain('last-known-good');
+  });
+
+  it('persists hired staff, scheduling, equipment, candidates, and venue state', () => {
+    let state = createCampaign({ seed: 4_204 });
+    const candidateId = state.candidateStaff[0]?.id;
+    if (!candidateId) throw new Error('Expected a daily candidate.');
+    state = hireStaff(state, candidateId);
+    state = prepareDay(state, { scheduledStaffIds: [candidateId] });
+    state = {
+      ...state,
+      venueId: 'kiosk',
+      equipment: { ...state.equipment, grinder: 1, espressoMachine: 1, pos: 1 },
+    };
+    const parsed = parseEnvelope(JSON.stringify(createSaveEnvelope(state)));
+    expect(parsed?.activeRun).toEqual(state);
+    expect(parsed?.activeRun?.staff[0]?.id).toBe(candidateId);
+    expect(parsed?.activeRun?.candidateStaff).toHaveLength(3);
+    expect(parsed?.activeRun?.equipment).toMatchObject({ grinder: 1, espressoMachine: 1, pos: 1 });
+    expect(parsed?.activeRun?.venueId).toBe('kiosk');
   });
 
   it('rejects malformed or wrong-version payloads', () => {

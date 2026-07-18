@@ -2,11 +2,12 @@ import {
   BEAN_DETAILS,
   CART_IMPROVEMENT_COST_CENTS,
   DRINK_MAP,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
   INGREDIENT_UNIT_COST_CENTS,
   INITIAL_CASH_CENTS,
   INITIAL_REPUTATION,
   MILK_SURCHARGE_CENTS,
-  MAX_QUEUE_LENGTH,
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
   SEGMENT_DRINK_APPEAL,
@@ -14,6 +15,9 @@ import {
   TICKS_PER_SECOND,
   VENUE_DEMAND_FACTOR,
   VENUE_MENU_CAPACITY,
+  VENUE_PROMOTIONS,
+  VENUE_STAFF_CAPACITY,
+  VENUES,
   WEATHER_DETAILS,
   createDefaultPlan,
   emptyInventory,
@@ -32,6 +36,7 @@ import type {
   DrinkConfig,
   DrinkId,
   DrinkSize,
+  EquipmentId,
   EventChoice,
   GameCommand,
   GameState,
@@ -45,12 +50,31 @@ import type {
   RushState,
   RushStats,
   SimulationEvent,
+  StaffMember,
+  StaffTrait,
+  VenueId,
 } from './types';
 
-const CART_OPERATING_COST_CENTS = 450;
 const MIN_PRICE_CENTS = 250;
 const MAX_PRICE_CENTS = 1_200;
 const MAX_PURCHASE_PACKAGES = 20;
+const MAX_HIRED_STAFF = 8;
+const CANDIDATE_NAMES = [
+  'Ari Nguyen',
+  'Billie Tran',
+  'Casey Morgan',
+  'Dev Singh',
+  'Evie Chen',
+  'Frankie Russo',
+  'Georgie Walker',
+  'Harper Kim',
+  'Indi Patel',
+  'Jules Martin',
+  'Kit O’Connor',
+  'Lou Haddad',
+] as const;
+const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
+const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
 
 const LANEWAY_EVENT: SimulationEvent = {
   id: 'office-coffee-run',
@@ -118,7 +142,7 @@ export function createCampaign(options: CampaignOptions): GameState {
     report: null,
     lastSettledDay: 0,
     staff: [],
-    candidateStaff: [],
+    candidateStaff: candidatePoolForDay(seed, 1),
     equipment: {
       grinder: 0,
       espressoMachine: 0,
@@ -161,6 +185,7 @@ export function startRush(state: GameState): GameState {
     throw new GameRuleError('Reduce supply purchases before opening the cart.');
   }
   const inventory = addPurchases(state.inventory, state.plan);
+  const effects = operationalEffects(state);
   const rush: RushState = {
     tick: 0,
     durationTicks: RUSH_DURATION_TICKS,
@@ -178,7 +203,8 @@ export function startRush(state: GameState): GameState {
     eventReputationDelta: 0,
     openingCashCents: state.cashCents,
     purchaseCostCents: suppliesCost,
-    operatingCostCents: CART_OPERATING_COST_CENTS,
+    wageCostCents: scheduledStaff(state).reduce((total, member) => total + member.wageCents, 0),
+    operatingCostCents: effects.operatingCostCents,
     stats: emptyRushStats(),
   };
   return {
@@ -288,6 +314,77 @@ export function buyImprovement(state: GameState, improvementId: string): GameSta
   };
 }
 
+/** Hire one candidate from the current deterministic daily pool. */
+export function hireStaff(state: GameState, candidateId: string): GameState {
+  requireManagementPhase(state);
+  if (state.staff.length >= MAX_HIRED_STAFF) {
+    throw new GameRuleError(`The business can employ at most ${MAX_HIRED_STAFF} people.`);
+  }
+  const candidate = state.candidateStaff.find((member) => member.id === candidateId);
+  if (!candidate) throw new GameRuleError('That candidate is no longer available today.');
+  if (state.staff.some((member) => member.id === candidate.id)) {
+    throw new GameRuleError('That candidate already works here.');
+  }
+  return {
+    ...state,
+    staff: [...state.staff, { ...candidate, hiredOnDay: state.day }],
+    candidateStaff: state.candidateStaff.filter((member) => member.id !== candidateId),
+  };
+}
+
+/** Buy the next valid tier in an equipment family during reinvestment. */
+export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameState {
+  requirePhase(state, 'reinvest');
+  if (!EQUIPMENT_IDS.includes(equipmentId))
+    throw new GameRuleError('That equipment is unavailable.');
+  const currentLevel = state.equipment[equipmentId];
+  const nextTier = EQUIPMENT[equipmentId].tiers[currentLevel];
+  if (!nextTier)
+    throw new GameRuleError(`${EQUIPMENT[equipmentId].name} is already fully upgraded.`);
+  if (!venueMeetsRequirement(state.venueId, nextTier.requiresVenue)) {
+    throw new GameRuleError(
+      `${nextTier.name} requires a ${VENUES[nextTier.requiresVenue].shortName}.`,
+    );
+  }
+  if (state.cashCents < nextTier.costCents) {
+    throw new GameRuleError(`${nextTier.name} costs ${formatCents(nextTier.costCents)}.`);
+  }
+  return {
+    ...state,
+    cashCents: state.cashCents - nextTier.costCents,
+    equipment: { ...state.equipment, [equipmentId]: nextTier.level },
+  };
+}
+
+/** Promote the current business when its cash, reputation, and equipment are ready. */
+export function promoteVenue(state: GameState): GameState {
+  requirePhase(state, 'reinvest');
+  if (state.venueId === 'cafe') throw new GameRuleError('The specialty cafe is the final venue.');
+  const promotion = VENUE_PROMOTIONS[state.venueId];
+  if (state.reputation < promotion.reputationRequired) {
+    throw new GameRuleError(
+      `${VENUES[promotion.to].shortName} promotion needs ${promotion.reputationRequired} reputation.`,
+    );
+  }
+  const missing = Object.entries(promotion.requiredEquipment).find(
+    ([equipmentId, level]) => state.equipment[equipmentId as EquipmentId] < level,
+  );
+  if (missing) {
+    const [equipmentId, level] = missing;
+    throw new GameRuleError(
+      `Promotion needs ${EQUIPMENT[equipmentId as EquipmentId].name} level ${level}.`,
+    );
+  }
+  if (state.cashCents < promotion.costCents) {
+    throw new GameRuleError(`Promotion costs ${formatCents(promotion.costCents)}.`);
+  }
+  return {
+    ...state,
+    cashCents: state.cashCents - promotion.costCents,
+    venueId: promotion.to,
+  };
+}
+
 /** Begin the following morning while retaining prices, menu, stock, and upgrades. */
 export function startNextDay(state: GameState): GameState {
   requirePhase(state, 'reinvest');
@@ -298,6 +395,9 @@ export function startNextDay(state: GameState): GameState {
     day: state.day + 1,
     weather: weatherForDay(state.seed, state.day + 1, state.scenarioId),
     plan: { ...state.plan, purchases: emptyPurchases() },
+    candidateStaff: candidatePoolForDay(state.seed, state.day + 1).filter(
+      (candidate) => !state.staff.some((member) => member.id === candidate.id),
+    ),
     rush: null,
     report: null,
   };
@@ -338,6 +438,12 @@ export function dispatchGameCommand(state: GameState, command: GameCommand): Gam
       return closeDay(state);
     case 'buyImprovement':
       return buyImprovement(state, command.improvementId);
+    case 'hireStaff':
+      return hireStaff(state, command.candidateId);
+    case 'buyEquipment':
+      return buyEquipment(state, command.equipmentId);
+    case 'promoteVenue':
+      return promoteVenue(state);
     case 'startNextDay':
       return startNextDay(state);
     case 'continueEndless':
@@ -351,6 +457,129 @@ export function purchaseCost(plan: DayPlan): number {
     (total, item) => total + item.costCents * plan.purchases[item.ingredientId],
     0,
   );
+}
+
+export interface OperationalEffects {
+  preparationMultiplier: number;
+  qualityBonus: number;
+  satisfactionBonus: number;
+  demandMultiplier: number;
+  patienceMultiplier: number;
+  wasteMultiplier: number;
+  queueBonus: number;
+  operatingCostCents: number;
+}
+
+/** Aggregate the exact staff, trait, equipment, and venue effects used by service. */
+export function operationalEffects(state: GameState): OperationalEffects {
+  let preparationMultiplier = 1;
+  let qualityBonus = 0;
+  let satisfactionBonus = 0;
+  let demandMultiplier = 1;
+  let patienceMultiplier = 1;
+  let wasteMultiplier = state.equipment.refrigeration === 2 ? 0.35 : 1;
+  const queueBonus = state.equipment.serviceCounter * 2;
+
+  if (state.equipment.refrigeration === 1) wasteMultiplier = 0.65;
+  qualityBonus += state.equipment.grinder === 2 ? 5 : state.equipment.grinder === 1 ? 2 : 0;
+  if (state.equipment.pos === 1) {
+    preparationMultiplier *= 0.96;
+    demandMultiplier *= 1.02;
+  } else if (state.equipment.pos === 2) {
+    preparationMultiplier *= 0.91;
+    demandMultiplier *= 1.04;
+  }
+  preparationMultiplier *= state.equipment.serviceCounter === 2 ? 0.93 : 1;
+  if (state.equipment.serviceCounter === 1) preparationMultiplier *= 0.97;
+
+  for (const member of scheduledStaff(state)) {
+    if (member.role === 'barista') {
+      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.004, 0.78, 1);
+      qualityBonus += Math.round((member.skill - 48) / 11);
+    } else {
+      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.0015, 0.91, 1);
+      patienceMultiplier *= 1 + Math.max(0, member.skill - 45) / 500;
+      satisfactionBonus += Math.round((member.skill - 48) / 14);
+    }
+    if (member.trait === 'quickHands') preparationMultiplier *= 0.9;
+    if (member.trait === 'peoplePerson') {
+      demandMultiplier *= 1.05;
+      satisfactionBonus += 3;
+    }
+    if (member.trait === 'perfectionist') {
+      preparationMultiplier *= 1.08;
+      qualityBonus += 5;
+    }
+    if (member.trait === 'steady') {
+      preparationMultiplier *= 0.97;
+      wasteMultiplier *= 0.94;
+    }
+  }
+
+  const equipmentOperatingCost = EQUIPMENT_IDS.reduce((total, equipmentId) => {
+    const level = state.equipment[equipmentId];
+    return (
+      total + (level > 0 ? (EQUIPMENT[equipmentId].tiers[level - 1]?.operatingCostCents ?? 0) : 0)
+    );
+  }, 0);
+  return {
+    preparationMultiplier,
+    qualityBonus,
+    satisfactionBonus,
+    demandMultiplier,
+    patienceMultiplier,
+    wasteMultiplier,
+    queueBonus,
+    operatingCostCents: VENUES[state.venueId].operatingCostCents + equipmentOperatingCost,
+  };
+}
+
+/** Return the equipment-only preparation multiplier for a configured drink. */
+export function equipmentPreparationMultiplier(state: GameState, drinkId: DrinkId): number {
+  if (drinkId === 'batchBrew') {
+    return state.equipment.batchBrewer === 2 ? 0.55 : state.equipment.batchBrewer === 1 ? 0.75 : 1;
+  }
+  if (drinkId === 'coldBrew') return 1;
+  return state.equipment.espressoMachine === 2
+    ? 0.82
+    : state.equipment.espressoMachine === 1
+      ? 0.92
+      : 1;
+}
+
+/** Return the venue plus service-counter queue capacity used by arrivals. */
+export function serviceQueueCapacity(state: GameState): number {
+  return VENUES[state.venueId].queueCapacity + operationalEffects(state).queueBonus;
+}
+
+/** Produce the same four-person candidate pool for a given seed and day. */
+export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
+  let rngState = (seed ^ Math.imul(day, 0x9e3779b1)) >>> 0;
+  if (rngState === 0) rngState = 0x6d2b79f5;
+  const candidates: StaffMember[] = [];
+  for (let index = 0; index < 4; index += 1) {
+    const nameDraw = randomInt(rngState, 0, CANDIDATE_NAMES.length - 1);
+    rngState = nameDraw.state;
+    const speedDraw = randomInt(rngState, 52, 88);
+    rngState = speedDraw.state;
+    const skillDraw = randomInt(rngState, 50, 90);
+    rngState = skillDraw.state;
+    const traitDraw = randomInt(rngState, 0, STAFF_TRAITS.length - 1);
+    rngState = traitDraw.state;
+    const role = index % 2 === 0 ? 'barista' : 'frontOfHouse';
+    const wageCents = Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50;
+    candidates.push({
+      id: `staff-${seed.toString(16)}-${day}-${index}`,
+      name: CANDIDATE_NAMES[nameDraw.value] ?? `Candidate ${index + 1}`,
+      role,
+      speed: speedDraw.value,
+      skill: skillDraw.value,
+      wageCents,
+      trait: STAFF_TRAITS[traitDraw.value] ?? 'steady',
+      hiredOnDay: 0,
+    });
+  }
+  return candidates;
 }
 
 function advanceSingleTick(state: GameState): GameState {
@@ -490,7 +719,7 @@ function maybeAddArrival(state: GameState): GameState {
   if (!activeRush) return updated;
   const arrivals = activeRush.stats.arrivals + 1;
   const segmentArrivals = (activeRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1;
-  if (activeRush.queue.length >= MAX_QUEUE_LENGTH) {
+  if (activeRush.queue.length >= serviceQueueCapacity(state)) {
     return {
       ...updated,
       rush: {
@@ -559,7 +788,7 @@ function createCustomer(
       segment,
       order,
       arrivedAtTick: tick,
-      patienceTicks: patienceDraw.value,
+      patienceTicks: Math.round(patienceDraw.value * operationalEffects(state).patienceMultiplier),
       waitedTicks: 0,
     },
   };
@@ -577,6 +806,8 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
     state.plan.dialIn === 'speed' ? 0.8 : state.plan.dialIn === 'quality' ? 1.2 : 1;
   const beanMultiplier = BEAN_DETAILS[state.plan.beanId].speed;
   const signMultiplier = state.improvements.includes('street-sign') ? 0.96 : 1;
+  const effects = operationalEffects(state);
+  const equipmentMultiplier = equipmentPreparationMultiplier(state, drink.id);
   return {
     drinkId: drink.id,
     size,
@@ -588,7 +819,14 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
     ingredientAmounts: ingredients,
     preparationTicks: Math.max(
       5,
-      Math.round(variant.preparationTicks * dialMultiplier * beanMultiplier * signMultiplier),
+      Math.round(
+        variant.preparationTicks *
+          dialMultiplier *
+          beanMultiplier *
+          signMultiplier *
+          effects.preparationMultiplier *
+          equipmentMultiplier,
+      ),
     ),
   };
 }
@@ -685,7 +923,7 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
     const created = createCustomer(working, rush.nextCustomerId);
     const currentRush = created.state.rush;
     if (!currentRush) break;
-    const hasSpace = currentRush.queue.length < MAX_QUEUE_LENGTH;
+    const hasSpace = currentRush.queue.length < serviceQueueCapacity(state);
     working = {
       ...created.state,
       rush: {
@@ -715,7 +953,7 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
 function finishRush(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) throw new GameRuleError('No service rush is active.');
-  const waste = calculateWaste(state.inventory);
+  const waste = calculateWaste(state);
   const inventory = consumeIngredients(state.inventory, toIngredientAmounts(waste));
   const satisfaction =
     rush.stats.served > 0 ? Math.round(rush.stats.satisfactionTotal / rush.stats.served) : 35;
@@ -728,8 +966,9 @@ function finishRush(state: GameState): GameState {
     rush.eventReputationDelta -
     (rush.stats.stockouts > 3 ? 1 : 0);
   const eventCash = rush.eventCashDeltaCents;
+  const wageCost = rush.wageCostCents ?? 0;
   const closingCash =
-    state.cashCents + rush.stats.revenueCents + eventCash - rush.operatingCostCents;
+    state.cashCents + rush.stats.revenueCents + eventCash - wageCost - rush.operatingCostCents;
   const report: DayReport = {
     day: state.day,
     weather: state.weather,
@@ -737,11 +976,15 @@ function finishRush(state: GameState): GameState {
     purchaseCostCents: rush.purchaseCostCents,
     revenueCents: rush.stats.revenueCents,
     ingredientCostCents: rush.stats.ingredientCostCents,
-    wageCostCents: 0,
+    wageCostCents: wageCost,
     operatingCostCents: rush.operatingCostCents,
     eventCashDeltaCents: eventCash,
     netCashFlowCents:
-      rush.stats.revenueCents + eventCash - rush.purchaseCostCents - rush.operatingCostCents,
+      rush.stats.revenueCents +
+      eventCash -
+      rush.purchaseCostCents -
+      wageCost -
+      rush.operatingCostCents,
     closingCashCents: closingCash,
     arrivals: rush.stats.arrivals,
     served: rush.stats.served,
@@ -753,25 +996,28 @@ function finishRush(state: GameState): GameState {
     waste,
     remainingInventory: inventory,
     servedBySegment: rush.stats.servedBySegment,
-    bottleneck: determineBottleneck(rush),
+    bottleneck: determineBottleneck(state, rush),
     explanations: buildExplanations(state, rush, satisfaction),
     settled: false,
   };
   return { ...state, phase: 'report', inventory, report };
 }
 
-function calculateWaste(inventory: IngredientInventory): Partial<Record<IngredientId, number>> {
-  const dairyWaste = Math.floor(inventory.dairyMilk * 0.02);
-  const oatWaste = Math.floor(inventory.oatMilk * 0.015);
+function calculateWaste(state: GameState): Partial<Record<IngredientId, number>> {
+  const wasteMultiplier = operationalEffects(state).wasteMultiplier;
+  const dairyWaste = Math.floor(state.inventory.dairyMilk * 0.02 * wasteMultiplier);
+  const oatWaste = Math.floor(state.inventory.oatMilk * 0.015 * wasteMultiplier);
+  const soyWaste = Math.floor(state.inventory.soyMilk * 0.012 * wasteMultiplier);
   return {
     ...(dairyWaste > 0 ? { dairyMilk: dairyWaste } : {}),
     ...(oatWaste > 0 ? { oatMilk: oatWaste } : {}),
+    ...(soyWaste > 0 ? { soyMilk: soyWaste } : {}),
   };
 }
 
-function determineBottleneck(rush: RushState): string {
+function determineBottleneck(state: GameState, rush: RushState): string {
   if (rush.stats.stockouts > Math.max(2, rush.stats.served * 0.15)) return 'Ingredient stockouts';
-  if (rush.stats.peakQueue >= MAX_QUEUE_LENGTH - 1) return 'Coffee preparation speed';
+  if (rush.stats.peakQueue >= serviceQueueCapacity(state) - 1) return 'Coffee preparation speed';
   if (rush.stats.abandoned > 2) return 'Customer wait time';
   return 'No major bottleneck — the cart flowed well';
 }
@@ -782,7 +1028,20 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
     `${WEATHER_DETAILS[state.weather].name} weather: ${WEATHER_DETAILS[state.weather].note}`,
     `${BEAN_DETAILS[state.plan.beanId].name} changed shot quality and preparation time.`,
     `${rush.stats.peakQueue} was the longest queue during the 75-second rush.`,
+    `${VENUES[state.venueId].shortName} supported ${VENUES[state.venueId].staffCapacity} scheduled staff and a ${serviceQueueCapacity(state)}-person queue.`,
   ];
+  const scheduled = scheduledStaff(state);
+  if (scheduled.length > 0) {
+    explanations.push(
+      `${scheduled.length} scheduled team member${scheduled.length === 1 ? '' : 's'} cost ${formatCents(rush.wageCostCents ?? 0)} and changed service speed, quality, or patience.`,
+    );
+  }
+  const equipped = EQUIPMENT_IDS.filter((equipmentId) => state.equipment[equipmentId] > 0);
+  if (equipped.length > 0) {
+    explanations.push(
+      `Equipment in service: ${equipped.map((id) => `${EQUIPMENT[id].name} L${state.equipment[id]}`).join(', ')}.`,
+    );
+  }
   if (rush.stats.stockouts > 0)
     explanations.push(`${rush.stats.stockouts} orders were lost to unavailable ingredients.`);
   if (satisfaction >= 80)
@@ -814,11 +1073,18 @@ function calculateSatisfaction(state: GameState, customer: Customer): number {
   const beanQuality = BEAN_DETAILS[state.plan.beanId].quality;
   const enthusiastMultiplier = customer.segment === 'enthusiast' ? 1.3 : 1;
   const qualityEffect = Math.round(
-    (dialQuality + beanQuality + (rush?.qualityBonus ?? 0)) *
+    (dialQuality +
+      beanQuality +
+      operationalEffects(state).qualityBonus +
+      (rush?.qualityBonus ?? 0)) *
       drink.qualitySensitivity *
       enthusiastMultiplier,
   );
-  return clamp(78 + qualityEffect - waitPenalty - pricePenalty, 20, 100);
+  return clamp(
+    78 + qualityEffect + operationalEffects(state).satisfactionBonus - waitPenalty - pricePenalty,
+    20,
+    100,
+  );
 }
 
 /** Return the configured arrival probability for the next fixed tick. */
@@ -835,6 +1101,7 @@ export function demandRate(state: GameState): number {
   const beanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
   const weatherFactor = WEATHER_DETAILS[state.weather].demand;
   const venueFactor = VENUE_DEMAND_FACTOR[state.venueId];
+  const teamFactor = operationalEffects(state).demandMultiplier;
   const queueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
   const availableItems = state.plan.activeMenu.filter((drinkId) => {
     const recipe = getDrink(drinkId).variants[0];
@@ -855,6 +1122,7 @@ export function demandRate(state: GameState): number {
       beanFactor *
       weatherFactor *
       venueFactor *
+      teamFactor *
       queueFactor *
       availabilityFactor *
       (rush?.demandMultiplier ?? 1),
@@ -920,6 +1188,17 @@ function validatePlan(state: GameState, plan: DayPlan): void {
       throw new GameRuleError('Supply package quantities must be whole numbers from 0 to 20.');
     }
   }
+  if (new Set(plan.scheduledStaffIds).size !== plan.scheduledStaffIds.length) {
+    throw new GameRuleError('A team member can only be scheduled once per day.');
+  }
+  if (plan.scheduledStaffIds.length > VENUE_STAFF_CAPACITY[state.venueId]) {
+    throw new GameRuleError(
+      `${VENUES[state.venueId].shortName} can schedule ${VENUE_STAFF_CAPACITY[state.venueId]} staff.`,
+    );
+  }
+  if (plan.scheduledStaffIds.some((id) => !state.staff.some((member) => member.id === id))) {
+    throw new GameRuleError('Only hired staff can be scheduled.');
+  }
 }
 
 function getDrink(drinkId: DrinkId): DrinkConfig {
@@ -951,6 +1230,25 @@ function emptyRushStats(): RushStats {
     arrivalsBySegment: {},
     servedBySegment: {},
   };
+}
+
+function scheduledStaff(state: GameState): StaffMember[] {
+  const scheduledIds = new Set(state.plan.scheduledStaffIds);
+  return state.staff.filter((member) => scheduledIds.has(member.id));
+}
+
+function venueMeetsRequirement(current: VenueId, required: VenueId): boolean {
+  return VENUE_ORDER.indexOf(current) >= VENUE_ORDER.indexOf(required);
+}
+
+function requireManagementPhase(state: GameState): void {
+  if (state.phase !== 'planning' && state.phase !== 'reinvest') {
+    throw new GameRuleError('Staff can only be hired while planning or reinvesting.');
+  }
+}
+
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 function requirePhase(state: GameState, expected: GameState['phase']): void {
