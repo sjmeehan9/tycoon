@@ -6,8 +6,8 @@
       "phase": 1,
       "components": [
         { "id": "1.1", "name": "Human Setup", "status": "committed" },
-        { "id": "1.2", "name": "Complete Seeded Cart Day", "status": "implementing" },
-        { "id": "1.3", "name": "Responsive Autosaved Continuation", "status": "spec-validated" },
+        { "id": "1.2", "name": "Complete Seeded Cart Day", "status": "committed" },
+        { "id": "1.3", "name": "Responsive Autosaved Continuation", "status": "implementing" },
         { "id": "1.4", "name": "Phase Validation & Documentation", "status": "spec-validated" }
       ]
     },
