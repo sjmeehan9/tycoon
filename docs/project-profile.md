@@ -1,75 +1,116 @@
-# Project Profile — Tycoon
+# Project Profile — Laneway Tycoon
 
-The single source of truth for everything stack- and repo-specific. Every agent reads this before running build, test, or validation commands. Keep it current — agents trust it over their own assumptions.
+The single source of truth for stack- and repository-specific execution. The
+approved product and implementation plan in the root Codex conversation remains
+the product source of truth.
 
 ## Platform & languages
 
-- Python 3.12+ application
-- Dependency management: `pyproject.toml` + `.venv`
+- Browser-only responsive Progressive Web App
+- TypeScript in strict mode
+- React 19.2 and Vite 8.1
+- Node.js 22.12 or newer; pnpm 10
+- No backend, account system, secrets, analytics, or runtime external services
 
 ## Validation sequence
 
 Run in order; all must pass ("all checks pass" means exactly this list):
 
 ```bash
-source .venv/bin/activate
-black --check src/ tests/
-isort --check-only src/ tests/
-pytest -q
+pnpm install --frozen-lockfile
+pnpm build
+pnpm lint
+pnpm test
+pnpm test:e2e
 ```
 
 ## Test frameworks
 
-- **Unit:** pytest (`tests/`)
-- **UI / E2E harness:** Playwright (only if the project has a web UI — otherwise end-to-end tests are pytest integration tests against the real entry points)
+- **Unit/component:** Vitest and React Testing Library
+- **UI/E2E harness:** Playwright with desktop Chromium and representative touch-mobile projects
+- **Game balance:** deterministic seeded simulation tests exercising full campaign outcomes
 
 ## Human validation channel
 
-Local run of the application per Run instructions; phase validation lists the flows to exercise under **Required actions (human)** when manual verification is needed.
+Run `pnpm dev` or `pnpm preview`, then play the named phase flows in a desktop
+browser and a mobile browser or Playwright-emulated touch device. GitHub Pages
+is the production channel and is enabled only at the final release gate.
 
 ## Test & coverage policy
 
-Essential tests proving the primary paths. Coverage is **not measured** — do not add coverage flags or report coverage gaps as findings.
+Essential tests must prove primary gameplay, persistence, responsive UI, and
+offline paths. Coverage is not measured; do not add a percentage gate.
 
 ## Project layout
 
+```text
+package.json       project metadata, scripts, and dependencies
+pnpm-lock.yaml     reproducible dependency resolution
+src/               application, simulation engine, UI, and content
+public/            PWA metadata and bundled visual/audio assets
+tests/             Vitest and Playwright tests
+docs/              planning, implementation context, and validation reports
 ```
-pyproject.toml   project metadata & dependencies
-src/             application code
-tests/           pytest tests
-docs/            project documents (plans, breakdowns, reports)
-```
+
+The obsolete bootstrap-only `pyproject.toml` is removed when the TypeScript
+application scaffold is created.
 
 ## Run instructions
 
 ```bash
-python -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]'
-python -m tycoon    # adjust to the real entry point once it exists
+pnpm install
+pnpm dev
+pnpm build
+pnpm preview
 ```
 
-Secrets and configuration live in root-level `.env.local` (copied from `.env.example`; gitignored) — never commit real secrets.
+No `.env.local` is required for the game. Never add secrets to the repository.
 
 ## Git workflow contract
 
-- `main` is protected — never commit to or merge `main` directly.
-- One branch per phase: `phase-<X>`. Components are committed to the phase branch, one commit per component (`feat(phase-X): Component X.Y — <name>`).
-- The phase branch merges to `main` only after `docs/phase-X-test-report.md` is PASS **and** the human has approved (merge request goes under Required actions).
-- Standalone fixes outside a phase: short-lived branch + PR.
+- `main` is protected; never commit to it directly.
+- Use one branch per phase: `phase-1`, `phase-2`, and `phase-3`.
+- Components are committed to their phase branch with messages in the form
+  `feat(phase-X): Component X.Y — <name>`.
+- A phase may merge only after its validation targets pass, a
+  `docs/phase-X-test-report.md` records PASS, and the human approves the merge.
+- Phase 2 may branch from the validated Phase 1 head and Phase 3 from the
+  validated Phase 2 head so implementation can continue before final merges.
+- Production publication and repository visibility changes require the final
+  release gate, already identified as an intended outcome by the user.
 
 ## External services & human-task inventory
 
-Feeds Component X.1 (human setup) of each phase. List accounts, API keys, and infrastructure the project needs (fill in during planning):
-
-- (none yet)
+- Phases 1–2: none.
+- Phase 3 release: make `sjmeehan9/tycoon` public, enable GitHub Pages with
+  GitHub Actions, and confirm the published game URL.
 
 ## Performance budgets
 
-- (define per project — e.g. p95 request latency, batch runtime)
+- Responsive at 360 CSS pixels wide through large desktop screens.
+- Maintain a responsive service-rush animation on a mid-tier mobile device,
+  respecting reduced-motion preferences.
+- Lighthouse mobile scores of at least 90 for performance, accessibility, best
+  practices, and PWA-installability checks where Lighthouse exposes them.
+- Initial compressed application assets should remain practical for first load
+  over mobile broadband; large raster assets must be optimized.
 
 ## Framework versions
 
-- Verify current library versions against official documentation during Technical Validation; record pins in `pyproject.toml`.
+- React 19.2.x
+- Vite 8.1.x
+- TypeScript, Vitest, Playwright, ESLint, and `vite-plugin-pwa`: pin mutually
+  compatible current stable releases in `pnpm-lock.yaml` during implementation.
+- Target Vite's modern-browser baseline, including Safari 16.4 or newer.
 
 ## Standards file
 
-`.github/instructions/copilot.instructions.md` (Python section applies).
+`.github/instructions/copilot.instructions.md` (TypeScript section applies).
+
+## Lean team override
+
+At the user's direction, only the `technical-business-analyst` and `implement`
+agent roles may be spawned. The coordinator supplies skeleton contracts,
+performs stewardship, and verifies outputs. The Implement agent owns coding,
+self-testing, defect correction, self-review, validation reports, and phase
+documentation; no other agent role may be used.
