@@ -225,6 +225,27 @@ export const WEATHER_DETAILS: Record<WeatherId, { name: string; demand: number; 
   coldSnap: { name: 'Cold snap', demand: 1.1, note: 'Hot, comforting cups are in demand.' },
 };
 
+export const SCENARIO_DETAILS: Record<
+  ScenarioId,
+  { name: string; description: string; demandMultiplier: number }
+> = {
+  lanewayClassic: {
+    name: 'Laneway Classic',
+    description: 'The balanced original 30-day campaign.',
+    demandMultiplier: 1,
+  },
+  rainySeason: {
+    name: 'Rainy Season',
+    description: 'More wet days reward a strong hot-drink and shelter strategy.',
+    demandMultiplier: 1,
+  },
+  festivalWeek: {
+    name: 'Festival Week',
+    description: 'Busier foot traffic tests queue capacity from the opening bell.',
+    demandMultiplier: 1.08,
+  },
+};
+
 export const SEGMENT_DRINK_APPEAL: Record<CustomerSegment, Record<DrinkId, number>> = {
   commuter: weights({ longBlack: 1.5, flatWhite: 1.4, batchBrew: 1.6, piccolo: 1.1 }),
   student: weights({ latte: 1.35, mocha: 1.65, icedLatte: 1.45, coldBrew: 1.25 }),
@@ -381,6 +402,16 @@ export const INITIAL_CASH_CENTS = 18_000;
 export const INITIAL_REPUTATION = 35;
 export const CART_IMPROVEMENT_COST_CENTS = 2_500;
 export const MAX_QUEUE_LENGTH = 8;
+
+/** Typed, centrally tuned campaign outcome and portability bounds. */
+export const CAMPAIGN_RULES = {
+  durationDays: 30,
+  victoryCashCents: 30_000,
+  victoryReputation: 65,
+  overdraftFloorCents: -10_000,
+  maximumHistoryDays: 500,
+  maximumSaveBytes: 750_000,
+} as const;
 
 /** Create a full inventory record with zero stock. */
 export function emptyInventory(): IngredientInventory {

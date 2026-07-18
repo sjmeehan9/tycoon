@@ -37,6 +37,7 @@ export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'stea
 export type WeatherId = 'mild' | 'sunny' | 'rainy' | 'coldSnap';
 export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
 export type CosmeticId = 'classicAwning' | 'wattleAwning' | 'neonCup';
+export type AchievementId = 'cafeFounder' | 'goldenCup' | 'hardLessons';
 export type RushSpeed = 1 | 2 | 4;
 
 export interface IngredientAmount {
@@ -264,7 +265,7 @@ export interface CampaignOutcome {
 }
 
 export interface GameState {
-  stateVersion: 1;
+  stateVersion: 2;
   campaignId: string;
   seed: number;
   rngState: number;
@@ -308,14 +309,14 @@ export interface CampaignRecord {
 
 export interface MetaProgress {
   endlessUnlocked: boolean;
-  achievements: string[];
+  achievements: AchievementId[];
   cosmetics: CosmeticId[];
   scenarios: ScenarioId[];
   records: CampaignRecord[];
 }
 
 export interface SaveEnvelope {
-  schemaVersion: 1;
+  schemaVersion: 2;
   savedAt: string;
   activeRun: GameState | null;
   preferences: Preferences;

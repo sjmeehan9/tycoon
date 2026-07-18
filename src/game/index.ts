@@ -23,5 +23,6 @@ export {
   togglePause,
 } from './engine';
 export { GameRuleError } from './errors';
+export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
 export { canOpen, formatMoney, rushClock, selectedSupplyCost, stockedInventory } from './selectors';
 export type * from './types';

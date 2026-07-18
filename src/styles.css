@@ -112,6 +112,8 @@ small {
 }
 
 .title-screen {
+  position: relative;
+  z-index: 0;
   display: grid;
   min-height: 100vh;
   place-items: center;
@@ -142,6 +144,8 @@ small {
 }
 .seed-field {
   display: grid;
+  width: 100%;
+  min-width: 0;
   max-width: 300px;
   gap: 0.35rem;
   margin: auto;
@@ -151,6 +155,14 @@ small {
 .seed-field input {
   min-height: 44px;
   padding: 0.6rem;
+  border: 2px solid var(--ink);
+  background: #fff;
+}
+.seed-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.55rem;
   border: 2px solid var(--ink);
   background: #fff;
 }
@@ -601,6 +613,99 @@ legend {
   padding: 1rem;
   background: rgba(31, 21, 17, 0.76);
 }
+.game-tools-button {
+  position: fixed;
+  z-index: 100;
+  right: 1rem;
+  bottom: 1rem;
+  background: #f7d98e;
+}
+.game-tools-dialog {
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 2rem));
+  overflow-y: auto;
+  padding: 1.2rem;
+  border: 4px solid var(--ink);
+  background: var(--cream);
+  box-shadow: 8px 8px 0 #140e0b;
+}
+.tool-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 2px solid var(--ink);
+}
+.tool-tabs button {
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  font-weight: 850;
+}
+.tool-tabs button:first-child {
+  border-left: 0;
+}
+.tool-tabs button[aria-selected='true'] {
+  color: #fff;
+  background: var(--green);
+}
+.tool-section {
+  min-height: 260px;
+  padding: 1rem 0 0;
+}
+.preference-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 48px;
+  padding: 0.5rem;
+  border-bottom: 1px solid #bda996;
+  cursor: pointer;
+  font-weight: 800;
+}
+.preference-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--green);
+}
+.achievement-list,
+.record-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0.7rem 0;
+}
+.achievement-list article,
+.record-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  border: 2px solid #a48b78;
+  background: var(--paper);
+}
+.achievement-list article {
+  display: block;
+}
+.help-list {
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.file-button {
+  display: inline-flex;
+  align-items: center;
+}
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
 .event-dialog {
   width: min(560px, 100%);
   padding: 1.5rem;
@@ -778,6 +883,49 @@ legend {
   border-color: #547961;
   background: #cce0c6;
 }
+.ending-panel {
+  border-width: 4px;
+}
+.ending-panel.is-victory {
+  background: #fff3c9;
+}
+.ending-panel.is-defeat {
+  background: #f8e0d8;
+}
+.ending-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+.ending-stats div {
+  padding: 0.7rem;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+}
+.ending-stats dt {
+  color: #6d5548;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.ending-stats dd {
+  margin: 0.25rem 0 0;
+  font-weight: 900;
+}
+.unlock-card {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+  padding: 0.85rem;
+  border-left: 6px solid var(--green);
+  background: #d8e7d2;
+}
+.ending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
 .game-footer {
   padding: 0.8rem 1rem 1.2rem;
   color: #654b3f;
@@ -909,6 +1057,24 @@ legend {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
+  .tool-tabs {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tool-tabs button:nth-child(3) {
+    border-top: 1px solid var(--ink);
+    border-left: 0;
+  }
+  .tool-tabs button:nth-child(4) {
+    border-top: 1px solid var(--ink);
+  }
+  .ending-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .achievement-list article,
+  .record-list article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -919,4 +1085,12 @@ legend {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
 }

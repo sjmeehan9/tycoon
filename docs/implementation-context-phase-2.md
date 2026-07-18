@@ -51,3 +51,27 @@
   eight Playwright project tests across desktop and touch-mobile Chromium.
 - No scope deviation. Weekly rosters, manual drink making, multiple locations,
   and permanent economic meta bonuses remain explicit non-goals.
+
+## Component 2.4 — Campaign Outcomes, Meta Progress, and Save Transfer
+
+- Added configurable campaign targets, Day 30 deadline resolution, settlement-
+  ordered bankruptcy below the overdraft floor, target-missed closure, and an
+  eligible victory transition into Day 31 endless play.
+- Added deterministic achievements, records, cosmetics, alternate scenarios,
+  settings, and first-victory endless unlocks. Meta processing is idempotent and
+  cannot modify cash, reputation, inventory, capacity, service, or pricing.
+- Upgraded local persistence to a fully bounded version-2 envelope with version
+  1 migration, last-known-good recovery, complete nested validation, safe
+  filenames, JSON download/upload, future-version rejection, and non-destructive
+  import errors.
+- Added reachable game-menu settings, help, records, transfer, and recovery
+  controls plus campaign ending screens with only valid restart/continuation
+  actions. Reset and import preserve the correct meta/settings boundaries.
+- Added two independent complete 30-day victory simulations, a complete
+  bankruptcy simulation, deadline/overdraft ordering tests, adversarial save
+  tests, outcome/meta component coverage, and production-path desktop/mobile
+  import/export E2E flows.
+- Exact validation passed: frozen install, build, lint, 57 Vitest tests, and 16
+  Playwright tests across desktop Chromium and 360px touch-mobile.
+- No deviation from the approved scope. Cloud sync, accounts, analytics, and
+  economic meta bonuses remain explicit non-goals.

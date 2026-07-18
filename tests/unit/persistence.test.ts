@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { CAMPAIGN_RULES } from '../../src/content/gameContent';
 import {
   advanceTick,
   closeDay,
@@ -14,12 +15,27 @@ import {
 import {
   BACKUP_SAVE_KEY,
   BrowserSaveStore,
+  LEGACY_SAVE_KEY,
   SAVE_KEY,
+  SaveValidationError,
   createSaveEnvelope,
+  importEnvelope,
   parseEnvelope,
+  serializeEnvelope,
 } from '../../src/persistence/saveStore';
+import { nearVictoryEnvelope } from '../fixtures/campaignFixtures';
 
-describe('Phase 1 save envelope', () => {
+interface MutableLegacyEnvelope {
+  schemaVersion: number;
+  activeRun: {
+    stateVersion: number;
+    report: Record<string, unknown>;
+    history: Array<Record<string, unknown>>;
+  };
+  meta: { achievements: string[] };
+}
+
+describe('versioned save envelope', () => {
   it('round-trips a campaign through browser storage', () => {
     const store = new BrowserSaveStore(window.localStorage);
     const envelope = createSaveEnvelope(createCampaign({ seed: 12_345 }));
@@ -33,7 +49,7 @@ describe('Phase 1 save envelope', () => {
     const second = createSaveEnvelope(createCampaign({ seed: 2 }));
     store.save(first);
     store.save(second);
-    expect(window.localStorage.getItem(BACKUP_SAVE_KEY)).toBe(JSON.stringify(first));
+    expect(window.localStorage.getItem(BACKUP_SAVE_KEY)).toBe(serializeEnvelope(first));
     window.localStorage.setItem(SAVE_KEY, '{broken');
     const restored = store.load();
     expect(restored.source).toBe('backup');
@@ -66,6 +82,68 @@ describe('Phase 1 save envelope', () => {
     expect(
       parseEnvelope(JSON.stringify({ schemaVersion: 1, savedAt: '', activeRun: {} })),
     ).toBeNull();
+  });
+
+  it('migrates every supported version 1 field into schema version 2', () => {
+    const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as MutableLegacyEnvelope;
+    legacy.schemaVersion = 1;
+    legacy.activeRun.stateVersion = 1;
+    delete legacy.activeRun.report.wageCostCents;
+    legacy.activeRun.history = [{ ...legacy.activeRun.report }];
+    const legacyHistoryReport = legacy.activeRun.history[0];
+    if (!legacyHistoryReport) throw new Error('Expected legacy history report.');
+    delete legacyHistoryReport.wageCostCents;
+    legacy.meta.achievements = ['legacy-unknown'];
+    const migrated = importEnvelope(JSON.stringify(legacy));
+    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.activeRun?.stateVersion).toBe(2);
+    expect(migrated.activeRun?.report?.wageCostCents).toBe(0);
+    expect(migrated.activeRun?.history[0]?.wageCostCents).toBe(0);
+    expect(migrated.meta.achievements).toEqual([]);
+  });
+
+  it('discovers and migrates a legacy browser key', () => {
+    const legacy = JSON.parse(
+      JSON.stringify(createSaveEnvelope(createCampaign({ seed: 91 }))),
+    ) as MutableLegacyEnvelope;
+    legacy.schemaVersion = 1;
+    legacy.activeRun.stateVersion = 1;
+    window.localStorage.setItem(LEGACY_SAVE_KEY, JSON.stringify(legacy));
+    const loaded = new BrowserSaveStore(window.localStorage).load();
+    expect(loaded.source).toBe('legacy');
+    expect(loaded.envelope?.activeRun?.stateVersion).toBe(2);
+    expect(loaded.warning).toContain('migrated');
+  });
+
+  it('rejects oversized, unbounded, non-finite, unsafe, and incompatible imports', () => {
+    const valid = nearVictoryEnvelope();
+    expect(() => importEnvelope('x'.repeat(CAMPAIGN_RULES.maximumSaveBytes + 1))).toThrow(
+      SaveValidationError,
+    );
+    expect(() => importEnvelope(JSON.stringify({ ...valid, schemaVersion: 99 }))).toThrow(
+      'not supported',
+    );
+    expect(() =>
+      importEnvelope(
+        JSON.stringify({
+          ...valid,
+          activeRun: { ...valid.activeRun, history: Array(501).fill(valid.activeRun?.report) },
+        }),
+      ),
+    ).toThrow('500-item limit');
+    expect(() =>
+      importEnvelope(
+        JSON.stringify({
+          ...valid,
+          activeRun: { ...valid.activeRun, campaignId: '<script>alert(1)</script>' },
+        }),
+      ),
+    ).toThrow('unsafe characters');
+    const serialized = JSON.stringify(valid).replace(
+      `"cashCents":${valid.activeRun?.cashCents}`,
+      '"cashCents":1e999',
+    );
+    expect(() => importEnvelope(serialized)).toThrow('allowed bounds');
   });
 
   it('round-trips every playable game phase and exact rush controls', () => {

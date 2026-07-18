@@ -12,7 +12,13 @@ import {
   startRush,
   type GameState,
 } from '../../src/game';
-import { BrowserSaveStore, createSaveEnvelope } from '../../src/persistence/saveStore';
+import {
+  SAVE_KEY,
+  BrowserSaveStore,
+  createSaveEnvelope,
+  serializeEnvelope,
+} from '../../src/persistence/saveStore';
+import { nearBankruptcyEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
 
 function renderGame(): void {
   render(
@@ -147,7 +153,7 @@ describe('playable cart UI', () => {
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 1/ }));
     expect(firstPromotion).toBeEnabled();
     await user.click(firstPromotion);
-    expect(screen.getByRole('heading', { name: /Day 1 · Coffee Kiosk/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/30 · Coffee Kiosk/ })).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: /Buy Grinder level 2/ }));
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 2/ }));
@@ -156,7 +162,77 @@ describe('playable cart UI', () => {
     const cafePromotion = screen.getByRole('button', { name: 'Promote to Specialty Cafe' });
     expect(cafePromotion).toBeEnabled();
     await user.click(cafePromotion);
-    expect(screen.getByRole('heading', { name: /Day 1 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/30 · Specialty Cafe/ })).toBeVisible();
     expect(screen.getByText('Laneway Specialty Cafe')).toBeVisible();
+  });
+
+  it('imports a validated near-victory file, unlocks meta, and enters endless mode', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([serializeEnvelope(nearVictoryEnvelope())], 'near-victory.json', {
+        type: 'application/json',
+      }),
+    );
+    expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Settle the day' }));
+    expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
+    expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Continue in endless mode' }));
+    expect(
+      screen.getByRole('heading', { name: /Day 31 · Endless · Specialty Cafe/ }),
+    ).toBeVisible();
+  });
+
+  it('imports a near-floor state and presents bankruptcy restart actions', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([serializeEnvelope(nearBankruptcyEnvelope())], 'near-bankruptcy.json', {
+        type: 'application/json',
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Settle the day' }));
+    expect(await screen.findByRole('heading', { name: /till can’t stretch/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Start fresh campaign' })).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: 'Continue in endless mode' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('rejects an incompatible import without disrupting the active run', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File(['{"schemaVersion":99}'], 'future.json', { type: 'application/json' }),
+    );
+    expect(await screen.findByText('Import rejected; current data is unchanged.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Close game menu' }));
+    expect(screen.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
+  });
+
+  it('restores a last-known-good backup through the recovery UI', async () => {
+    const store = new BrowserSaveStore(window.localStorage);
+    const first = createSaveEnvelope(createCampaign({ seed: 100 }));
+    store.save(first);
+    store.save(createSaveEnvelope(createCampaign({ seed: 101 })));
+    window.localStorage.setItem(SAVE_KEY, '{broken');
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    await user.click(screen.getByRole('button', { name: 'Restore last-known-good save' }));
+    expect(await screen.findByRole('heading', { name: /Day 1\/30 · Coffee Cart/ })).toBeVisible();
+    expect(window.localStorage.getItem(SAVE_KEY)).toBe(serializeEnvelope(first));
   });
 });

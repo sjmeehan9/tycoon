@@ -1,11 +1,14 @@
 import { useState } from 'react';
 
 import { useGame } from '../app/GameContext';
+import { SCENARIO_DETAILS } from '../content/gameContent';
+import type { ScenarioId } from '../game';
 
 /** New/continue campaign entry screen. */
 export function TitleScreen(): React.JSX.Element {
-  const { continueCampaign, hasSave, resetCampaign, startCampaign } = useGame();
+  const { continueCampaign, hasSave, meta, resetCampaign, startCampaign } = useGame();
   const [seed, setSeed] = useState(2607);
+  const [scenarioId, setScenarioId] = useState<ScenarioId>('lanewayClassic');
 
   return (
     <main className="title-screen">
@@ -34,10 +37,23 @@ export function TitleScreen(): React.JSX.Element {
         <p className="field-help" id="seed-help">
           The same seed and decisions produce the same customers and outcomes.
         </p>
+        <label className="seed-field">
+          Scenario
+          <select
+            onChange={(event) => setScenarioId(event.target.value as ScenarioId)}
+            value={scenarioId}
+          >
+            {meta.scenarios.map((id) => (
+              <option key={id} value={id}>
+                {SCENARIO_DETAILS[id].name} — {SCENARIO_DETAILS[id].description}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="title-actions">
           <button
             className="button button-primary"
-            onClick={() => startCampaign(seed)}
+            onClick={() => startCampaign(seed, scenarioId)}
             type="button"
           >
             Start new campaign

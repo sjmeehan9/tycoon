@@ -1,4 +1,9 @@
-import { PURCHASE_PACKAGES, RUSH_DURATION_TICKS, TICKS_PER_SECOND } from '../content/gameContent';
+import {
+  CAMPAIGN_RULES,
+  PURCHASE_PACKAGES,
+  RUSH_DURATION_TICKS,
+  TICKS_PER_SECOND,
+} from '../content/gameContent';
 import { purchaseCost } from './engine';
 import type { GameState } from './types';
 
@@ -24,7 +29,10 @@ export function rushClock(state: GameState): string {
 
 /** Return whether the current plan can open without overspending. */
 export function canOpen(state: GameState): boolean {
-  return state.phase === 'planning' && selectedSupplyCost(state) <= state.cashCents;
+  return (
+    state.phase === 'planning' &&
+    selectedSupplyCost(state) <= state.cashCents - CAMPAIGN_RULES.overdraftFloorCents
+  );
 }
 
 /** Return only inventory entries available through the Phase 1 supplier. */

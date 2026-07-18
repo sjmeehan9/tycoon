@@ -34,7 +34,7 @@ Implementation: all three phases, sequential lean handoff
 | Agent | Role | Status | Owns |
 |---|---|---|---|
 | three_phase_plan_retry | Technical Business Analyst | done | `docs/phase-plan.md` |
-| lean_full_build | Implement | active — Component 2.3 validated; Component 2.4 next | application, tests, validation, release docs |
+| lean_full_build | Implement | active — Component 2.4 validated; Component 2.5 next | application, tests, validation, release docs |
 
 ## Human task gate
 

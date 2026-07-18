@@ -1,6 +1,6 @@
 import { useGame } from '../app/GameContext';
 import { formatMoney } from '../game';
-import { VENUES } from '../content/gameContent';
+import { CAMPAIGN_RULES, VENUES } from '../content/gameContent';
 
 /** Persistent campaign status and phase label. */
 export function GameHeader(): React.JSX.Element {
@@ -12,7 +12,9 @@ export function GameHeader(): React.JSX.Element {
       <div>
         <p className="eyebrow">Laneway Tycoon</p>
         <h1>
-          Day {game.day} · {VENUES[game.venueId].shortName}
+          Day {game.day}
+          {game.mode === 'campaign' ? `/${CAMPAIGN_RULES.durationDays}` : ' · Endless'} ·{' '}
+          {VENUES[game.venueId].shortName}
         </h1>
       </div>
       <dl className="status-strip" aria-label="Campaign status">

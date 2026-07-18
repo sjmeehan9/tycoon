@@ -1,5 +1,6 @@
 import {
   BEAN_DETAILS,
+  CAMPAIGN_RULES,
   CART_IMPROVEMENT_COST_CENTS,
   DRINK_MAP,
   EQUIPMENT,
@@ -10,6 +11,7 @@ import {
   MILK_SURCHARGE_CENTS,
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
+  SCENARIO_DETAILS,
   SEGMENT_DRINK_APPEAL,
   SIZE_SURCHARGE_CENTS,
   TICKS_PER_SECOND,
@@ -124,7 +126,7 @@ export function createCampaign(options: CampaignOptions): GameState {
   const seed = Math.trunc(options.seed) >>> 0;
   const rngState = seed === 0 ? 0x6d2b79f5 : seed;
   return {
-    stateVersion: 1,
+    stateVersion: 2,
     campaignId: `laneway-${seed.toString(16).padStart(8, '0')}`,
     seed,
     rngState,
@@ -170,8 +172,8 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
     scheduledStaffIds: patch.scheduledStaffIds ?? state.plan.scheduledStaffIds,
   };
   validatePlan(state, plan);
-  if (purchaseCost(plan) > state.cashCents) {
-    throw new GameRuleError('Those supplies cost more cash than the cart has available.');
+  if (purchaseCost(plan) > state.cashCents - CAMPAIGN_RULES.overdraftFloorCents) {
+    throw new GameRuleError('Those supplies exceed the available cash and overdraft buffer.');
   }
   return { ...state, plan };
 }
@@ -181,8 +183,8 @@ export function startRush(state: GameState): GameState {
   requirePhase(state, 'planning');
   validatePlan(state, state.plan);
   const suppliesCost = purchaseCost(state.plan);
-  if (suppliesCost > state.cashCents) {
-    throw new GameRuleError('Reduce supply purchases before opening the cart.');
+  if (suppliesCost > state.cashCents - CAMPAIGN_RULES.overdraftFloorCents) {
+    throw new GameRuleError('Reduce supply purchases before opening the business.');
   }
   const inventory = addPurchases(state.inventory, state.plan);
   const effects = operationalEffects(state);
@@ -288,15 +290,53 @@ export function closeDay(state: GameState): GameState {
   requirePhase(state, 'report');
   if (!state.report) throw new GameRuleError('There is no day report to settle.');
   const settledReport: DayReport = { ...state.report, settled: true };
-  return {
+  const closingReputation = clamp(state.reputation + settledReport.reputationChange, 0, 100);
+  const settled: GameState = {
     ...state,
     phase: 'reinvest',
     cashCents: settledReport.closingCashCents,
-    reputation: clamp(state.reputation + settledReport.reputationChange, 0, 100),
+    reputation: closingReputation,
     report: settledReport,
     lastSettledDay: state.day,
-    history: [...state.history, settledReport],
+    history: [...state.history, settledReport].slice(-CAMPAIGN_RULES.maximumHistoryDays),
   };
+  if (settled.cashCents < CAMPAIGN_RULES.overdraftFloorCents) {
+    return {
+      ...settled,
+      phase: 'defeat',
+      outcome: {
+        type: 'bankruptcy',
+        title: 'The till can’t stretch any further',
+        message: `Closing cash crossed the ${formatCents(CAMPAIGN_RULES.overdraftFloorCents)} overdraft floor. The laneway remembers a brave run.`,
+      },
+    };
+  }
+  if (settled.mode === 'campaign' && settled.day >= CAMPAIGN_RULES.durationDays) {
+    const won =
+      settled.venueId === 'cafe' &&
+      settled.cashCents >= CAMPAIGN_RULES.victoryCashCents &&
+      settled.reputation >= CAMPAIGN_RULES.victoryReputation;
+    return won
+      ? {
+          ...settled,
+          phase: 'victory',
+          outcome: {
+            type: 'victory',
+            title: 'The laneway has its local institution',
+            message: `Day ${CAMPAIGN_RULES.durationDays} closes with a thriving specialty cafe, ${formatCents(settled.cashCents)} in the till, and ${settled.reputation} reputation.`,
+          },
+        }
+      : {
+          ...settled,
+          phase: 'defeat',
+          outcome: {
+            type: 'targetMissed',
+            title: 'A good run, short of the final brief',
+            message: `Day ${CAMPAIGN_RULES.durationDays} needs a cafe, ${formatCents(CAMPAIGN_RULES.victoryCashCents)}, and ${CAMPAIGN_RULES.victoryReputation} reputation. Your next seed is waiting.`,
+          },
+        };
+  }
+  return settled;
 }
 
 /** Buy the representative Phase 1 cart improvement during reinvestment. */
@@ -412,6 +452,10 @@ export function continueEndless(state: GameState): GameState {
     mode: 'endless',
     phase: 'planning',
     day: state.day + 1,
+    weather: weatherForDay(state.seed, state.day + 1, state.scenarioId),
+    candidateStaff: candidatePoolForDay(state.seed, state.day + 1).filter(
+      (candidate) => !state.staff.some((member) => member.id === candidate.id),
+    ),
     outcome: null,
     rush: null,
     report: null,
@@ -1101,6 +1145,7 @@ export function demandRate(state: GameState): number {
   const beanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
   const weatherFactor = WEATHER_DETAILS[state.weather].demand;
   const venueFactor = VENUE_DEMAND_FACTOR[state.venueId];
+  const scenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
   const teamFactor = operationalEffects(state).demandMultiplier;
   const queueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
   const availableItems = state.plan.activeMenu.filter((drinkId) => {
@@ -1122,6 +1167,7 @@ export function demandRate(state: GameState): number {
       beanFactor *
       weatherFactor *
       venueFactor *
+      scenarioFactor *
       teamFactor *
       queueFactor *
       availabilityFactor *

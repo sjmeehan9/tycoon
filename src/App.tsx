@@ -1,6 +1,8 @@
 import { useGame } from './app/GameContext';
 import { EventDialog } from './components/EventDialog';
+import { EndingPanel } from './components/EndingPanel';
 import { GameHeader } from './components/GameHeader';
+import { GameTools } from './components/GameTools';
 import { Planner } from './components/Planner';
 import { ReinvestPanel } from './components/ReinvestPanel';
 import { ReportPanel } from './components/ReportPanel';
@@ -17,6 +19,7 @@ export default function App(): React.JSX.Element {
       <>
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <TitleScreen />
+        <GameTools />
       </>
     );
   }
@@ -38,12 +41,14 @@ export default function App(): React.JSX.Element {
           {game.phase === 'rush' || game.phase === 'event' ? <RushPanel /> : null}
           {game.phase === 'report' ? <ReportPanel /> : null}
           {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
+          {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
         </div>
       </main>
       <footer className="game-footer">
         Autosaved locally · no account · deterministic seed {game.seed}
       </footer>
       <EventDialog />
+      <GameTools />
     </div>
   );
 }
