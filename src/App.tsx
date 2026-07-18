@@ -13,6 +13,7 @@ import { RushPanel } from './components/RushPanel';
 import { TitleScreen } from './components/TitleScreen';
 import { CanvasScene } from './scene/CanvasScene';
 import { VENUES } from './content/gameContent';
+import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
 /** Root game composition. */
 export default function App(): React.JSX.Element {
@@ -22,6 +23,7 @@ export default function App(): React.JSX.Element {
       <>
         <AudioDirector />
         <GameAnnouncer />
+        <PwaUpdatePrompt />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <TitleScreen />
         <GameTools />
@@ -33,6 +35,7 @@ export default function App(): React.JSX.Element {
     <>
       <AudioDirector />
       <GameAnnouncer />
+      <PwaUpdatePrompt />
       <div className="app-shell">
         <GameHeader />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}

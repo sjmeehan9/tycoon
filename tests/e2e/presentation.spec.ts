@@ -4,7 +4,7 @@ test.describe('pixel presentation and local audio', () => {
   test('loads original art, keeps the scene crisp and fitted, and persists audio consent', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto('./');
     const titleArt = page.locator('.title-art');
     await expect(titleArt).toBeVisible();
     expect(

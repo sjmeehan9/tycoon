@@ -1,49 +1,131 @@
-# project-template
+# Laneway Tycoon
 
-A GitHub template repository that bootstraps AI-agent-driven project delivery — for **iOS (Swift/SwiftUI)**, **Python**, and **TypeScript** projects — with a matched agent suite for **Claude Code**, **GitHub Copilot**, and **OpenAI Codex**.
+Laneway Tycoon is a free, browser-based, old-school business game about growing
+a Melbourne coffee cart into a specialty cafe. Plan a focused Australian cafe
+menu, price drinks, choose beans and recipes, stock the morning, hire a small
+team, handle the rush, and learn from a causal end-of-day report.
 
-## What you get
+The game is deterministic, local-first, installable, and designed for desktop
+and mobile browsers. There are no accounts, ads, analytics, payments, or runtime
+external services.
 
-- **Two delivery pipelines** (see [supporting-files/AGENT_FLOWS.md](supporting-files/AGENT_FLOWS.md)):
-  - `validate-with-waitlist` — test market interest with a deployed waitlist page before building.
-  - `build-with-agent-team` — full delivery: brief → solution design → phase plan → component breakdowns → implement → test → review, phase by phase, with per-phase UI + backend validation.
-- **Generated agent definitions.** `.claude/agents/` (Claude Code), `.github/agents/` (Copilot), and `.codex/agents/` (Codex TOML) are rendered from single-source definitions in [`agents-src/`](agents-src/FORMAT.md); skills render from `skills-src/` to both `.claude/skills/` and `.agents/skills/` (the open Agent Skills standard Codex reads). Edit the source, run `python3 scripts/build-agents.py`; CI fails on drift.
-- **A per-repo stack contract.** Agents read `docs/project-profile.md` (created by bootstrap) for the validation sequence, test frameworks, git workflow, and human tasks — nothing stack-specific is hardcoded in agent prompts.
+## Play
 
-## Quickstart
+The public release will be available at
+<https://sjmeehan9.github.io/tycoon/> after the repository owner completes the
+release gate. Until then, run it locally:
 
 ```bash
-gh repo create my-app --template sjmeehan9/project-template --private --clone
-cd my-app
-./bootstrap.sh    # prompts: project name, platform (ios/python/typescript), bundle id
-git add -A && git commit -m "chore: bootstrap"
-git push
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-iOS projects get an XcodeGen `project.yml`, a walking-skeleton SwiftUI app with unit and XCUITest stubs (`.xcodeproj` is generated, gitignored), a **fastlane** pipeline (`beta` → TestFlight via App Store Connect API key; agent-run behind a per-phase approval gate), and a project-scoped **`.mcp.json`** wiring XcodeBuildMCP + iOS-Simulator MCP for agent-driven build/run/UI interaction. One-time machine and Apple-account setup (Xcode, brew tools, ASC API key, optional Happy Coder phone remote): [supporting-files/ios-setup-runbook.md](supporting-files/ios-setup-runbook.md).
+Open the URL printed by Vite. For the exact GitHub Pages build and offline
+behavior, use:
 
-Mixed stacks (e.g. iOS app + Python backend): run `bootstrap.sh` for the primary platform, then manually extend `docs/project-profile.md` with the second stack's sections (validation sequence, layout, run instructions).
+```bash
+pnpm build
+pnpm preview
+```
 
-### After bootstrap (human setup)
+The production preview lives under `/tycoon/`, matching GitHub Pages.
 
-1. Complete `docs/project-profile.md` (external services, budgets, versions).
-2. **Codex users:** run `codex` once in the repo root and **trust the project** — `.codex/config.toml` (sandbox/approval defaults, MCP servers) and `.codex/agents/` only load in trusted repos. Pipelines are invoked via the skills in `.agents/skills/`.
-2. Protect `main` — the git workflow contract assumes it.
-3. Add the **`TEMPLATE_SYNC_PAT`** secret so the weekly [template-sync](.github/workflows/template-sync.yml) workflow can PR template updates into your repo: a fine-grained PAT with **read** access to this (private) template repo and **contents + pull-requests + workflows write** on the generated repo (workflows write is required because `.github/workflows/` files are themselves synced). Without it the sync job fails (everything else works).
-4. iOS: set `DEVELOPMENT_TEAM` in `project.yml`, register the bundle ID in App Store Connect, create a TestFlight internal-testing group — TestFlight-on-device is the per-phase human validation channel.
+## How a day works
 
-## Working on the template itself
+1. Plan the menu, prices, bean profile, recipe emphasis, dial-in, supplies, and
+   scheduled staff.
+2. Open service. Drinks are made automatically while you pause, change speed,
+   and make one-off rush decisions.
+3. Read the report: arrivals, serves, waits, satisfaction, stock, revenue, cost,
+   wages, and bottlenecks reconcile to the saved result.
+4. Reinvest in equipment, promote cart → kiosk → cafe, and try to finish the
+   30-day campaign target. Victory unlocks endless play; bankruptcy and a missed
+   target retain records and a clean restart path.
 
-- Agent behaviour: edit `agents-src/*.src.md` (shared doctrine in `agents-src/shared/`), then `python3 scripts/build-agents.py`. Never edit rendered files.
-- Skills: edit `skills-src/*.src.md`, same command.
-- `python3 scripts/build-agents.py --check` is the CI gate ([agents-drift-check](.github/workflows/agents-drift-check.yml)).
-- Design docs: [supporting-files/IMPROVEMENT_PLAN.md](supporting-files/IMPROVEMENT_PLAN.md) records the rationale behind the current design.
+Coffee content follows a recognisable Australian specialty menu: espresso,
+short and long black, flat white, latte, cappuccino, piccolo, mocha, filter, and
+iced drinks, including common milk options and modifiers.
 
-## Design rules the suite follows
+## Controls and accessibility
 
-- **All agents inherit the session model** (`model: inherit` on Claude; no `model:` key on Copilot or Codex).
-- **Structured communication only** — every agent message is an Agent Report (Open questions / Outputs created / Problems / Drift / Deferred / Required actions / Next steps).
-- **Feature depth over test breadth** — as many phases/components as needed, each a rounded end-to-end feature; no count or time-budget sizing.
-- **Per-component Technical Validation** against current external documentation before implementation.
-- **Per-phase validation** — UI + critical-backend E2E at the end of every phase (simulator/XCUITest or Playwright), plus TestFlight-on-device human validation for iOS.
-- **Error-handling style and coverage gaps are not bugs** — they surface as Hardening notes, never as blockers or Debug work.
+- Every gameplay action works with keyboard, pointer, or touch.
+- Game and planner tabs support Arrow keys, Home, and End.
+- Event dialogs trap and restore focus; outcomes are always available as text.
+- Coarse-pointer targets are at least 44px and the layout is tested at 360px.
+- Reduced motion, independent local audio controls, and onboarding choices are
+  persisted without affecting the deterministic simulation.
+- Audio is off initially and all art/audio ships inside the repository.
+
+## Saves, offline play, and updates
+
+The current campaign, settings, unlocks, and records are versioned in browser
+`localStorage`. A validated last-known-good copy is retained. The Game menu can
+export portable JSON, import a bounded schema-validated file, recover the prior
+copy, or clear only the active campaign.
+
+After one successful production load, the service worker caches the complete
+same-origin game so it can relaunch offline. A new release never refreshes an
+active game automatically: choose **Keep playing**, or **Save and update** to
+verify a local checkpoint before activating it. Clearing site data, private
+browsing policies, or browser storage eviction can remove local saves, so export
+a JSON copy for runs you care about.
+
+## Privacy and network behavior
+
+Laneway Tycoon does not collect or transmit gameplay, identifiers, personal
+data, or usage metrics. It has no backend. During normal play the only network
+requests are same-origin static files from the host; after caching, gameplay is
+fully offline. Import processing stays in the browser and imported content is
+parsed as data, never executed.
+
+GitHub Pages and a user's browser/network provider may independently log normal
+web requests under their own policies. This project does not add tracking.
+
+## Architecture
+
+- `src/game/` — pure seeded TypeScript simulation and campaign rules.
+- `src/content/` — typed coffee, customer, venue, staff, and equipment content.
+- `src/app/` and `src/components/` — React controller and accessible phase UI.
+- `src/persistence/` — versioned validation, migration, autosave, and transfer.
+- `src/scene/` and `src/audio/` — snapshot-driven Canvas presentation and local
+  opt-in media; neither advances simulation state.
+- `src/pwa/` — prompt-mode service-worker registration and checkpointed update.
+- `tests/` — deterministic unit/component tests plus production-build Playwright
+  journeys in desktop Chromium and 360px touch-mobile profiles.
+
+The production Vite base is `/tycoon/`. Public asset URLs use
+`import.meta.env.BASE_URL`; update both Vite and manifest scope/start URL if a
+fork deploys under another repository path.
+
+## Validate
+
+Use Node.js 22.12+ and pnpm 10, then run the repository's exact sequence:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm lint
+pnpm test
+pnpm test:e2e
+```
+
+Playwright uses the production build and `/tycoon/` preview, including offline,
+service-worker update, save-continuation, accessibility, desktop, and touch
+flows. Install its Chromium binary once if required with
+`pnpm exec playwright install chromium`.
+
+## Contributing and deployment
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development contract. GitHub Pages
+deployment is defined in `.github/workflows/deploy-pages.yml`: it validates the
+release, uploads only `dist/`, and deploys only from protected `main` with the
+standard Pages token permissions. No repository secret is required.
+
+The owner must make the repository public, select **GitHub Actions** in
+Settings → Pages, approve the phase merge, and verify the hosted URL. The full
+gate is in [docs/public-release-checklist.md](docs/public-release-checklist.md).
+
+## License
+
+Copyright © 2026 Sean Meehan. Released under the [MIT License](LICENSE).

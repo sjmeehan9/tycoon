@@ -672,6 +672,36 @@ legend {
   bottom: 1rem;
   background: #f7d98e;
 }
+
+.pwa-notice {
+  position: fixed;
+  z-index: 80;
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(26rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: var(--border-heavy);
+  border-radius: var(--radius);
+  background: var(--cream);
+  box-shadow: var(--shadow-heavy);
+  color: var(--ink);
+}
+
+.pwa-notice strong {
+  font-family: var(--display-font);
+  font-size: 1.15rem;
+}
+
+.pwa-notice p {
+  margin: 0.55rem 0;
+}
+
+.pwa-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
 .game-tools-dialog {
   width: min(720px, 100%);
   max-height: min(760px, calc(100vh - 2rem));

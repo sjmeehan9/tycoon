@@ -5,7 +5,7 @@ test.describe('autosaved continuation', () => {
     page,
   }) => {
     test.setTimeout(100_000);
-    await page.goto('/');
+    await page.goto('./');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
     await page.getByRole('button', { name: 'Show current step' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();

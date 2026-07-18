@@ -7,7 +7,7 @@ test.describe('campaign outcomes through production import', () => {
   test('finishes Day 30, records victory, unlocks meta, and enters endless mode', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto('./');
     await importSave(page, serializeEnvelope(nearVictoryEnvelope()), 'near-victory.json');
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await page.getByRole('button', { name: 'Settle the day' }).click();
@@ -25,7 +25,7 @@ test.describe('campaign outcomes through production import', () => {
   });
 
   test('settles below the floor into bankruptcy with no endless action', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
     await importSave(page, serializeEnvelope(nearBankruptcyEnvelope()), 'near-bankruptcy.json');
     await page.getByRole('button', { name: 'Settle the day' }).click();
     await expect(page.getByRole('heading', { name: /till can’t stretch/ })).toBeVisible();

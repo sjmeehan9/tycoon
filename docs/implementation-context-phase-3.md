@@ -61,3 +61,32 @@
   current axe Playwright package. Exact validation passed: frozen install,
   production build, lint/format, 67 Vitest tests, and 26 Playwright tests with
   two intentional browser-profile skips.
+
+## Component 3.4 — Offline-Safe PWA and Release Artifacts
+
+- Pinned `vite-plugin-pwa@1.3.0` and its direct prompt-client peer
+  `workbox-window@7.4.1`, both verified current and compatible with Vite 8.
+  Generated Workbox precaches all same-origin HTML, chunks, original art/audio,
+  manifest, SVG, and 192px/512px/maskable PNG icons.
+- Production Vite and manifest base/scope/start URL are `/tycoon/`; development
+  remains root-based. Playwright now always rebuilds and exercises the real
+  production preview, so every retained journey validates Pages asset paths.
+- Added prompt-mode update UI with no automatic active-run reload. Deferral
+  leaves the waiting worker untouched; acceptance synchronously checkpoints and
+  verifies the complete current save before activation, and blocks safely if
+  browser storage fails.
+- Added real service-worker Playwright proof for complete first-load caching,
+  offline relaunch and active-save continuation, waiting-worker deferral, and
+  checkpointed activation/restoration. Component tests also prove save-before-
+  update ordering and failed-checkpoint blocking.
+- Replaced template documentation with gameplay, architecture, setup,
+  validation, accessibility, privacy, offline/update, save-transfer, and Pages
+  guidance; added contribution rules, MIT license, release checklist, and a
+  build/validate/deploy workflow restricted to protected `main` publication.
+- Current official Vite, Vite PWA, MDN service-worker, and GitHub Pages Actions
+  documentation confirmed every external assumption. Workflow YAML parses;
+  source/bundle review found no external runtime request, telemetry, ad, secret,
+  or personal-data path. No public write or visibility change was performed.
+- Cumulative validation passes 70 Vitest tests and 29 Playwright tests with five
+  intentional browser-profile skips; generated precache is 17 entries / about
+  780 KiB and application JavaScript is about 90 KiB gzip.

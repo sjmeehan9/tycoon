@@ -7,7 +7,7 @@ test.describe('accessible primary flow', () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop-chromium', 'Desktop keyboard journey');
     test.setTimeout(90_000);
-    await page.goto('/');
+    await page.goto('./');
     await expectNoSeriousViolations(page);
 
     await activateWithKeyboard(page, page.getByRole('button', { name: 'Start new campaign' }));
@@ -53,7 +53,7 @@ test.describe('accessible primary flow', () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== 'touch-mobile', 'Touch-mobile journey');
     test.setTimeout(90_000);
-    await page.goto('/');
+    await page.goto('./');
     await page.getByRole('button', { name: 'Start new campaign' }).tap();
     await page.getByRole('button', { name: 'Show current step' }).tap();
     await page.getByRole('tab', { name: 'Supplies' }).tap();

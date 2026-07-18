@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Laneway Tycoon coffee cart</title>
+  <rect width="512" height="512" rx="96" fill="#2f2118"/>
+  <path fill="#f2d7aa" d="M82 130h348v58H82z"/>
+  <path fill="#d66a3c" d="M104 188h304v50H104z"/>
+  <path fill="#f2d7aa" d="M124 238h264v142H124z"/>
+  <path fill="#2f2118" d="M152 270h100v76H152zm134 0h74v34h-74z"/>
+  <path fill="#d66a3c" d="M286 316h58v30h-58z"/>
+  <circle cx="168" cy="398" r="42" fill="#12100f"/>
+  <circle cx="344" cy="398" r="42" fill="#12100f"/>
+  <circle cx="168" cy="398" r="18" fill="#f2d7aa"/>
+  <circle cx="344" cy="398" r="18" fill="#f2d7aa"/>
+  <path fill="#f2d7aa" d="M206 72h76v58h-76z"/>
+  <path fill="#d66a3c" d="M282 82h36v38h-36z"/>
+</svg>

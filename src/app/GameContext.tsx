@@ -49,6 +49,7 @@ interface GameContextValue {
   importSave: (serialized: string) => boolean;
   exportSave: () => ExportedSave;
   restoreBackup: () => void;
+  checkpointSave: () => boolean;
   clearMessage: () => void;
   resetCampaign: () => void;
 }
@@ -79,18 +80,23 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
       nextPreferences = preferencesRef.current,
       nextMeta = metaRef.current,
     ) => {
-      if (!storeRef.current) return;
+      if (!storeRef.current) {
+        setMessage('Browser storage is unavailable, so this checkpoint could not be verified.');
+        return false;
+      }
       try {
         storeRef.current.save(createSaveEnvelope(nextGame, nextPreferences, nextMeta));
         loadedRunRef.current = nextGame;
         setHasSave(Boolean(nextGame));
         setRecoveryAvailable(false);
+        return true;
       } catch (error) {
         setMessage(
           error instanceof Error
             ? error.message
             : 'Autosave failed. The game is continuing with the current in-memory state.',
         );
+        return false;
       }
     },
     [],
@@ -239,6 +245,11 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
     setMessage('The active campaign was cleared; settings and unlocks were kept.');
   }, [persist]);
 
+  const checkpointSave = useCallback(
+    () => persist(game ?? loadedRunRef.current, preferencesRef.current, metaRef.current),
+    [game, persist],
+  );
+
   const value = useMemo<GameContextValue>(
     () => ({
       game,
@@ -254,6 +265,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
       importSave,
       exportSave,
       restoreBackup,
+      checkpointSave,
       clearMessage: () => setMessage(null),
       resetCampaign,
     }),
@@ -271,6 +283,7 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
       importSave,
       exportSave,
       restoreBackup,
+      checkpointSave,
       resetCampaign,
     ],
   );

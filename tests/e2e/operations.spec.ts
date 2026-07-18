@@ -8,7 +8,7 @@ test.describe('staff and investment operations', () => {
     page,
   }) => {
     test.setTimeout(90_000);
-    await page.goto('/');
+    await page.goto('./');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
     await page.getByRole('button', { name: 'Show current step' }).click();
 
@@ -49,7 +49,7 @@ test.describe('staff and investment operations', () => {
   });
 
   test('promotes the validated business from cart through kiosk to cafe', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('./');
     await importSave(page, serializeEnvelope(growthReadyEnvelope()));
     await expect(page.getByRole('img', { name: /Coffee Cart in/ })).toBeVisible();
 
