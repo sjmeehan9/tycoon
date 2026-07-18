@@ -75,3 +75,22 @@
   Playwright tests across desktop Chromium and 360px touch-mobile.
 - No deviation from the approved scope. Cloud sync, accounts, analytics, and
   economic meta bonuses remain explicit non-goals.
+
+## Component 2.5 — Phase Validation & Documentation
+
+- Closed the cumulative browser-evidence gaps with production-import journeys
+  that buy the real promotion equipment and advance cart → kiosk → cafe on both
+  desktop and 360px touch-mobile.
+- Strengthened save-transfer coverage to restore an exact exported Day 30
+  snapshot after starting a different campaign, migrate a version-1 file,
+  reject malformed/future files non-destructively, and restore a corrupt
+  primary from the visible last-known-good action.
+- Retained validated fixtures as test-only setup through the same bounded
+  production upload path; all complete 30-day balance simulations still invoke
+  only public production engine commands.
+- Updated the runbook with campaign targets, balance-fixture maintenance, schema
+  migration, export/import, and recovery guidance.
+- Cumulative exact validation passed: frozen install, build, lint, 57 Vitest
+  tests, and 22 Playwright tests across desktop and touch-mobile Chromium.
+- `docs/phase-2-test-report.md` records PASS against every Phase 2 target and
+  acceptance criterion, with all Phase 1 behavior retained.

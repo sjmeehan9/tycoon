@@ -47,6 +47,37 @@ export function nearBankruptcyEnvelope(): SaveEnvelope {
   return createSaveEnvelope(state, createDefaultPreferences(), createDefaultMeta());
 }
 
+/** Valid production-import fixture with enough earned progress to exercise both promotions. */
+export function growthReadyEnvelope(): SaveEnvelope {
+  const base = createCampaign({ seed: 20_204 });
+  const state: GameState = {
+    ...base,
+    day: 18,
+    phase: 'reinvest',
+    cashCents: 100_000,
+    reputation: 70,
+    lastSettledDay: 18,
+  };
+  return createSaveEnvelope(state, createDefaultPreferences(), createDefaultMeta());
+}
+
+/** Supported version-1 fixture used to prove migration through the production upload control. */
+export function versionOneVictorySave(): string {
+  const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as MutableLegacyEnvelope;
+  legacy.schemaVersion = 1;
+  legacy.activeRun.stateVersion = 1;
+  delete legacy.activeRun.report.wageCostCents;
+  return JSON.stringify(legacy);
+}
+
+interface MutableLegacyEnvelope {
+  schemaVersion: number;
+  activeRun: {
+    stateVersion: number;
+    report: Partial<DayReport>;
+  };
+}
+
 function fixtureReport(base: GameState, day: number, closingCashCents: number): DayReport {
   return {
     day,

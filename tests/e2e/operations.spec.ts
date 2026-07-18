@@ -1,4 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+import { serializeEnvelope } from '../../src/persistence/saveStore';
+import { growthReadyEnvelope } from '../fixtures/campaignFixtures';
 
 test.describe('staff and investment operations', () => {
   test('hires both roles, schedules service, settles payroll, and reaches equipment growth', async ({
@@ -43,4 +46,33 @@ test.describe('staff and investment operations', () => {
     await grinder.click();
     await expect(page.getByText('Current: +2 cup quality')).toBeVisible();
   });
+
+  test('promotes the validated business from cart through kiosk to cafe', async ({ page }) => {
+    await page.goto('/');
+    await importSave(page, serializeEnvelope(growthReadyEnvelope()));
+
+    await page.getByRole('button', { name: /Buy Grinder level 1/ }).click();
+    await page.getByRole('button', { name: /Buy Espresso machine level 1/ }).click();
+    await page.getByRole('button', { name: 'Promote to Coffee Kiosk' }).click();
+    await expect(page.getByRole('button', { name: 'Promote to Specialty Cafe' })).toBeDisabled();
+
+    await page.getByRole('button', { name: /Buy Grinder level 2/ }).click();
+    await page.getByRole('button', { name: /Buy Espresso machine level 2/ }).click();
+    await page.getByRole('button', { name: /Buy Refrigeration level 1/ }).click();
+    await page.getByRole('button', { name: /Buy Point of sale level 1/ }).click();
+    await page.getByRole('button', { name: 'Promote to Specialty Cafe' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Flagship venue complete' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Day 18/30 · Specialty Cafe' })).toBeVisible();
+  });
 });
+
+async function importSave(page: Page, contents: string): Promise<void> {
+  await page.getByRole('button', { name: 'Game menu' }).click();
+  await page.getByRole('tab', { name: 'Save transfer' }).click();
+  await page.getByLabel('Import save JSON file').setInputFiles({
+    name: 'growth-ready.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(contents),
+  });
+}
