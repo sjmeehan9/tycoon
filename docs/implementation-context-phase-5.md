@@ -49,3 +49,28 @@
   conservation, in-progress migrations, legacy key order, bounds, and interrupted
   writes. Ten focused persistence/save-transfer Playwright journeys pass across
   desktop and touch-mobile.
+
+## Component 5.3 — Weighted Planning Capacity
+
+- Centralized deterministic segment shares, price sensitivity, size selection,
+  milk selection, drink/weather weighting, and draw thresholds. The service
+  engine and planner forecast now consume the same public demand model instead
+  of maintaining parallel probability rules.
+- Added a pure bounded capacity selector over the four segments, active menu,
+  configured appeal and prices, weather, sizes, milk modifiers, recipes, and
+  selected-bean substitution. Drink weights normalize inside each segment;
+  intended demand deliberately does not inherit current-stock suppression.
+- Every ingredient row exposes exact carried, pending, and post-order usable
+  quantities, weighted expected units per order, floored approximate serves,
+  active-menu relevance, tied limiting state, and earliest expiry quantity/day.
+  Pending packages count only while planning and are projected as real dated
+  batches using the current refrigeration tier.
+- Planner supply rows now use labelled polite/atomic output and visibly retain
+  the `~` approximation marker. Exact quantities, unused ingredients, limiting
+  ingredients, and expiry risk update immediately after atomic menu, price,
+  bean, milk, and package commands without advancing the game PRNG.
+- Production build and zero-warning lint pass. Fifteen Vitest/RTL files pass 92
+  tests, including draw boundaries, weighted recipes, price/menu direction,
+  substitutions, batch/purchase/expiry projection, and immediate announcements.
+  The focused planning-capacity browser journey passes desktop and touch-mobile,
+  including 360px containment and explicit no-false-exactness assertions.

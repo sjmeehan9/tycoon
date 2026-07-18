@@ -435,9 +435,9 @@ legend {
   gap: 0.45rem;
 }
 .supply-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.6rem;
   border: 2px solid #a48b78;
@@ -448,6 +448,35 @@ legend {
 }
 .supply-row small {
   color: #6d5548;
+}
+.supply-capacity {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.6rem;
+  min-width: 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #a48b78;
+  font-size: 0.75rem;
+}
+.supply-capacity span,
+.supply-capacity strong,
+.supply-capacity small {
+  display: block;
+  min-width: 0;
+}
+.supply-capacity strong {
+  color: var(--ink);
+}
+.capacity-estimate {
+  align-self: center;
+  color: var(--green);
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+}
+.capacity-expiry {
+  grid-column: 1 / -1;
 }
 .stepper {
   display: grid;
@@ -1242,6 +1271,14 @@ legend {
   .planner-total {
     align-items: stretch;
     flex-direction: column;
+  }
+  .supply-capacity {
+    grid-template-columns: 1fr;
+  }
+  .capacity-estimate,
+  .capacity-expiry {
+    grid-column: 1;
+    text-align: left;
   }
   .rush-metrics {
     grid-template-columns: 1fr 1fr;

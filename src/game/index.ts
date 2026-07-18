@@ -25,6 +25,17 @@ export {
   togglePause,
 } from './engine';
 export { GameRuleError } from './errors';
+export {
+  baseDrinkChoiceWeight,
+  drinkWeatherChoiceMultiplier,
+  milkForDraw,
+  milkProbabilities,
+  segmentForDraw,
+  sizeForDraw,
+  sizeProbabilities,
+} from './demandModel';
+export { formatIngredientQuantity, ingredientCapacities, weightedIngredientUse } from './capacity';
+export type { IngredientCapacity } from './capacity';
 export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
 export {
   addPlannedPurchases,

@@ -15,7 +15,6 @@ import {
   RUSH_ACTIVITY_LIMIT,
   RUSH_DURATION_TICKS,
   SCENARIO_DETAILS,
-  SEGMENT_DRINK_APPEAL,
   SIZE_SURCHARGE_CENTS,
   TICKS_PER_SECOND,
   VENUE_DEMAND_FACTOR,
@@ -31,6 +30,7 @@ import {
   weatherForDay,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
+import { baseDrinkChoiceWeight, milkForDraw, segmentForDraw, sizeForDraw } from './demandModel';
 import {
   addPlannedPurchases,
   completeIngredientTotals,
@@ -884,17 +884,17 @@ function createCustomer(
   let rngState = state.rngState;
   const segmentDraw = nextRandom(rngState);
   rngState = segmentDraw.state;
-  const segment = chooseSegment(segmentDraw.value);
+  const segment = segmentForDraw(segmentDraw.value);
   const drinkDraw = nextRandom(rngState);
   rngState = drinkDraw.state;
   const drinkId = chooseDrink(state, segment, drinkDraw.value);
   const drink = getDrink(drinkId);
   const sizeDraw = nextRandom(rngState);
   rngState = sizeDraw.state;
-  const size = chooseSize(drink, segment, sizeDraw.value);
+  const size = sizeForDraw(drink, segment, sizeDraw.value);
   const milkDraw = nextRandom(rngState);
   rngState = milkDraw.state;
-  const milk = chooseMilk(drink, milkDraw.value);
+  const milk = milkForDraw(drink, milkDraw.value);
   const [minimumPatience, maximumPatience] = patienceRange(segment);
   const patienceDraw = randomInt(rngState, minimumPatience, maximumPatience);
   rngState = patienceDraw.state;
@@ -964,27 +964,6 @@ function adaptIngredient(
   return ingredient;
 }
 
-function chooseMilk(drink: DrinkConfig, draw: number): MilkChoice {
-  if (drink.allowedMilks.length === 1) return drink.allowedMilks[0] ?? 'none';
-  if (drink.allowedMilks.includes('none') && draw < 0.52) return 'none';
-  if (drink.allowedMilks.includes('oat') && draw < 0.72) return 'oat';
-  if (drink.allowedMilks.includes('soy') && draw < 0.84) return 'soy';
-  return drink.allowedMilks.includes('dairy') ? 'dairy' : (drink.allowedMilks[0] ?? 'none');
-}
-
-function chooseSegment(draw: number): CustomerSegment {
-  if (draw < 0.34) return 'commuter';
-  if (draw < 0.59) return 'student';
-  if (draw < 0.79) return 'enthusiast';
-  return 'regular';
-}
-
-function chooseSize(drink: DrinkConfig, segment: CustomerSegment, draw: number): DrinkSize {
-  if (!drink.variants.some((variant) => variant.size === 'large')) return 'regular';
-  const largeChance = segment === 'student' ? 0.3 : segment === 'commuter' ? 0.35 : 0.42;
-  return draw < largeChance ? 'large' : 'regular';
-}
-
 function patienceRange(segment: CustomerSegment): [number, number] {
   if (segment === 'commuter') return [55, 100];
   if (segment === 'student') return [70, 140];
@@ -1010,10 +989,6 @@ function chooseDrink(state: GameState, segment: CustomerSegment, draw: number): 
 
 function drinkChoiceWeight(state: GameState, segment: CustomerSegment, drinkId: DrinkId): number {
   const drink = getDrink(drinkId);
-  const price = state.plan.pricesCents[drinkId];
-  const sensitivity = segment === 'student' ? 520 : segment === 'commuter' ? 760 : 900;
-  const priceFactor = clamp(1.25 - (price - drink.basePriceCents) / sensitivity, 0.25, 1.5);
-  const weatherFactor = drinkWeatherFactor(drinkId, state.weather);
   const regularRecipe = drink.variants[0];
   const available = regularRecipe
     ? hasIngredients(
@@ -1022,15 +997,7 @@ function drinkChoiceWeight(state: GameState, segment: CustomerSegment, drinkId: 
       )
     : false;
   const availabilityFactor = available ? 1 : 0.12;
-  return SEGMENT_DRINK_APPEAL[segment][drinkId] * priceFactor * weatherFactor * availabilityFactor;
-}
-
-function drinkWeatherFactor(drinkId: DrinkId, weather: GameState['weather']): number {
-  const isColdDrink = drinkId === 'icedLatte' || drinkId === 'coldBrew';
-  if (weather === 'sunny') return isColdDrink ? 1.65 : 0.9;
-  if (weather === 'coldSnap') return isColdDrink ? 0.5 : 1.22;
-  if (weather === 'rainy') return isColdDrink ? 0.65 : 1.15;
-  return 1;
+  return baseDrinkChoiceWeight(state, segment, drinkId) * availabilityFactor;
 }
 
 function addEventCustomers(state: GameState, choice: EventChoice): GameState {

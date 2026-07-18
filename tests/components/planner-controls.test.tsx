@@ -93,6 +93,36 @@ describe('exact accessible planner controls', () => {
     expect(within(beans).getByRole('button', { name: /^Decrease/ })).toBeEnabled();
   });
 
+  it('announces exact post-purchase stock, weighted serves, unused stock, and expiry immediately', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    await user.click(screen.getByRole('tab', { name: 'Supplies' }));
+
+    const beansCapacity = screen.getByLabelText(
+      'House blend usable stock and weighted serves after selected purchase',
+    );
+    expect(beansCapacity).toHaveAttribute('aria-live', 'polite');
+    expect(beansCapacity).toHaveAttribute('aria-atomic', 'true');
+    expect(beansCapacity).toHaveTextContent('500 g usable after order');
+    expect(beansCapacity).toHaveTextContent('0 g carried + 500 g pending');
+    expect(beansCapacity).toHaveTextContent(/~\d+ serves/);
+    expect(beansCapacity).toHaveTextContent('500 g expires after Day 3 rush');
+
+    const beans = screen.getByRole('group', {
+      name: 'House blend · 500 g package quantity',
+    });
+    await user.click(within(beans).getByRole('button', { name: /^Increase/ }));
+    expect(beansCapacity).toHaveTextContent('1,000 g usable after order');
+    expect(beansCapacity).toHaveTextContent('0 g carried + 1,000 g pending');
+
+    const chocolateCapacity = screen.getByLabelText(
+      'Chocolate usable stock and weighted serves after selected purchase',
+    );
+    expect(chocolateCapacity).toHaveTextContent('Not used today');
+    expect(chocolateCapacity.textContent).not.toMatch(/~\d+ serves/);
+  });
+
   it('retains the last affordable supply value and surfaces rejected increments', async () => {
     const user = userEvent.setup();
     renderGame();

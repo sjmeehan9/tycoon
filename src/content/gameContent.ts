@@ -289,6 +289,30 @@ export const SEGMENT_DRINK_APPEAL: Record<CustomerSegment, Record<DrinkId, numbe
   regular: weights({ flatWhite: 1.55, latte: 1.3, cappuccino: 1.45, longBlack: 1.2 }),
 };
 
+/** Exact deterministic segment probabilities used by service and capacity forecasts. */
+export const SEGMENT_DEMAND_SHARES: Record<CustomerSegment, number> = {
+  commuter: 0.34,
+  student: 0.25,
+  enthusiast: 0.2,
+  regular: 0.21,
+};
+
+/** Price-response divisor used for each segment's drink-choice weighting. */
+export const SEGMENT_PRICE_SENSITIVITY_CENTS: Record<CustomerSegment, number> = {
+  commuter: 760,
+  student: 520,
+  enthusiast: 900,
+  regular: 900,
+};
+
+/** Probability of choosing large when a configured drink offers that variant. */
+export const SEGMENT_LARGE_SIZE_PROBABILITY: Record<CustomerSegment, number> = {
+  commuter: 0.35,
+  student: 0.3,
+  enthusiast: 0.42,
+  regular: 0.42,
+};
+
 /** Functional venue stages used by planning, service, settlement, and the scene. */
 export const VENUES: Record<VenueId, VenueConfig> = {
   cart: {

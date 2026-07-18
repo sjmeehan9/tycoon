@@ -11,7 +11,15 @@ import {
   WEATHER_DETAILS,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
-import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
+import {
+  canOpen,
+  formatIngredientQuantity,
+  formatMoney,
+  ingredientCapacities,
+  selectedSupplyCost,
+  type DialIn,
+  type DrinkId,
+} from '../game';
 import { TeamPlanner } from './TeamPlanner';
 import { AccessibleStepper } from './AccessibleStepper';
 
@@ -30,6 +38,9 @@ export function Planner(): React.JSX.Element {
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
   const weather = WEATHER_DETAILS[game.weather];
+  const capacityByIngredient = new Map(
+    ingredientCapacities(game).map((capacity) => [capacity.ingredientId, capacity] as const),
+  );
 
   const toggleDrink = (drinkId: DrinkId): void => {
     const active = game.plan.activeMenu.includes(drinkId);
@@ -153,6 +164,7 @@ export function Planner(): React.JSX.Element {
         <div className="supply-list">
           {PURCHASE_PACKAGES.map((item) => {
             const quantity = game.plan.purchases[item.ingredientId];
+            const capacity = capacityByIngredient.get(item.ingredientId);
             return (
               <div className="supply-row" key={item.ingredientId}>
                 <span>
@@ -181,6 +193,37 @@ export function Planner(): React.JSX.Element {
                   }
                   value={String(quantity)}
                 />
+                {capacity ? (
+                  <output
+                    aria-atomic="true"
+                    aria-label={`${capacity.name} usable stock and weighted serves after selected purchase`}
+                    aria-live="polite"
+                    className="supply-capacity"
+                  >
+                    <span>
+                      <strong>
+                        {formatIngredientQuantity(capacity.usableQuantity, capacity.unit)} usable
+                        after order
+                      </strong>
+                      <small>
+                        {formatIngredientQuantity(capacity.carriedQuantity, capacity.unit)} carried
+                        {capacity.pendingPurchaseQuantity > 0
+                          ? ` + ${formatIngredientQuantity(capacity.pendingPurchaseQuantity, capacity.unit)} pending`
+                          : ' · no pending purchase'}
+                      </small>
+                    </span>
+                    <span className="capacity-estimate">
+                      {capacity.isUsedToday
+                        ? `~${String(capacity.estimatedServes)} serves${capacity.isLimiting ? ' · limiting stock' : ''}`
+                        : 'Not used today'}
+                    </span>
+                    <small className="capacity-expiry">
+                      {capacity.earliestExpiry
+                        ? `${formatIngredientQuantity(capacity.earliestExpiry.quantity, capacity.unit)} expires after Day ${String(capacity.earliestExpiry.day)} rush`
+                        : 'No stock awaiting expiry'}
+                    </small>
+                  </output>
+                ) : null}
               </div>
             );
           })}
