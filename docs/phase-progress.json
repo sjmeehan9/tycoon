@@ -53,7 +53,7 @@
           "name": "Authoritative Sale Pricing and Reconciliation",
           "status": "committed"
         },
-        { "id": "4.4", "name": "Phase Validation and Documentation", "status": "queued" }
+        { "id": "4.4", "name": "Phase Validation and Documentation", "status": "committed" }
       ]
     },
     {

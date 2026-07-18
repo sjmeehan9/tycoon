@@ -62,7 +62,7 @@ describe('exact accessible planner controls', () => {
     let state = createCampaign({ seed: 57 });
     state = { ...state, cashCents: 100_000 };
     state = prepareDay(state, {
-      pricesCents: { flatWhite: 1_200 },
+      pricesCents: { flatWhite: 1_200, longBlack: 250 },
       purchases: { houseBeans: 20 },
     });
     new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(state));
@@ -73,6 +73,9 @@ describe('exact accessible planner controls', () => {
     const price = screen.getByRole('group', { name: 'Flat White price' });
     expect(within(price).getByRole('button', { name: /^Increase/ })).toBeDisabled();
     expect(within(price).getByRole('button', { name: /^Decrease/ })).toBeEnabled();
+    const minimumPrice = screen.getByRole('group', { name: 'Long Black price' });
+    expect(within(minimumPrice).getByRole('button', { name: /^Decrease/ })).toBeDisabled();
+    expect(within(minimumPrice).getByRole('button', { name: /^Increase/ })).toBeEnabled();
 
     const inactivePrice = screen.getByRole('group', { name: 'Espresso price' });
     expect(within(inactivePrice).getAllByRole('button')).toEqual(

@@ -64,6 +64,25 @@ outside a restricted process sandbox.
   growth snapshots for production import UI journeys. If the schema or balance
   changes, update these fixtures and their full-campaign proof together.
 
+## Planner controls and sale-price tracing
+
+- Drink prices are integer cents and change only through semantic steppers:
+  exactly 10 cents per accepted activation within $2.50–$12.00.
+- Supply purchases change exactly one package per accepted activation within
+  0–20. Boundary buttons are natively disabled; values are polite live outputs.
+- `adjustPlanPrice` and `adjustPlanPurchase` derive each update from current
+  engine state. Do not replace them with absolute values captured in the UI.
+- `makeOrder` is the sole actual-price formula: current planned base plus the
+  configured size and milk surcharge. Revenue consumes that recorded order
+  value; UI and reports must display it rather than calculate it again.
+- `RushState.recentActivity` stores at most the latest 20 successful sale
+  observations. Old schema-v2 rushes without the field import as an empty list.
+  It is diagnostic player feedback, not a second revenue ledger.
+- Run `tests/e2e/planner-controls.spec.ts` in both configured projects after any
+  planner, pricing, service, report, settlement, responsive, or persistence
+  change. It covers repeated $0.10 actions, reload, modifiers, 360px touch, and
+  exact report/settled-cash reconciliation.
+
 ## Save recovery
 
 The current browser adapter uses schema/key version 2 and retains the previous

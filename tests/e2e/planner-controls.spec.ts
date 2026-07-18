@@ -120,6 +120,17 @@ test.describe('exact accessible planner controls', () => {
     const observedTotal = parseMoney(await page.locator('.sale-observation-total').textContent());
     expect(observedTotal).toBe(salesRevenue);
     await expect(page.locator('.sale-observation-summary')).toContainText('matching sales revenue');
+    if (touch) {
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        await page.evaluate(() => window.innerWidth),
+      );
+      const chargeBounds = await chargeList.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        return { left: bounds.left, right: bounds.right, viewport: window.innerWidth };
+      });
+      expect(chargeBounds.left).toBeGreaterThanOrEqual(0);
+      expect(chargeBounds.right).toBeLessThanOrEqual(chargeBounds.viewport);
+    }
     const openingCash = await reportRowCents(page, 'Opening cash');
     const purchaseCost = await reportRowCents(page, 'Supply purchases');
     const eventCash = await reportRowCents(page, 'Event cash adjustments');

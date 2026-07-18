@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Implementation — Phase 4 Components 4.1–4.3 complete; Component 4.4 validation starting
+Implementation — Phase 4 cumulative PASS; awaiting human merge decision
 
 ## Lean team contract
 
@@ -31,43 +31,44 @@ Implementation — Phase 4 Components 4.1–4.3 complete; Component 4.4 validati
 - [x] Hosted desktop/mobile/offline play validation
 - [x] Human approves phase merge and public GitHub Pages release
 - [x] User approves additive Phases 4–6 and lean two-role execution
-- [ ] Sole Implement agent delivers Phase 4 and cumulative validation PASS
+- [x] Sole Implement agent delivers Phase 4 and cumulative validation PASS
 - [ ] Sole Implement agent delivers Phase 5 and cumulative validation PASS
 - [ ] Sole Implement agent delivers Phase 6 and hosted cumulative validation PASS
 
 ## Active agents
 
-| Agent | Role | Status | Owns |
-|---|---|---|---|
-| three_phase_plan_retry | Technical Business Analyst | done | `docs/phase-plan.md` |
-| lean_full_build | Implement | done — HOSTED PASS | application, validation, release evidence |
-| sole_implement_phases_4_6 | Implement | active — Phase 4 | Phase 4 source, tests, fixes, validation, docs, commits, push |
+| Agent                     | Role                       | Status              | Owns                                                          |
+| ------------------------- | -------------------------- | ------------------- | ------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done                | `docs/phase-plan.md`                                          |
+| lean_full_build           | Implement                  | done — HOSTED PASS  | application, validation, release evidence                     |
+| sole_implement_phases_4_6 | Implement                  | done — Phase 4 PASS | Phase 4 source, tests, fixes, validation, docs, commits, push |
 
 ## Human task gate
 
-- **Status:** CLOSED for Phase 4 implementation — no setup is required; the
-  human merge decision is due only after Component 4.4 PASS
+- **Status:** AWAITING PHASE 4 MERGE DECISION — implementation and cumulative
+  validation pass; no setup, credential, or release action is required
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
 
 ## Decisions log
 
-| Date | Decision | Rationale | Affects |
-|---|---|---|---|
-| 2026-07-18 | Exactly TBA + Implement roles | User-directed cost/time constraint | Entire workflow |
-| 2026-07-18 | Three phases | User-approved delivery structure | Phase plan |
-| 2026-07-18 | Static local-first PWA | No backend cost; desktop/mobile/offline | Architecture |
-| 2026-07-18 | Three-phase plan accepted | It matches the user's approved plan and implementation directive | Implementation |
-| 2026-07-18 | Public release approved | Owner explicitly approved merge, visibility, Pages, and hosted checks | Release |
-| 2026-07-18 | Additive Phases 4–6 approved | Desktop/mobile player feedback and approved root plan | Follow-up delivery |
-| 2026-07-18 | Phase 4 uses atomic relative planner commands | Guarantees one exact persisted increment per activation without stale free-text state | Components 4.2–4.3 |
+| Date       | Decision                                            | Rationale                                                                                                       | Affects            |
+| ---------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------ |
+| 2026-07-18 | Exactly TBA + Implement roles                       | User-directed cost/time constraint                                                                              | Entire workflow    |
+| 2026-07-18 | Three phases                                        | User-approved delivery structure                                                                                | Phase plan         |
+| 2026-07-18 | Static local-first PWA                              | No backend cost; desktop/mobile/offline                                                                         | Architecture       |
+| 2026-07-18 | Three-phase plan accepted                           | It matches the user's approved plan and implementation directive                                                | Implementation     |
+| 2026-07-18 | Public release approved                             | Owner explicitly approved merge, visibility, Pages, and hosted checks                                           | Release            |
+| 2026-07-18 | Additive Phases 4–6 approved                        | Desktop/mobile player feedback and approved root plan                                                           | Follow-up delivery |
+| 2026-07-18 | Phase 4 uses atomic relative planner commands       | Guarantees one exact persisted increment per activation without stale free-text state                           | Components 4.2–4.3 |
+| 2026-07-18 | `makeOrder` remains the sole actual-price authority | Static trace and regression proved the formula was already correct; Phase 4 fixes interaction and observability | Components 4.3–4.4 |
 
 ## Drift log
 
-| Date | Deviation | Resolution |
-|---|---|---|
-| 2026-07-18 | Normal agent pipeline omitted | User explicitly approved lean-team override; Implement absorbs omitted roles |
-| 2026-07-18 | GitHub `main` has no configured protection rule | Release used passing PR checks and a normal merge with no force/admin bypass; evidence states the actual setting |
-| 2026-07-18 | In-app browser runtime unavailable | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths |
+| Date       | Deviation                                               | Resolution                                                                                                                   |
+| ---------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-18 | Normal agent pipeline omitted                           | User explicitly approved lean-team override; Implement absorbs omitted roles                                                 |
+| 2026-07-18 | GitHub `main` has no configured protection rule         | Release used passing PR checks and a normal merge with no force/admin bypass; evidence states the actual setting             |
+| 2026-07-18 | In-app browser runtime unavailable                      | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths         |
 | 2026-07-18 | Additive TBA threads did not return a document mutation | User-authorized coordinator skeleton points the sole Implement agent to the approved root plan; no substitute role was added |
 
 ## Deferred log

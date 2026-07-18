@@ -76,3 +76,21 @@
   cart and coffee-day journeys were migrated from `.fill()` to real steppers and
   remain green.
 
+## Component 4.4 — Phase Validation and Documentation
+
+- Reran the profile's exact sequence after the final desktop-bound and 360px
+  overflow assertions: frozen install, production build, lint/format, 76
+  Vitest/RTL tests, then both Playwright projects. All passed; Playwright
+  reported 33 applicable passes and seven intentional project-routing skips.
+- The desktop component case now proves both price bounds expose the correct
+  disabled/enabled states. The touch production case now checks the actual-
+  charge evidence list against the 360px viewport as well as document overflow.
+- Audited owned source/tests for TODO/FIXME/placeholders, free-edit planner
+  inputs, duplicate price formulas, unbounded observations, and test-only
+  runtime paths. No prohibited implementation remains. The separate existing
+  optional campaign-seed number input is outside planner scope.
+- Confirmed `makeOrder` is still the sole price authority and activity remains
+  capped at 20. No Phase 5/6 source, schema, or behavior was introduced.
+- Published the cumulative PASS report, downstream overview, runbook guidance,
+  progress state, and team handoff. Phase 4 awaits the human merge decision;
+  Phases 5–6 remain queued.
