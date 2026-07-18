@@ -10,6 +10,7 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "assets:audio": "node --experimental-strip-types scripts/generate-audio.ts",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint . --max-warnings 0 && prettier --check src tests *.ts *.json *.html",

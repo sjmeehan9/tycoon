@@ -116,15 +116,43 @@ small {
   z-index: 0;
   display: grid;
   min-height: 100vh;
+  overflow: hidden;
   place-items: center;
   padding: 1rem;
+  background: #2f2118;
+}
+.title-screen::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(24, 15, 11, 0.88),
+      rgba(24, 15, 11, 0.32) 62%,
+      rgba(24, 15, 11, 0.08)
+    ),
+    linear-gradient(0deg, rgba(24, 15, 11, 0.38), transparent 45%);
+  content: '';
+  pointer-events: none;
+}
+.title-art {
+  position: absolute;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
 }
 .title-card {
+  position: relative;
+  z-index: 2;
   width: min(620px, 100%);
   padding: clamp(1.4rem, 6vw, 3.2rem);
   border: 4px solid var(--ink);
-  background: var(--cream);
-  box-shadow: 10px 10px 0 rgba(47, 33, 24, 0.35);
+  background: rgba(255, 247, 230, 0.94);
+  box-shadow: 10px 10px 0 rgba(18, 11, 8, 0.68);
+  backdrop-filter: blur(2px);
   text-align: center;
 }
 .title-card h1 {
@@ -245,6 +273,7 @@ small {
   min-width: 0;
 }
 .scene-frame {
+  position: relative;
   margin: 0;
   overflow: hidden;
   border: 4px solid var(--ink);
@@ -256,7 +285,14 @@ small {
   width: 100%;
   aspect-ratio: 16 / 9;
   image-rendering: pixelated;
-  image-rendering: crisp-edges;
+}
+.scene-frame::after {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 247, 230, 0.18);
+  box-shadow: inset 0 0 24px rgba(25, 14, 9, 0.25);
+  content: '';
+  pointer-events: none;
 }
 .scene-frame figcaption {
   position: absolute;
@@ -943,6 +979,21 @@ legend {
 }
 
 @media (max-width: 620px) {
+  .title-screen {
+    align-items: start;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+  .title-art {
+    position: fixed;
+    object-position: 62% center;
+  }
+  .title-card {
+    padding: 1.2rem 1rem;
+  }
+  .title-card h1 {
+    font-size: clamp(2.5rem, 14vw, 4rem);
+  }
   .game-header {
     display: block;
     padding: 0.8rem;

@@ -50,10 +50,12 @@ test.describe('staff and investment operations', () => {
   test('promotes the validated business from cart through kiosk to cafe', async ({ page }) => {
     await page.goto('/');
     await importSave(page, serializeEnvelope(growthReadyEnvelope()));
+    await expect(page.getByRole('img', { name: /Coffee Cart in/ })).toBeVisible();
 
     await page.getByRole('button', { name: /Buy Grinder level 1/ }).click();
     await page.getByRole('button', { name: /Buy Espresso machine level 1/ }).click();
     await page.getByRole('button', { name: 'Promote to Coffee Kiosk' }).click();
+    await expect(page.getByRole('img', { name: /Coffee Kiosk in/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Promote to Specialty Cafe' })).toBeDisabled();
 
     await page.getByRole('button', { name: /Buy Grinder level 2/ }).click();
@@ -64,6 +66,7 @@ test.describe('staff and investment operations', () => {
 
     await expect(page.getByRole('heading', { name: 'Flagship venue complete' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Day 18/30 · Specialty Cafe' })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Specialty Cafe in/ })).toBeVisible();
   });
 });
 

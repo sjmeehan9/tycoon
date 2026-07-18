@@ -116,7 +116,8 @@ export function GameTools(): React.JSX.Element {
                   onChange={updatePreferences}
                 />
                 <p className="field-help">
-                  Settings autosave without changing the active simulation.
+                  Audio starts off and uses only bundled local files after you enable it. Settings
+                  autosave without changing the active simulation.
                 </p>
               </ToolSectionPanel>
             ) : null}

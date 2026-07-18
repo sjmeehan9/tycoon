@@ -1,4 +1,5 @@
 import { useGame } from './app/GameContext';
+import { AudioDirector } from './audio/AudioDirector';
 import { EventDialog } from './components/EventDialog';
 import { EndingPanel } from './components/EndingPanel';
 import { GameHeader } from './components/GameHeader';
@@ -17,6 +18,7 @@ export default function App(): React.JSX.Element {
   if (!game) {
     return (
       <>
+        <AudioDirector />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <TitleScreen />
         <GameTools />
@@ -25,31 +27,34 @@ export default function App(): React.JSX.Element {
   }
 
   return (
-    <div className="app-shell">
-      <GameHeader />
-      {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
-      <main className="game-layout">
-        <div className="scene-column">
-          <CanvasScene />
-          <section className="scene-caption" aria-label="Current venue">
-            <strong>{VENUES[game.venueId].name}</strong>
-            <span>{VENUES[game.venueId].description}</span>
-          </section>
-        </div>
-        <div className="control-column">
-          {game.phase === 'planning' ? <Planner /> : null}
-          {game.phase === 'rush' || game.phase === 'event' ? <RushPanel /> : null}
-          {game.phase === 'report' ? <ReportPanel /> : null}
-          {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
-          {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
-        </div>
-      </main>
-      <footer className="game-footer">
-        Autosaved locally · no account · deterministic seed {game.seed}
-      </footer>
-      <EventDialog />
-      <GameTools />
-    </div>
+    <>
+      <AudioDirector />
+      <div className="app-shell">
+        <GameHeader />
+        {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
+        <main className="game-layout">
+          <div className="scene-column">
+            <CanvasScene />
+            <section className="scene-caption" aria-label="Current venue">
+              <strong>{VENUES[game.venueId].name}</strong>
+              <span>{VENUES[game.venueId].description}</span>
+            </section>
+          </div>
+          <div className="control-column">
+            {game.phase === 'planning' ? <Planner /> : null}
+            {game.phase === 'rush' || game.phase === 'event' ? <RushPanel /> : null}
+            {game.phase === 'report' ? <ReportPanel /> : null}
+            {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
+            {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
+          </div>
+        </main>
+        <footer className="game-footer">
+          Autosaved locally · no account · deterministic seed {game.seed}
+        </footer>
+        <EventDialog />
+        <GameTools />
+      </div>
+    </>
   );
 }
 

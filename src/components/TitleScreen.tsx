@@ -12,6 +12,12 @@ export function TitleScreen(): React.JSX.Element {
 
   return (
     <main className="title-screen">
+      <img
+        alt=""
+        aria-hidden="true"
+        className="title-art"
+        src={`${import.meta.env.BASE_URL}assets/art/laneway-title.webp`}
+      />
       <section className="title-card" aria-labelledby="game-title">
         <div className="pixel-cup" aria-hidden="true">
           ☕
