@@ -103,3 +103,25 @@
   The production Day 3 flow passes desktop and touch-mobile through planning,
   depletion, pause/reload restoration, event parity, report, LIFO expiry, actual
   charges, visible bounds, and 360px no-overflow assertions.
+
+## Component 5.5 — Phase Validation and Documentation
+
+- Ran the project-profile sequence exactly after the final Phase 5 source/test
+  head: frozen install, production build, zero-warning lint/format, Vitest/RTL,
+  then the complete Playwright suite. All five commands passed without a source
+  correction or validation rerun.
+- Vitest/RTL passed 94 tests across 15 files. Playwright passed 37 applicable
+  production journeys across desktop and touch-mobile in 1.6 minutes, with seven
+  intentional non-matching-project skips. Both Phase 5 capacity/lifecycle cases
+  ran in both configured projects.
+- Audited source/tests for placeholders, flat mutable inventory, duplicate
+  probability math, percentage spoilage, unbounded imported batches, stale
+  consumption, conservation gaps, unmarked estimates, and test-only wiring. No
+  required behavior is deferred or hidden; derived totals remain evidence only.
+- Recorded complete batch, migration, refrigeration, capacity, live-grid,
+  report, persistence, compatibility, automated-manual-flow, and retained Phase
+  1–4 evidence in `docs/phase-5-test-report.md`. Updated the runbook from schema
+  2 to schema 3 and added the operational inventory/capacity contracts.
+- No dependency, external service, secret, environment, backend, publication,
+  main merge, or Phase 6 implementation was introduced. Phase 5 ends at the
+  pushed branch and human approve/reject gate.

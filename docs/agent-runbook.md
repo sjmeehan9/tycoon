@@ -83,11 +83,39 @@ outside a restricted process sandbox.
   change. It covers repeated $0.10 actions, reload, modifiers, 360px touch, and
   exact report/settled-cash reconciliation.
 
+## Dated inventory, capacity, and expiry
+
+- `GameState.inventory` contains arrays of dated batches and is the only mutable
+  stock authority. Use `ingredientQuantity` or `inventoryTotals` for exact
+  derived totals; never persist a second flat stock record.
+- `expiresAfterDay` is inclusive. A Day 1 purchase with the base three-rush life
+  serves Days 1–3, then any remainder expires after the Day 3 rush.
+- Service reserves complete recipes newest-batch-first. The live stock grid
+  therefore falls when service starts, before the actual-charge observation is
+  appended at successful completion.
+- Refrigeration adds one/two days only to dairy, oat, soy, and cold-brew
+  concentrate. An upgrade extends surviving chilled batches by the tier delta
+  and never revives expired stock.
+- `demandModel.ts` is the shared authority for segment, price, weather, size,
+  and milk probabilities. `ingredientCapacities` forecasts intended weighted
+  demand without stock suppression; every UI estimate must remain visibly `~`.
+- New reports persist exact opening, bought, used, expired, and rolled totals.
+  Every row must conserve quantity. Old reports with null lifecycle evidence
+  must omit detail instead of reconstructing history.
+- Run `tests/e2e/stock-lifecycle.spec.ts` in both configured projects after any
+  inventory, demand, planner, rush, report, responsive, or persistence change.
+  It covers planning, depletion, pause/reload, LIFO expiry, conservation,
+  actual charges, and 360px reachability through the production bundle.
+
 ## Save recovery
 
-The current browser adapter uses schema/key version 2 and retains the previous
-validated primary as a last-known-good backup. Version-1 exported files and
-legacy local keys migrate automatically; future versions are rejected.
+The current browser adapter uses schema/key version 3 and retains the previous
+validated primary as a last-known-good backup. Current storage keys are
+`laneway-tycoon.save.v3` and `laneway-tycoon.save.backup.v3`. Version-1 and
+version-2 exports and legacy local keys migrate automatically; future versions
+are rejected. A legacy flat inventory becomes current-day full-life batches
+using the saved refrigeration tier. Old lifecycle history is left unavailable
+rather than invented.
 
 If the primary payload is corrupt and a valid backup exists, the title screen
 shows a recovery warning. Open **Game menu → Save transfer → Restore

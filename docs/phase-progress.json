@@ -63,7 +63,7 @@
         { "id": "5.2", "name": "Schema-v3 Perishable Batch Inventory", "status": "committed" },
         { "id": "5.3", "name": "Weighted Planning Capacity", "status": "committed" },
         { "id": "5.4", "name": "Live Rush Stock and Expiry Reporting", "status": "committed" },
-        { "id": "5.5", "name": "Phase Validation and Documentation", "status": "queued" }
+        { "id": "5.5", "name": "Phase Validation and Documentation", "status": "committed" }
       ]
     },
     {
