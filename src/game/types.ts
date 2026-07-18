@@ -58,6 +58,7 @@ export interface DrinkConfig {
   allowedMilks: MilkChoice[];
   variants: RecipeVariant[];
   qualitySensitivity: number;
+  optionalMilkAmount?: number;
 }
 
 export interface PurchasePackage {
@@ -145,6 +146,8 @@ export interface RushStats {
   peakQueue: number;
   soldByDrink: Partial<Record<DrinkId, number>>;
   consumed: Partial<Record<IngredientId, number>>;
+  arrivalsBySegment: Partial<Record<CustomerSegment, number>>;
+  servedBySegment: Partial<Record<CustomerSegment, number>>;
 }
 
 export interface RushState {
@@ -209,6 +212,7 @@ export interface DayReport {
   reputationChange: number;
   waste: Partial<Record<IngredientId, number>>;
   remainingInventory: IngredientInventory;
+  servedBySegment: Partial<Record<CustomerSegment, number>>;
   bottleneck: string;
   explanations: string[];
   settled: boolean;

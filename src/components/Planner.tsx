@@ -1,6 +1,12 @@
 import { useState } from 'react';
 
-import { PHASE_ONE_DRINKS, PURCHASE_PACKAGES } from '../content/phase1';
+import {
+  BEAN_DETAILS,
+  DRINKS,
+  PURCHASE_PACKAGES,
+  VENUE_MENU_CAPACITY,
+  WEATHER_DETAILS,
+} from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
 
@@ -16,6 +22,7 @@ export function Planner(): React.JSX.Element {
   const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial'>('menu');
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
+  const weather = WEATHER_DETAILS[game.weather];
 
   const toggleDrink = (drinkId: DrinkId): void => {
     const active = game.plan.activeMenu.includes(drinkId);
@@ -32,7 +39,9 @@ export function Planner(): React.JSX.Element {
           <p className="eyebrow">Morning planning</p>
           <h2 id="planner-title">Set up the cart</h2>
         </div>
-        <p className="forecast-badge">Mild · steady foot traffic</p>
+        <p className="forecast-badge">
+          {weather.name} · {weather.note}
+        </p>
       </div>
 
       <div aria-label="Morning planning sections" className="mobile-tabs" role="tablist">
@@ -63,9 +72,9 @@ export function Planner(): React.JSX.Element {
         id="planner-menu"
         role="tabpanel"
       >
-        <legend>Menu and prices · choose up to 3</legend>
+        <legend>Menu and prices · choose up to {VENUE_MENU_CAPACITY[game.venueId]}</legend>
         <div className="menu-grid">
-          {PHASE_ONE_DRINKS.map((drink) => {
+          {DRINKS.map((drink) => {
             const checked = game.plan.activeMenu.includes(drink.id);
             return (
               <div className={`menu-card ${checked ? 'is-selected' : ''}`} key={drink.id}>
@@ -74,6 +83,10 @@ export function Planner(): React.JSX.Element {
                   <span>
                     <strong>{drink.name}</strong>
                     <small>{drink.description}</small>
+                    <small className="recipe-note">
+                      {drink.variants.map((variant) => variant.size).join(' / ')} ·{' '}
+                      {drink.allowedMilks.join(' / ')}
+                    </small>
                   </span>
                 </label>
                 <label className="price-field">
@@ -150,6 +163,24 @@ export function Planner(): React.JSX.Element {
         role="tabpanel"
       >
         <legend>Espresso dial-in</legend>
+        <label className="bean-select">
+          Beans for espresso and filter
+          <select
+            onChange={(event) =>
+              command({
+                type: 'prepareDay',
+                patch: { beanId: event.target.value as keyof typeof BEAN_DETAILS },
+              })
+            }
+            value={game.plan.beanId}
+          >
+            {Object.entries(BEAN_DETAILS).map(([id, detail]) => (
+              <option key={id} value={id}>
+                {detail.name} — {detail.description}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="segmented-options">
           {DIAL_OPTIONS.map((option) => (
             <label className={game.plan.dialIn === option.id ? 'is-selected' : ''} key={option.id}>
@@ -165,6 +196,17 @@ export function Planner(): React.JSX.Element {
           ))}
         </div>
       </fieldset>
+
+      <aside className="demand-forecast" aria-labelledby="forecast-title">
+        <strong id="forecast-title">Demand clues</strong>
+        <ul>
+          <li>{weather.note}</li>
+          <li>Higher prices reduce arrivals, especially price-sensitive students.</li>
+          <li>Reputation {game.reputation}/100 currently supports passing demand.</li>
+          <li>{BEAN_DETAILS[game.plan.beanId].description}</li>
+          <li>Visible queues and unavailable recipes turn customers away.</li>
+        </ul>
+      </aside>
 
       <div className="planner-total">
         <div>

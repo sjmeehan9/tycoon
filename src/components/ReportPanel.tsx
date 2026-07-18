@@ -71,6 +71,15 @@ export function ReportPanel(): React.JSX.Element {
         <strong>Bottleneck</strong>
         <span>{report.bottleneck}</span>
       </div>
+      <h3>Customers served</h3>
+      <dl className="segment-mix">
+        {(['commuter', 'student', 'enthusiast', 'regular'] as const).map((segment) => (
+          <div key={segment}>
+            <dt>{segment}</dt>
+            <dd>{report.servedBySegment[segment] ?? 0}</dd>
+          </div>
+        ))}
+      </dl>
       <h3>Why it happened</h3>
       <ul className="explanation-list">
         {report.explanations.map((explanation) => (

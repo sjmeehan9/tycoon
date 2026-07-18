@@ -1,19 +1,26 @@
 import {
+  BEAN_DETAILS,
   CART_IMPROVEMENT_COST_CENTS,
+  DRINK_MAP,
   INGREDIENT_UNIT_COST_CENTS,
   INITIAL_CASH_CENTS,
   INITIAL_REPUTATION,
-  MAX_CART_MENU_ITEMS,
+  MILK_SURCHARGE_CENTS,
   MAX_QUEUE_LENGTH,
-  PHASE_ONE_DRINK_MAP,
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
+  SEGMENT_DRINK_APPEAL,
+  SIZE_SURCHARGE_CENTS,
   TICKS_PER_SECOND,
+  VENUE_DEMAND_FACTOR,
+  VENUE_MENU_CAPACITY,
+  WEATHER_DETAILS,
   createDefaultPlan,
   emptyInventory,
   emptyPurchases,
   milkIngredient,
-} from '../content/phase1';
+  weatherForDay,
+} from '../content/gameContent';
 import { GameRuleError } from './errors';
 import { nextRandom, randomInt } from './prng';
 import type {
@@ -24,6 +31,7 @@ import type {
   DayReport,
   DrinkConfig,
   DrinkId,
+  DrinkSize,
   EventChoice,
   GameCommand,
   GameState,
@@ -64,6 +72,28 @@ const LANEWAY_EVENT: SimulationEvent = {
   ],
 };
 
+const WEATHER_EVENT: SimulationEvent = {
+  id: 'sudden-downpour',
+  title: 'The heavens open',
+  description: 'A sharp Melbourne downpour sends pedestrians under every nearby awning.',
+  choices: [
+    {
+      id: 'shelter-crowd',
+      label: 'Shelter the crowd',
+      description: 'Welcome them in. Demand rises, but the queue gets lively.',
+      effect: { addCustomers: 2, demandMultiplier: 1.12, reputation: 1 },
+    },
+    {
+      id: 'close-awning',
+      label: 'Protect the machine',
+      description: 'Keep the awning tight and service controlled.',
+      effect: { demandMultiplier: 0.94, qualityBonus: 3 },
+    },
+  ],
+};
+
+const RUSH_EVENTS = [LANEWAY_EVENT, WEATHER_EVENT];
+
 /** Create a deterministic, serializable campaign at the first morning plan. */
 export function createCampaign(options: CampaignOptions): GameState {
   if (!Number.isFinite(options.seed)) throw new GameRuleError('Campaign seed must be a number.');
@@ -81,7 +111,7 @@ export function createCampaign(options: CampaignOptions): GameState {
     cashCents: INITIAL_CASH_CENTS,
     reputation: INITIAL_REPUTATION,
     venueId: 'cart',
-    weather: 'mild',
+    weather: weatherForDay(seed, 1, options.scenarioId ?? 'lanewayClassic'),
     inventory: emptyInventory(),
     plan: createDefaultPlan(),
     rush: null,
@@ -115,7 +145,7 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
     beanId: patch.beanId ?? state.plan.beanId,
     scheduledStaffIds: patch.scheduledStaffIds ?? state.plan.scheduledStaffIds,
   };
-  validatePlan(plan);
+  validatePlan(state, plan);
   if (purchaseCost(plan) > state.cashCents) {
     throw new GameRuleError('Those supplies cost more cash than the cart has available.');
   }
@@ -125,7 +155,7 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
 /** Commit supply purchases and begin the deterministic service rush. */
 export function startRush(state: GameState): GameState {
   requirePhase(state, 'planning');
-  validatePlan(state.plan);
+  validatePlan(state, state.plan);
   const suppliesCost = purchaseCost(state.plan);
   if (suppliesCost > state.cashCents) {
     throw new GameRuleError('Reduce supply purchases before opening the cart.');
@@ -140,7 +170,7 @@ export function startRush(state: GameState): GameState {
     activeService: null,
     pendingEvent: null,
     resolvedEvents: [],
-    eventTriggerTicks: [Math.floor(RUSH_DURATION_TICKS * 0.42)],
+    eventTriggerTicks: createEventTriggerTicks(state),
     nextCustomerId: 1,
     demandMultiplier: 1,
     qualityBonus: 0,
@@ -266,6 +296,7 @@ export function startNextDay(state: GameState): GameState {
     ...state,
     phase: 'planning',
     day: state.day + 1,
+    weather: weatherForDay(state.seed, state.day + 1, state.scenarioId),
     plan: { ...state.plan, purchases: emptyPurchases() },
     rush: null,
     report: null,
@@ -327,6 +358,7 @@ function advanceSingleTick(state: GameState): GameState {
   if (!rush) throw new GameRuleError('No service rush is active.');
   const nextTick = rush.tick + 1;
   if (rush.eventTriggerTicks.includes(nextTick)) {
+    const event = RUSH_EVENTS[rush.resolvedEvents.length % RUSH_EVENTS.length] ?? LANEWAY_EVENT;
     return {
       ...state,
       phase: 'event',
@@ -334,7 +366,7 @@ function advanceSingleTick(state: GameState): GameState {
         ...rush,
         tick: nextTick,
         isPaused: true,
-        pendingEvent: LANEWAY_EVENT,
+        pendingEvent: event,
         eventTriggerTicks: rush.eventTriggerTicks.filter((tick) => tick !== nextTick),
       },
     };
@@ -387,6 +419,10 @@ function progressService(state: GameState): GameState {
     soldByDrink: {
       ...rush.stats.soldByDrink,
       [customer.order.drinkId]: soldCount + 1,
+    },
+    servedBySegment: {
+      ...rush.stats.servedBySegment,
+      [customer.segment]: (rush.stats.servedBySegment[customer.segment] ?? 0) + 1,
     },
   };
   return { ...state, rush: { ...rush, activeService: null, stats } };
@@ -447,12 +483,13 @@ function maybeAddArrival(state: GameState): GameState {
   if (!rush) return state;
   const arrivalDraw = nextRandom(state.rngState);
   let updated: GameState = { ...state, rngState: arrivalDraw.state };
-  if (arrivalDraw.value >= arrivalChance(updated)) return updated;
+  if (arrivalDraw.value >= demandRate(updated)) return updated;
   const created = createCustomer(updated, rush.nextCustomerId);
   updated = created.state;
   const activeRush = updated.rush;
   if (!activeRush) return updated;
   const arrivals = activeRush.stats.arrivals + 1;
+  const segmentArrivals = (activeRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1;
   if (activeRush.queue.length >= MAX_QUEUE_LENGTH) {
     return {
       ...updated,
@@ -462,6 +499,10 @@ function maybeAddArrival(state: GameState): GameState {
         stats: {
           ...activeRush.stats,
           arrivals,
+          arrivalsBySegment: {
+            ...activeRush.stats.arrivalsBySegment,
+            [created.customer.segment]: segmentArrivals,
+          },
           abandoned: activeRush.stats.abandoned + 1,
           peakQueue: Math.max(activeRush.stats.peakQueue, activeRush.queue.length),
         },
@@ -478,6 +519,10 @@ function maybeAddArrival(state: GameState): GameState {
       stats: {
         ...activeRush.stats,
         arrivals,
+        arrivalsBySegment: {
+          ...activeRush.stats.arrivalsBySegment,
+          [created.customer.segment]: segmentArrivals,
+        },
         peakQueue: Math.max(activeRush.stats.peakQueue, queue.length),
       },
     },
@@ -491,22 +536,21 @@ function createCustomer(
   let rngState = state.rngState;
   const segmentDraw = nextRandom(rngState);
   rngState = segmentDraw.state;
-  const segment: CustomerSegment = segmentDraw.value < 0.68 ? 'commuter' : 'regular';
+  const segment = chooseSegment(segmentDraw.value);
   const drinkDraw = nextRandom(rngState);
   rngState = drinkDraw.state;
-  const menuIndex = Math.min(
-    state.plan.activeMenu.length - 1,
-    Math.floor(drinkDraw.value * state.plan.activeMenu.length),
-  );
-  const drinkId = state.plan.activeMenu[menuIndex];
-  if (!drinkId) throw new GameRuleError('The active menu must contain a drink.');
+  const drinkId = chooseDrink(state, segment, drinkDraw.value);
   const drink = getDrink(drinkId);
+  const sizeDraw = nextRandom(rngState);
+  rngState = sizeDraw.state;
+  const size = chooseSize(drink, segment, sizeDraw.value);
   const milkDraw = nextRandom(rngState);
   rngState = milkDraw.state;
   const milk = chooseMilk(drink, milkDraw.value);
-  const patienceDraw = randomInt(rngState, 70, 130);
+  const [minimumPatience, maximumPatience] = patienceRange(segment);
+  const patienceDraw = randomInt(rngState, minimumPatience, maximumPatience);
   rngState = patienceDraw.state;
-  const order = makeOrder(state, drink, milk);
+  const order = makeOrder(state, drink, size, milk);
   const tick = state.rush?.tick ?? 0;
   return {
     state: { ...state, rngState },
@@ -521,23 +565,30 @@ function createCustomer(
   };
 }
 
-function makeOrder(state: GameState, drink: DrinkConfig, milk: MilkChoice): Order {
-  const variant = drink.variants[0];
-  if (!variant) throw new GameRuleError(`${drink.name} is missing its regular recipe.`);
+function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: MilkChoice): Order {
+  const variant = drink.variants.find((candidate) => candidate.size === size);
+  if (!variant) throw new GameRuleError(`${drink.name} is missing its ${size} recipe.`);
   const ingredients = variant.ingredients.map((item) => adaptIngredient(state, item, milk));
-  const milkSurcharge = milk === 'oat' ? 80 : 0;
+  const optionalMilk = drink.optionalMilkAmount ? milkIngredient(milk) : null;
+  if (optionalMilk) {
+    ingredients.push({ ingredientId: optionalMilk, amount: drink.optionalMilkAmount ?? 0 });
+  }
   const dialMultiplier =
     state.plan.dialIn === 'speed' ? 0.8 : state.plan.dialIn === 'quality' ? 1.2 : 1;
+  const beanMultiplier = BEAN_DETAILS[state.plan.beanId].speed;
   const signMultiplier = state.improvements.includes('street-sign') ? 0.96 : 1;
   return {
     drinkId: drink.id,
-    size: variant.size,
+    size,
     milk,
-    priceCents: state.plan.pricesCents[drink.id] + milkSurcharge,
+    priceCents:
+      state.plan.pricesCents[drink.id] +
+      MILK_SURCHARGE_CENTS[milk] +
+      (size === 'large' ? SIZE_SURCHARGE_CENTS : 0),
     ingredientAmounts: ingredients,
     preparationTicks: Math.max(
       5,
-      Math.round(variant.preparationTicks * dialMultiplier * signMultiplier),
+      Math.round(variant.preparationTicks * dialMultiplier * beanMultiplier * signMultiplier),
     ),
   };
 }
@@ -558,8 +609,71 @@ function adaptIngredient(
 
 function chooseMilk(drink: DrinkConfig, draw: number): MilkChoice {
   if (drink.allowedMilks.length === 1) return drink.allowedMilks[0] ?? 'none';
-  if (drink.allowedMilks.includes('oat') && draw < 0.22) return 'oat';
+  if (drink.allowedMilks.includes('none') && draw < 0.52) return 'none';
+  if (drink.allowedMilks.includes('oat') && draw < 0.72) return 'oat';
+  if (drink.allowedMilks.includes('soy') && draw < 0.84) return 'soy';
   return drink.allowedMilks.includes('dairy') ? 'dairy' : (drink.allowedMilks[0] ?? 'none');
+}
+
+function chooseSegment(draw: number): CustomerSegment {
+  if (draw < 0.34) return 'commuter';
+  if (draw < 0.59) return 'student';
+  if (draw < 0.79) return 'enthusiast';
+  return 'regular';
+}
+
+function chooseSize(drink: DrinkConfig, segment: CustomerSegment, draw: number): DrinkSize {
+  if (!drink.variants.some((variant) => variant.size === 'large')) return 'regular';
+  const largeChance = segment === 'student' ? 0.3 : segment === 'commuter' ? 0.35 : 0.42;
+  return draw < largeChance ? 'large' : 'regular';
+}
+
+function patienceRange(segment: CustomerSegment): [number, number] {
+  if (segment === 'commuter') return [55, 100];
+  if (segment === 'student') return [70, 140];
+  if (segment === 'enthusiast') return [85, 160];
+  return [80, 150];
+}
+
+function chooseDrink(state: GameState, segment: CustomerSegment, draw: number): DrinkId {
+  const weighted = state.plan.activeMenu.map((drinkId) => ({
+    drinkId,
+    weight: drinkChoiceWeight(state, segment, drinkId),
+  }));
+  const total = weighted.reduce((sum, item) => sum + item.weight, 0);
+  let cursor = draw * total;
+  for (const item of weighted) {
+    cursor -= item.weight;
+    if (cursor <= 0) return item.drinkId;
+  }
+  const fallback = weighted.at(-1)?.drinkId;
+  if (!fallback) throw new GameRuleError('The active menu must contain a drink.');
+  return fallback;
+}
+
+function drinkChoiceWeight(state: GameState, segment: CustomerSegment, drinkId: DrinkId): number {
+  const drink = getDrink(drinkId);
+  const price = state.plan.pricesCents[drinkId];
+  const sensitivity = segment === 'student' ? 520 : segment === 'commuter' ? 760 : 900;
+  const priceFactor = clamp(1.25 - (price - drink.basePriceCents) / sensitivity, 0.25, 1.5);
+  const weatherFactor = drinkWeatherFactor(drinkId, state.weather);
+  const regularRecipe = drink.variants[0];
+  const available = regularRecipe
+    ? hasIngredients(
+        state.inventory,
+        regularRecipe.ingredients.map((item) => adaptIngredient(state, item, 'dairy')),
+      )
+    : false;
+  const availabilityFactor = available ? 1 : 0.12;
+  return SEGMENT_DRINK_APPEAL[segment][drinkId] * priceFactor * weatherFactor * availabilityFactor;
+}
+
+function drinkWeatherFactor(drinkId: DrinkId, weather: GameState['weather']): number {
+  const isColdDrink = drinkId === 'icedLatte' || drinkId === 'coldBrew';
+  if (weather === 'sunny') return isColdDrink ? 1.65 : 0.9;
+  if (weather === 'coldSnap') return isColdDrink ? 0.5 : 1.22;
+  if (weather === 'rainy') return isColdDrink ? 0.65 : 1.15;
+  return 1;
 }
 
 function addEventCustomers(state: GameState, choice: EventChoice): GameState {
@@ -581,6 +695,11 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
         stats: {
           ...currentRush.stats,
           arrivals: currentRush.stats.arrivals + 1,
+          arrivalsBySegment: {
+            ...currentRush.stats.arrivalsBySegment,
+            [created.customer.segment]:
+              (currentRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1,
+          },
           abandoned: currentRush.stats.abandoned + (hasSpace ? 0 : 1),
           peakQueue: Math.max(
             currentRush.stats.peakQueue,
@@ -633,6 +752,7 @@ function finishRush(state: GameState): GameState {
     reputationChange,
     waste,
     remainingInventory: inventory,
+    servedBySegment: rush.stats.servedBySegment,
     bottleneck: determineBottleneck(rush),
     explanations: buildExplanations(state, rush, satisfaction),
     settled: false,
@@ -659,6 +779,8 @@ function determineBottleneck(rush: RushState): string {
 function buildExplanations(state: GameState, rush: RushState, satisfaction: number): string[] {
   const explanations = [
     `${state.plan.dialIn[0]?.toUpperCase()}${state.plan.dialIn.slice(1)} dial-in traded preparation time for cup quality.`,
+    `${WEATHER_DETAILS[state.weather].name} weather: ${WEATHER_DETAILS[state.weather].note}`,
+    `${BEAN_DETAILS[state.plan.beanId].name} changed shot quality and preparation time.`,
     `${rush.stats.peakQueue} was the longest queue during the 75-second rush.`,
   ];
   if (rush.stats.stockouts > 0)
@@ -667,7 +789,13 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
     explanations.push('Short waits and careful coffee lifted customer sentiment.');
   else if (satisfaction < 65)
     explanations.push('Long waits or rushed coffee weighed on customer sentiment.');
-  if (rush.resolvedEvents[0]) explanations.push(rush.resolvedEvents[0].summary);
+  const strongestSegment = Object.entries(rush.stats.servedBySegment).sort(
+    ([, first], [, second]) => second - first,
+  )[0];
+  if (strongestSegment) {
+    explanations.push(`${strongestSegment[0]} customers were the largest served group.`);
+  }
+  explanations.push(...rush.resolvedEvents.map((event) => event.summary));
   return explanations;
 }
 
@@ -675,16 +803,26 @@ function calculateSatisfaction(state: GameState, customer: Customer): number {
   const rush = state.rush;
   const drink = getDrink(customer.order.drinkId);
   const dialQuality = state.plan.dialIn === 'quality' ? 9 : state.plan.dialIn === 'speed' ? -5 : 2;
-  const waitPenalty = Math.round(customer.waitedTicks / TICKS_PER_SECOND / 2.5);
+  const segmentWaitFactor =
+    customer.segment === 'commuter' ? 1.35 : customer.segment === 'student' ? 0.8 : 1;
+  const waitPenalty = Math.round(
+    (customer.waitedTicks / TICKS_PER_SECOND / 2.5) * segmentWaitFactor,
+  );
   const priceDifference = customer.order.priceCents - drink.basePriceCents;
-  const pricePenalty = Math.max(0, Math.round(priceDifference / 35));
+  const priceDivisor = customer.segment === 'student' ? 25 : 38;
+  const pricePenalty = Math.max(0, Math.round(priceDifference / priceDivisor));
+  const beanQuality = BEAN_DETAILS[state.plan.beanId].quality;
+  const enthusiastMultiplier = customer.segment === 'enthusiast' ? 1.3 : 1;
   const qualityEffect = Math.round(
-    (dialQuality + (rush?.qualityBonus ?? 0)) * drink.qualitySensitivity,
+    (dialQuality + beanQuality + (rush?.qualityBonus ?? 0)) *
+      drink.qualitySensitivity *
+      enthusiastMultiplier,
   );
   return clamp(78 + qualityEffect - waitPenalty - pricePenalty, 20, 100);
 }
 
-function arrivalChance(state: GameState): number {
+/** Return the configured arrival probability for the next fixed tick. */
+export function demandRate(state: GameState): number {
   const rush = state.rush;
   const averagePrice =
     state.plan.activeMenu.reduce((total, id) => total + state.plan.pricesCents[id], 0) /
@@ -692,10 +830,36 @@ function arrivalChance(state: GameState): number {
   const priceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
   const reputationFactor = 0.8 + state.reputation / 250;
   const signFactor = state.improvements.includes('street-sign') ? 1.08 : 1;
+  const qualityFactor =
+    state.plan.dialIn === 'quality' ? 1.06 : state.plan.dialIn === 'speed' ? 0.97 : 1;
+  const beanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
+  const weatherFactor = WEATHER_DETAILS[state.weather].demand;
+  const venueFactor = VENUE_DEMAND_FACTOR[state.venueId];
+  const queueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
+  const availableItems = state.plan.activeMenu.filter((drinkId) => {
+    const recipe = getDrink(drinkId).variants[0];
+    return recipe
+      ? hasIngredients(
+          state.inventory,
+          recipe.ingredients.map((item) => adaptIngredient(state, item, 'dairy')),
+        )
+      : false;
+  }).length;
+  const availabilityFactor = 0.35 + 0.65 * (availableItems / state.plan.activeMenu.length);
   return clamp(
-    0.075 * priceFactor * reputationFactor * signFactor * (rush?.demandMultiplier ?? 1),
-    0.025,
-    0.22,
+    0.075 *
+      priceFactor *
+      reputationFactor *
+      signFactor *
+      qualityFactor *
+      beanFactor *
+      weatherFactor *
+      venueFactor *
+      queueFactor *
+      availabilityFactor *
+      (rush?.demandMultiplier ?? 1),
+    0.005,
+    0.3,
   );
 }
 
@@ -738,9 +902,10 @@ function recipeCost(ingredients: IngredientAmount[]): number {
   );
 }
 
-function validatePlan(plan: DayPlan): void {
-  if (plan.activeMenu.length < 1 || plan.activeMenu.length > MAX_CART_MENU_ITEMS) {
-    throw new GameRuleError(`Choose between 1 and ${MAX_CART_MENU_ITEMS} cart drinks.`);
+function validatePlan(state: GameState, plan: DayPlan): void {
+  const menuCapacity = VENUE_MENU_CAPACITY[state.venueId];
+  if (plan.activeMenu.length < 1 || plan.activeMenu.length > menuCapacity) {
+    throw new GameRuleError(`Choose between 1 and ${menuCapacity} ${state.venueId} drinks.`);
   }
   for (const drinkId of plan.activeMenu) {
     getDrink(drinkId);
@@ -758,9 +923,16 @@ function validatePlan(plan: DayPlan): void {
 }
 
 function getDrink(drinkId: DrinkId): DrinkConfig {
-  const drink = PHASE_ONE_DRINK_MAP.get(drinkId);
-  if (!drink) throw new GameRuleError('That drink has not been unlocked for the cart yet.');
+  const drink = DRINK_MAP.get(drinkId);
+  if (!drink) throw new GameRuleError('That drink is not configured.');
   return drink;
+}
+
+function createEventTriggerTicks(state: GameState): number[] {
+  const count = (state.seed + state.day) % 3;
+  if (count === 0) return [];
+  if (count === 1) return [Math.floor(RUSH_DURATION_TICKS * 0.42)];
+  return [Math.floor(RUSH_DURATION_TICKS * 0.31), Math.floor(RUSH_DURATION_TICKS * 0.68)];
 }
 
 function emptyRushStats(): RushStats {
@@ -776,6 +948,8 @@ function emptyRushStats(): RushStats {
     peakQueue: 0,
     soldByDrink: {},
     consumed: {},
+    arrivalsBySegment: {},
+    servedBySegment: {},
   };
 }
 

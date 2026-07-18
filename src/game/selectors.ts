@@ -1,4 +1,4 @@
-import { PURCHASE_PACKAGES, RUSH_DURATION_TICKS, TICKS_PER_SECOND } from '../content/phase1';
+import { PURCHASE_PACKAGES, RUSH_DURATION_TICKS, TICKS_PER_SECOND } from '../content/gameContent';
 import { purchaseCost } from './engine';
 import type { GameState } from './types';
 

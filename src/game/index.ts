@@ -5,6 +5,7 @@ export {
   closeDay,
   continueEndless,
   createCampaign,
+  demandRate,
   dispatchGameCommand,
   prepareDay,
   purchaseCost,

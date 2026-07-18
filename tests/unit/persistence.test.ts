@@ -53,7 +53,15 @@ describe('Phase 1 save envelope', () => {
     let event = togglePause(rush);
     while (event.phase === 'rush') event = advanceTick(event);
     let report = resolveEvent(event, 'protect-queue');
-    while (report.phase === 'rush') report = advanceTick(report);
+    while (report.phase !== 'report') {
+      if (report.phase === 'event') {
+        const choice = report.rush?.pendingEvent?.choices[0]?.id;
+        if (!choice) throw new Error('Event had no choice.');
+        report = resolveEvent(report, choice);
+      } else {
+        report = advanceTick(report);
+      }
+    }
     const reinvest = closeDay(report);
     for (const state of [planning, rush, event, report, reinvest]) {
       const parsed = parseEnvelope(JSON.stringify(createSaveEnvelope(state)));

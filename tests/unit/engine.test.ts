@@ -20,7 +20,15 @@ function runToReport(initial: GameState, choiceId = 'protect-queue'): GameState 
   let state = initial;
   let safety = 0;
   while (state.phase !== 'report' && safety < 1_000) {
-    state = state.phase === 'event' ? resolveEvent(state, choiceId) : advanceTick(state);
+    if (state.phase === 'event') {
+      const availableChoice =
+        state.rush?.pendingEvent?.choices.find((choice) => choice.id === choiceId)?.id ??
+        state.rush?.pendingEvent?.choices[0]?.id;
+      if (!availableChoice) throw new Error('Event had no available choice.');
+      state = resolveEvent(state, availableChoice);
+    } else {
+      state = advanceTick(state);
+    }
     safety += 1;
   }
   if (state.phase !== 'report') throw new Error('Rush did not reach its report.');
@@ -33,7 +41,7 @@ describe('seeded cart engine', () => {
     const second = runToReport(startRush(createCampaign({ seed: 7_777 })), 'take-order');
     expect(first).toEqual(second);
     expect(first.report?.arrivals).toBeGreaterThan(0);
-    expect(first.rush?.resolvedEvents).toHaveLength(1);
+    expect(first.rush?.resolvedEvents).toHaveLength(2);
   });
 
   it.each([1, 2, 4] satisfies RushSpeed[])('produces the same report at %d×', (speed) => {

@@ -348,6 +348,12 @@ legend {
   margin-top: 0.18rem;
   color: #6d5548;
 }
+.recipe-note {
+  margin-top: 0.32rem !important;
+  color: var(--green) !important;
+  font-weight: 800;
+  text-transform: capitalize;
+}
 .price-field {
   display: flex;
   align-items: center;
@@ -397,6 +403,30 @@ legend {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.45rem;
+}
+.bean-select {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.7rem;
+  font-weight: 850;
+}
+.bean-select select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.45rem;
+  border: 2px solid #71584b;
+  background: #fff;
+}
+.demand-forecast {
+  margin: 0 0 1rem;
+  padding: 0.8rem 0.9rem;
+  border-left: 6px solid var(--green);
+  background: #dfe9d8;
+}
+.demand-forecast ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.15rem;
+  line-height: 1.4;
 }
 .segmented-options label {
   min-height: 72px;
@@ -570,6 +600,27 @@ legend {
   gap: 0.45rem;
   margin: 0;
 }
+.segment-mix {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+.segment-mix div {
+  padding: 0.5rem;
+  border: 2px solid #a48b78;
+  background: var(--paper);
+  text-align: center;
+}
+.segment-mix dt {
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+.segment-mix dd {
+  margin: 0.2rem 0 0;
+  font-weight: 900;
+}
 .report-stats div {
   padding: 0.65rem;
   border: 2px solid #a48b78;
@@ -730,6 +781,9 @@ legend {
   }
   .report-layout {
     grid-template-columns: 1fr;
+  }
+  .segment-mix {
+    grid-template-columns: 1fr 1fr;
   }
   .upgrade-card {
     grid-template-columns: auto 1fr;

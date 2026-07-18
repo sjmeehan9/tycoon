@@ -1,4 +1,4 @@
-import { CART_IMPROVEMENT_COST_CENTS } from '../content/phase1';
+import { CART_IMPROVEMENT_COST_CENTS } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import { formatMoney } from '../game';
 

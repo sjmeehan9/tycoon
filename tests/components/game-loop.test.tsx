@@ -70,6 +70,23 @@ describe('playable cart UI', () => {
     expect(screen.getByRole('button', { name: 'Open the cart' })).toBeEnabled();
   });
 
+  it('exposes the complete menu, modifiers, beans, and demand explanations', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    expect(await screen.findByText('Cold Brew')).toBeVisible();
+    expect(screen.getAllByText(/regular \/ large · dairy \/ oat \/ soy/i)[0]).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Beans for espresso and filter' })).toHaveValue(
+      'houseBeans',
+    );
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Beans for espresso and filter' }),
+      'singleOriginBeans',
+    );
+    expect(screen.getByText(/Higher prices reduce arrivals/)).toBeVisible();
+    expect(screen.getByText(/Visible queues and unavailable recipes/)).toBeVisible();
+  });
+
   it('renders and resolves the seeded event dialog', async () => {
     new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(stateAtEvent()));
     const user = userEvent.setup();
