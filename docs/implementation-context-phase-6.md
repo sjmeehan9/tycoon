@@ -20,3 +20,32 @@
 - Technical re-check found no stale external assumption. The existing pure
   engine, schema-v3 bounded save adapter, Canvas 2D renderer, React accessibility
   layer, and configured Vitest/RTL/Playwright stack support the full phase.
+
+## Component 6.2 — Deterministic Rush Activity Stream
+
+- Replaced sale-only rush observations with a persisted discriminated activity
+  stream covering arrivals, service starts, actual-price sales, and walkaways.
+  Each observation has a day/sequence-derived stable ID, monotonic persisted
+  sequence, tick, customer identity, and segment.
+- Centralized append/prune behavior at an 80-event bound and wired observations
+  to the real queue-full, patience, stockout, reservation, sale-completion, and
+  rush-end engine boundaries. Events do not alter queue policy, inventory,
+  accounting, random draws, or frame timing.
+- Preserved schema v3 and the `recentActivity` public field. Compatible
+  sale-only payloads normalize to honest `segment: null` legacy events;
+  malformed, future, duplicate, non-monotonic, and over-bound data is rejected
+  before replacing application state.
+- Expanded immutable scene snapshots with exact uncapped queue count, eight
+  visual customer identities, active customer/order, and recent events. Added
+  accessible descriptions for every event/reason and adapted rush/report UI to
+  filter sale-specific evidence correctly.
+- Proved equal event output at 1×/2×/4×, all four walkaway reasons, transition
+  ordering, actual price retention, bounded pruning, reload continuation,
+  legacy normalization, invalid rejection, exact queue truth beyond the visual
+  cap, and accessible autosave restoration.
+- Exact component validation passed: frozen install, production build,
+  lint/format, 100 Vitest/RTL tests, and 37 Playwright browser passes with seven
+  intentional project skips.
+- No spec deviation or deferred behavior. `queueCustomers` anticipates the
+  already-specified eight-sprite Component 6.3 consumer while `queueSegments`
+  remains compatible with the existing Canvas during this boundary.

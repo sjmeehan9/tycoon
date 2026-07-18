@@ -55,6 +55,7 @@ export {
 export {
   canOpen,
   completedSaleLabel,
+  describeRushActivity,
   formatMoney,
   rushClock,
   selectedSupplyCost,

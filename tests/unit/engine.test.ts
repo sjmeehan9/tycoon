@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   INGREDIENT_IDS,
   MILK_SURCHARGE_CENTS,
+  RUSH_ACTIVITY_LIMIT,
   SIZE_SURCHARGE_CENTS,
+  emptyInventory,
   emptyPurchases,
 } from '../../src/content/gameContent';
 import {
@@ -16,10 +18,12 @@ import {
   createCampaign,
   prepareDay,
   resolveEvent,
+  serviceQueueCapacity,
   setRushSpeed,
   startNextDay,
   startRush,
   togglePause,
+  type Customer,
   type GameState,
   type RushSpeed,
 } from '../../src/game';
@@ -43,6 +47,24 @@ function runToReport(initial: GameState, choiceId = 'protect-queue'): GameState 
   return state;
 }
 
+function testCustomer(id: string, waitedTicks = 0, patienceTicks = 1_000): Customer {
+  return {
+    id,
+    segment: 'commuter',
+    order: {
+      drinkId: 'espresso',
+      size: 'regular',
+      milk: 'none',
+      priceCents: 400,
+      ingredientAmounts: [{ ingredientId: 'houseBeans', amount: 18 }],
+      preparationTicks: 20,
+    },
+    arrivedAtTick: 0,
+    patienceTicks,
+    waitedTicks,
+  };
+}
+
 describe('seeded cart engine', () => {
   it('replays equal seed and commands exactly', () => {
     const first = runToReport(startRush(createCampaign({ seed: 7_777 })), 'take-order');
@@ -60,6 +82,106 @@ describe('seeded cart engine', () => {
     expect(accelerated.report).toEqual(baseline.report);
     expect(accelerated.inventory).toEqual(baseline.inventory);
     expect(accelerated.rngState).toBe(baseline.rngState);
+    expect(accelerated.rush?.recentActivity).toEqual(baseline.rush?.recentActivity);
+    expect(accelerated.rush?.nextActivitySequence).toBe(baseline.rush?.nextActivitySequence);
+  });
+
+  it('emits ordered customer transitions with all four locked walkaway reasons', () => {
+    const natural = runToReport(startRush(createCampaign({ seed: 7_777 })), 'take-order');
+    expect(new Set(natural.rush?.recentActivity.map(({ type }) => type))).toEqual(
+      new Set(['arrival', 'serviceStarted', 'sale', 'walkaway']),
+    );
+
+    const base = startRush(createCampaign({ seed: 31 }));
+    if (!base.rush) throw new Error('Expected rush state.');
+    const patienceCustomer = testCustomer('patience-customer', 4, 5);
+    const patience = advanceTick({
+      ...base,
+      rush: { ...base.rush, queue: [patienceCustomer], eventTriggerTicks: [] },
+    });
+    expect(
+      patience.rush?.recentActivity.find(
+        (event) => event.type === 'walkaway' && event.customerId === patienceCustomer.id,
+      ),
+    ).toMatchObject({ reason: 'patience' });
+
+    const stockoutCustomer = testCustomer('stockout-customer');
+    const stockout = advanceTick({
+      ...base,
+      inventory: emptyInventory(),
+      rush: { ...base.rush, queue: [stockoutCustomer], eventTriggerTicks: [] },
+    });
+    expect(
+      stockout.rush?.recentActivity.find(
+        (event) => event.type === 'walkaway' && event.customerId === stockoutCustomer.id,
+      ),
+    ).toMatchObject({ reason: 'stockout' });
+
+    const activeCustomer = testCustomer('active-customer');
+    const capacity = serviceQueueCapacity(base);
+    const fullQueue = Array.from({ length: capacity }, (_, index) =>
+      testCustomer(`queued-${index + 1}`),
+    );
+    const queueFull = advanceTick({
+      ...base,
+      rngState: 1,
+      rush: {
+        ...base.rush,
+        activeService: { customer: activeCustomer, remainingTicks: 20, totalTicks: 20 },
+        queue: fullQueue,
+        demandMultiplier: 100,
+        eventTriggerTicks: [],
+      },
+    });
+    const rejected = queueFull.rush?.recentActivity.slice(-2) ?? [];
+    expect(rejected.map(({ type }) => type)).toEqual(['arrival', 'walkaway']);
+    expect(rejected[0]?.customerId).toBe(rejected[1]?.customerId);
+    expect(rejected[1]).toMatchObject({ type: 'walkaway', reason: 'queueFull' });
+
+    const ending = advanceTick({
+      ...base,
+      rngState: 123_456,
+      rush: {
+        ...base.rush,
+        durationTicks: 1,
+        activeService: { customer: activeCustomer, remainingTicks: 20, totalTicks: 20 },
+        queue: [testCustomer('ending-queue-customer')],
+        eventTriggerTicks: [],
+      },
+    });
+    const endedIds = ending.rush?.recentActivity
+      .filter((event) => event.type === 'walkaway' && event.reason === 'rushEnded')
+      .map(({ customerId }) => customerId);
+    expect(endedIds).toEqual(['active-customer', 'ending-queue-customer']);
+  });
+
+  it('keeps one bounded, contiguous, identity-stable activity tail', () => {
+    let working = startRush(createCampaign({ seed: 9_119 }));
+    for (let batch = 0; batch < 3; batch += 1) {
+      if (!working.rush) throw new Error('Expected active rush observations.');
+      working = advanceTick({
+        ...working,
+        rngState: 123_456,
+        rush: {
+          ...working.rush,
+          eventTriggerTicks: [],
+          queue: Array.from({ length: 30 }, (_, index) =>
+            testCustomer(`batch-${batch}-customer-${index}`, 0, 1),
+          ),
+        },
+      });
+    }
+    const rush = working.rush;
+    if (!rush) throw new Error('Expected bounded rush observations.');
+    expect(rush.recentActivity).toHaveLength(RUSH_ACTIVITY_LIMIT);
+    expect(rush.nextActivitySequence).toBeGreaterThan(RUSH_ACTIVITY_LIMIT);
+    expect(new Set(rush.recentActivity.map(({ id }) => id)).size).toBe(RUSH_ACTIVITY_LIMIT);
+    for (let index = 1; index < rush.recentActivity.length; index += 1) {
+      expect(rush.recentActivity[index]?.sequence).toBe(
+        (rush.recentActivity[index - 1]?.sequence ?? -1) + 1,
+      );
+    }
+    expect(rush.recentActivity.at(-1)?.sequence).toBe(rush.nextActivitySequence - 1);
   });
 
   it('pauses without advancing and rejects commands from the wrong phase', () => {
@@ -163,7 +285,7 @@ describe('seeded cart engine', () => {
 
     const completed = runToReport(startRush(planning));
     const report = completed.report;
-    const sales = completed.rush?.recentActivity ?? [];
+    const sales = completed.rush?.recentActivity.filter((event) => event.type === 'sale') ?? [];
     expect(report).not.toBeNull();
     expect(sales.length).toBe(report?.served);
     expect(sales.length).toBeGreaterThan(0);

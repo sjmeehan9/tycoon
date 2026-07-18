@@ -44,7 +44,6 @@ import {
 import { nextRandom, randomInt } from './prng';
 import type {
   CampaignOptions,
-  CompletedSaleActivity,
   Customer,
   CustomerSegment,
   DayPlan,
@@ -62,8 +61,10 @@ import type {
   Order,
   PlanPatch,
   RushSpeed,
+  RushActivityEvent,
   RushState,
   RushStats,
+  RushWalkawayReason,
   SimulationEvent,
   StaffMember,
   StaffTrait,
@@ -261,6 +262,7 @@ export function startRush(state: GameState): GameState {
     operatingCostCents: effects.operatingCostCents,
     openingInventory,
     purchasedInventory,
+    nextActivitySequence: 0,
     recentActivity: [],
     stats: emptyRushStats(),
   };
@@ -704,10 +706,7 @@ function advanceSingleTick(state: GameState): GameState {
     };
   }
 
-  let working: GameState = {
-    ...state,
-    rush: ageQueue({ ...rush, tick: nextTick }),
-  };
+  let working = ageQueue({ ...state, rush: { ...rush, tick: nextTick } });
   working = progressService(working);
   working = startNextService(working);
   working = maybeAddArrival(working);
@@ -716,18 +715,26 @@ function advanceSingleTick(state: GameState): GameState {
   return working;
 }
 
-function ageQueue(rush: RushState): RushState {
+function ageQueue(state: GameState): GameState {
+  const rush = state.rush;
+  if (!rush) return state;
   const kept: Customer[] = [];
   let abandoned = 0;
+  let observedRush = rush;
   for (const customer of rush.queue) {
     const aged = { ...customer, waitedTicks: customer.waitedTicks + 1 };
-    if (aged.waitedTicks >= aged.patienceTicks) abandoned += 1;
-    else kept.push(aged);
+    if (aged.waitedTicks >= aged.patienceTicks) {
+      abandoned += 1;
+      observedRush = appendWalkawayActivity(observedRush, state.day, aged, 'patience');
+    } else kept.push(aged);
   }
   return {
-    ...rush,
-    queue: kept,
-    stats: { ...rush.stats, abandoned: rush.stats.abandoned + abandoned },
+    ...state,
+    rush: {
+      ...observedRush,
+      queue: kept,
+      stats: { ...observedRush.stats, abandoned: rush.stats.abandoned + abandoned },
+    },
   };
 }
 
@@ -757,22 +764,9 @@ function progressService(state: GameState): GameState {
       [customer.segment]: (rush.stats.servedBySegment[customer.segment] ?? 0) + 1,
     },
   };
-  const sale: CompletedSaleActivity = {
-    type: 'sale',
-    tick: rush.tick,
-    drinkId: customer.order.drinkId,
-    size: customer.order.size,
-    milk: customer.order.milk,
-    priceCents: customer.order.priceCents,
-  };
   return {
     ...state,
-    rush: {
-      ...rush,
-      activeService: null,
-      recentActivity: [...rush.recentActivity, sale].slice(-RUSH_ACTIVITY_LIMIT),
-      stats,
-    },
+    rush: appendSaleActivity({ ...rush, activeService: null, stats }, state.day, customer),
   };
 }
 
@@ -784,17 +778,18 @@ function startNextService(state: GameState): GameState {
     if (!customer) break;
     const queue = rush.queue.slice(1);
     if (!hasIngredients(working.inventory, customer.order.ingredientAmounts)) {
+      const nextRush: RushState = {
+        ...rush,
+        queue,
+        stats: {
+          ...rush.stats,
+          stockouts: rush.stats.stockouts + 1,
+          abandoned: rush.stats.abandoned + 1,
+        },
+      };
       working = {
         ...working,
-        rush: {
-          ...rush,
-          queue,
-          stats: {
-            ...rush.stats,
-            stockouts: rush.stats.stockouts + 1,
-            abandoned: rush.stats.abandoned + 1,
-          },
-        },
+        rush: appendWalkawayActivity(nextRush, state.day, customer, 'stockout'),
       };
       continue;
     }
@@ -804,23 +799,24 @@ function startNextService(state: GameState): GameState {
     for (const item of customer.order.ingredientAmounts) {
       consumedTotals[item.ingredientId] = (consumedTotals[item.ingredientId] ?? 0) + item.amount;
     }
+    const nextRush: RushState = {
+      ...rush,
+      queue,
+      activeService: {
+        customer,
+        remainingTicks: customer.order.preparationTicks,
+        totalTicks: customer.order.preparationTicks,
+      },
+      stats: {
+        ...rush.stats,
+        ingredientCostCents: rush.stats.ingredientCostCents + ingredientCost,
+        consumed: consumedTotals,
+      },
+    };
     working = {
       ...working,
       inventory: consumed,
-      rush: {
-        ...rush,
-        queue,
-        activeService: {
-          customer,
-          remainingTicks: customer.order.preparationTicks,
-          totalTicks: customer.order.preparationTicks,
-        },
-        stats: {
-          ...rush.stats,
-          ingredientCostCents: rush.stats.ingredientCostCents + ingredientCost,
-          consumed: consumedTotals,
-        },
-      },
+      rush: appendServiceStartedActivity(nextRush, state.day, customer),
     };
   }
   return working;
@@ -838,37 +834,39 @@ function maybeAddArrival(state: GameState): GameState {
   if (!activeRush) return updated;
   const arrivals = activeRush.stats.arrivals + 1;
   const segmentArrivals = (activeRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1;
+  const observedRush = appendArrivalActivity(activeRush, state.day, created.customer);
   if (activeRush.queue.length >= serviceQueueCapacity(state)) {
+    const rejectedRush: RushState = {
+      ...observedRush,
+      nextCustomerId: activeRush.nextCustomerId + 1,
+      stats: {
+        ...observedRush.stats,
+        arrivals,
+        arrivalsBySegment: {
+          ...observedRush.stats.arrivalsBySegment,
+          [created.customer.segment]: segmentArrivals,
+        },
+        abandoned: observedRush.stats.abandoned + 1,
+        peakQueue: Math.max(observedRush.stats.peakQueue, observedRush.queue.length),
+      },
+    };
     return {
       ...updated,
-      rush: {
-        ...activeRush,
-        nextCustomerId: activeRush.nextCustomerId + 1,
-        stats: {
-          ...activeRush.stats,
-          arrivals,
-          arrivalsBySegment: {
-            ...activeRush.stats.arrivalsBySegment,
-            [created.customer.segment]: segmentArrivals,
-          },
-          abandoned: activeRush.stats.abandoned + 1,
-          peakQueue: Math.max(activeRush.stats.peakQueue, activeRush.queue.length),
-        },
-      },
+      rush: appendWalkawayActivity(rejectedRush, state.day, created.customer, 'queueFull'),
     };
   }
   const queue = [...activeRush.queue, created.customer];
   return {
     ...updated,
     rush: {
-      ...activeRush,
+      ...observedRush,
       queue,
       nextCustomerId: activeRush.nextCustomerId + 1,
       stats: {
-        ...activeRush.stats,
+        ...observedRush.stats,
         arrivals,
         arrivalsBySegment: {
-          ...activeRush.stats.arrivalsBySegment,
+          ...observedRush.stats.arrivalsBySegment,
           [created.customer.segment]: segmentArrivals,
         },
         peakQueue: Math.max(activeRush.stats.peakQueue, queue.length),
@@ -910,6 +908,69 @@ function createCustomer(
       patienceTicks: Math.round(patienceDraw.value * operationalEffects(state).patienceMultiplier),
       waitedTicks: 0,
     },
+  };
+}
+
+function appendArrivalActivity(rush: RushState, day: number, customer: Customer): RushState {
+  return appendRushActivity(rush, {
+    ...activityIdentity(rush, day, customer),
+    type: 'arrival',
+  });
+}
+
+function appendServiceStartedActivity(rush: RushState, day: number, customer: Customer): RushState {
+  return appendRushActivity(rush, {
+    ...activityIdentity(rush, day, customer),
+    type: 'serviceStarted',
+    drinkId: customer.order.drinkId,
+    size: customer.order.size,
+    milk: customer.order.milk,
+  });
+}
+
+function appendSaleActivity(rush: RushState, day: number, customer: Customer): RushState {
+  return appendRushActivity(rush, {
+    ...activityIdentity(rush, day, customer),
+    type: 'sale',
+    drinkId: customer.order.drinkId,
+    size: customer.order.size,
+    milk: customer.order.milk,
+    priceCents: customer.order.priceCents,
+  });
+}
+
+function appendWalkawayActivity(
+  rush: RushState,
+  day: number,
+  customer: Customer,
+  reason: RushWalkawayReason,
+): RushState {
+  return appendRushActivity(rush, {
+    ...activityIdentity(rush, day, customer),
+    type: 'walkaway',
+    reason,
+  });
+}
+
+function activityIdentity(
+  rush: RushState,
+  day: number,
+  customer: Customer,
+): Pick<RushActivityEvent, 'id' | 'sequence' | 'tick' | 'customerId' | 'segment'> {
+  return {
+    id: `d${day}-e${rush.nextActivitySequence}`,
+    sequence: rush.nextActivitySequence,
+    tick: rush.tick,
+    customerId: customer.id,
+    segment: customer.segment,
+  };
+}
+
+function appendRushActivity(rush: RushState, event: RushActivityEvent): RushState {
+  return {
+    ...rush,
+    nextActivitySequence: event.sequence + 1,
+    recentActivity: [...rush.recentActivity, event].slice(-RUSH_ACTIVITY_LIMIT),
   };
 }
 
@@ -1010,27 +1071,31 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
     const currentRush = created.state.rush;
     if (!currentRush) break;
     const hasSpace = currentRush.queue.length < serviceQueueCapacity(state);
+    const observedRush = appendArrivalActivity(currentRush, state.day, created.customer);
+    const nextRush: RushState = {
+      ...observedRush,
+      queue: hasSpace ? [...currentRush.queue, created.customer] : currentRush.queue,
+      nextCustomerId: currentRush.nextCustomerId + 1,
+      stats: {
+        ...observedRush.stats,
+        arrivals: observedRush.stats.arrivals + 1,
+        arrivalsBySegment: {
+          ...observedRush.stats.arrivalsBySegment,
+          [created.customer.segment]:
+            (observedRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1,
+        },
+        abandoned: observedRush.stats.abandoned + (hasSpace ? 0 : 1),
+        peakQueue: Math.max(
+          observedRush.stats.peakQueue,
+          currentRush.queue.length + (hasSpace ? 1 : 0),
+        ),
+      },
+    };
     working = {
       ...created.state,
-      rush: {
-        ...currentRush,
-        queue: hasSpace ? [...currentRush.queue, created.customer] : currentRush.queue,
-        nextCustomerId: currentRush.nextCustomerId + 1,
-        stats: {
-          ...currentRush.stats,
-          arrivals: currentRush.stats.arrivals + 1,
-          arrivalsBySegment: {
-            ...currentRush.stats.arrivalsBySegment,
-            [created.customer.segment]:
-              (currentRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1,
-          },
-          abandoned: currentRush.stats.abandoned + (hasSpace ? 0 : 1),
-          peakQueue: Math.max(
-            currentRush.stats.peakQueue,
-            currentRush.queue.length + (hasSpace ? 1 : 0),
-          ),
-        },
-      },
+      rush: hasSpace
+        ? nextRush
+        : appendWalkawayActivity(nextRush, state.day, created.customer, 'queueFull'),
     };
   }
   return working;
@@ -1039,6 +1104,18 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
 function finishRush(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) throw new GameRuleError('No service rush is active.');
+  let observedRush = rush;
+  if (rush.activeService) {
+    observedRush = appendWalkawayActivity(
+      observedRush,
+      state.day,
+      rush.activeService.customer,
+      'rushEnded',
+    );
+  }
+  for (const customer of rush.queue) {
+    observedRush = appendWalkawayActivity(observedRush, state.day, customer, 'rushEnded');
+  }
   const expiry = expireInventoryAfterRush(state.inventory, state.day);
   const inventory = expiry.inventory;
   const waste = nonZeroIngredientTotals(expiry.expired);
@@ -1106,7 +1183,7 @@ function finishRush(state: GameState): GameState {
     explanations,
     settled: false,
   };
-  return { ...state, phase: 'report', inventory, report };
+  return { ...state, phase: 'report', inventory, rush: observedRush, report };
 }
 
 function nonZeroIngredientTotals(

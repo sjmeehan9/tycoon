@@ -117,15 +117,53 @@ export interface ServiceJob {
   totalTicks: number;
 }
 
-/** Minimal successful-sale activity; Phase 6 extends this field into a rush-event union. */
-export interface CompletedSaleActivity {
-  type: 'sale';
+/** Walkaway causes emitted at the exact engine transition that removes a customer. */
+export type RushWalkawayReason = 'patience' | 'queueFull' | 'stockout' | 'rushEnded';
+
+/** Stable identity shared by every bounded rush observation. */
+export interface RushActivityBase {
+  id: string;
+  sequence: number;
   tick: number;
+  customerId: string;
+  /** `null` is reserved for honestly migrated observations that predate customer identity. */
+  segment: CustomerSegment | null;
+}
+
+/** A generated customer reaching the business, whether or not the queue can accept them. */
+export interface ArrivalActivityEvent extends RushActivityBase {
+  type: 'arrival';
+}
+
+/** A queued order whose ingredients were reserved and preparation began. */
+export interface ServiceStartedActivityEvent extends RushActivityBase {
+  type: 'serviceStarted';
+  drinkId: DrinkId;
+  size: DrinkSize;
+  milk: MilkChoice;
+}
+
+/** A completed order charged at the engine-recorded actual price. */
+export interface SaleActivityEvent extends RushActivityBase {
+  type: 'sale';
   drinkId: DrinkId;
   size: DrinkSize;
   milk: MilkChoice;
   priceCents: number;
 }
+
+/** A customer leaving without a completed sale. */
+export interface WalkawayActivityEvent extends RushActivityBase {
+  type: 'walkaway';
+  reason: RushWalkawayReason;
+}
+
+/** Ordered, bounded engine observations used by presentation and accessible feedback. */
+export type RushActivityEvent =
+  ArrivalActivityEvent | ServiceStartedActivityEvent | SaleActivityEvent | WalkawayActivityEvent;
+
+/** Backward-compatible public name for consumers that operate specifically on sale events. */
+export type CompletedSaleActivity = SaleActivityEvent;
 
 export interface EventChoiceEffect {
   cashCents?: number;
@@ -192,7 +230,8 @@ export interface RushState {
   operatingCostCents: number;
   openingInventory: IngredientTotals;
   purchasedInventory: IngredientTotals;
-  recentActivity: CompletedSaleActivity[];
+  nextActivitySequence: number;
+  recentActivity: RushActivityEvent[];
   stats: RushStats;
 }
 

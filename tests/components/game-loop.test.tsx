@@ -88,6 +88,18 @@ describe('playable cart UI', () => {
     expect(screen.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('restores colour-independent recent activity descriptions from autosave', async () => {
+    let state = startRush(createCampaign({ seed: 8_018 }));
+    while (state.rush?.recentActivity.length === 0) state = advanceTick(state);
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(state));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const activity = screen.getByRole('list', { name: 'Recent rush activity' });
+    expect(within(activity).getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect(activity).toHaveTextContent(/customer d1-c\d+ arrived/i);
+  });
+
   it('shows every exact live stock item with active ingredients first', async () => {
     const planning = stockLifecyclePlanningEnvelope().activeRun;
     if (!planning) throw new Error('Expected stock-lifecycle planning fixture.');

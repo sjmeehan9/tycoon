@@ -14,7 +14,7 @@ export function ReportPanel(): React.JSX.Element {
   const { command, game } = useGame();
   const report = game?.report;
   if (!game || !report) return <></>;
-  const recentSales = game.rush?.recentActivity ?? [];
+  const recentSales = game.rush?.recentActivity.filter((event) => event.type === 'sale') ?? [];
   const chargeGroups = groupSaleCharges(recentSales);
   const observedTotal = recentSales.reduce((total, sale) => total + sale.priceCents, 0);
   const includesEverySale = recentSales.length === report.served;

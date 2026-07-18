@@ -27,7 +27,7 @@ export const TICKS_PER_SECOND = 4;
 /** Every trading rush lasts 75 simulated seconds. */
 export const RUSH_DURATION_TICKS = 75 * TICKS_PER_SECOND;
 /** Recent engine observations retained for player feedback and reload continuity. */
-export const RUSH_ACTIVITY_LIMIT = 20;
+export const RUSH_ACTIVITY_LIMIT = 80;
 
 export const INGREDIENT_IDS: IngredientId[] = [
   'houseBeans',

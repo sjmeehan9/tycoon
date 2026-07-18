@@ -7,7 +7,7 @@ import {
 } from '../content/gameContent';
 import { purchaseCost } from './engine';
 import { ingredientQuantity } from './inventory';
-import type { CompletedSaleActivity, GameState } from './types';
+import type { CompletedSaleActivity, GameState, RushActivityEvent } from './types';
 
 /** Format integer cents as Australian dollars. */
 export function formatMoney(cents: number): string {
@@ -43,6 +43,37 @@ export function completedSaleLabel(sale: CompletedSaleActivity): string {
   const size = sale.size === 'large' ? 'Large' : 'Regular';
   const milk = sale.milk === 'none' ? '' : ` ${sale.milk}`;
   return `${size}${milk} ${drink?.name ?? sale.drinkId}`;
+}
+
+/** Describe one engine observation without relying on colour, motion, or iconography. */
+export function describeRushActivity(event: RushActivityEvent): string {
+  const customer = `${segmentLabel(event.segment)} customer ${event.customerId}`;
+  if (event.type === 'arrival') return `${customer} arrived.`;
+  if (event.type === 'serviceStarted') {
+    return `${customer} started ${orderLabel(event)} service.`;
+  }
+  if (event.type === 'sale') {
+    return `${customer} received ${completedSaleLabel(event)} and paid ${formatMoney(event.priceCents)}.`;
+  }
+  const reasons: Record<typeof event.reason, string> = {
+    patience: 'left after waiting too long',
+    queueFull: 'left because the queue was full',
+    stockout: 'left because their order was out of stock',
+    rushEnded: 'left when the rush ended',
+  };
+  return `${customer} ${reasons[event.reason]}.`;
+}
+
+function orderLabel(order: Pick<CompletedSaleActivity, 'drinkId' | 'size' | 'milk'>): string {
+  const drink = DRINK_MAP.get(order.drinkId);
+  const size = order.size === 'large' ? 'large' : 'regular';
+  const milk = order.milk === 'none' ? '' : ` ${order.milk}`;
+  return `${size}${milk} ${drink?.name ?? order.drinkId}`;
+}
+
+function segmentLabel(segment: RushActivityEvent['segment']): string {
+  if (segment === null) return 'Legacy';
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
 /** Return only inventory entries available through the Phase 1 supplier. */

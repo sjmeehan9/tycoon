@@ -255,7 +255,7 @@ describe('versioned save envelope', () => {
     expect(rush.rush).toMatchObject({ speed: 4, isPaused: true, tick: 0 });
   });
 
-  it('defaults older schema-v2 rushes and validates bounded completed-sale activity', () => {
+  it('normalizes sale-only v3/v2 activity and validates the bounded event union', () => {
     const started = createSaveEnvelope(startRush(createCampaign({ seed: 809 })));
     const withoutActivity = versionTwoFixture(started);
     if (!withoutActivity.activeRun.rush) throw new Error('Expected active v2 rush.');
@@ -265,20 +265,100 @@ describe('versioned save envelope', () => {
     );
 
     let withSale = startRush(createCampaign({ seed: 810 }));
-    while (withSale.phase === 'rush' && (withSale.rush?.recentActivity.length ?? 0) === 0) {
+    while (
+      withSale.phase === 'rush' &&
+      !withSale.rush?.recentActivity.some((event) => event.type === 'sale')
+    ) {
       withSale = advanceTick(withSale);
     }
-    const sale = withSale.rush?.recentActivity[0];
+    const sale = withSale.rush?.recentActivity.find((event) => event.type === 'sale');
     expect(sale).toBeDefined();
     const roundTrip = importEnvelope(JSON.stringify(createSaveEnvelope(withSale)));
     expect(roundTrip.activeRun?.rush?.recentActivity).toEqual(withSale.rush?.recentActivity);
 
     if (!sale || !started.activeRun?.rush) throw new Error('Expected a completed sale fixture.');
+    const legacyV3 = JSON.parse(JSON.stringify(createSaveEnvelope(withSale))) as {
+      activeRun: { rush: Record<string, unknown> };
+    };
+    legacyV3.activeRun.rush.recentActivity = [
+      {
+        type: sale.type,
+        tick: sale.tick,
+        drinkId: sale.drinkId,
+        size: sale.size,
+        milk: sale.milk,
+        priceCents: sale.priceCents,
+      },
+    ];
+    delete legacyV3.activeRun.rush.nextActivitySequence;
+    const normalized = importEnvelope(JSON.stringify(legacyV3)).activeRun?.rush;
+    expect(normalized?.recentActivity).toEqual([
+      expect.objectContaining({
+        id: 'd1-legacy-e0',
+        sequence: 0,
+        customerId: 'legacy-sale-1',
+        segment: null,
+        type: 'sale',
+        priceCents: sale.priceCents,
+      }),
+    ]);
+    expect(normalized?.nextActivitySequence).toBe(1);
+
     started.activeRun.rush.recentActivity = Array.from(
       { length: RUSH_ACTIVITY_LIMIT + 1 },
       () => sale,
     );
-    expect(() => importEnvelope(JSON.stringify(started))).toThrow('20-item limit');
+    expect(() => importEnvelope(JSON.stringify(started))).toThrow(
+      `${RUSH_ACTIVITY_LIMIT}-item limit`,
+    );
+
+    const invalid = JSON.parse(JSON.stringify(createSaveEnvelope(withSale))) as {
+      activeRun: { rush: { recentActivity: Array<Record<string, unknown>> } };
+    };
+    const first = invalid.activeRun.rush.recentActivity[0];
+    if (!first) throw new Error('Expected activity for invalid fixture.');
+    invalid.activeRun.rush.recentActivity[0] = {
+      ...first,
+      type: 'walkaway',
+      reason: 'futureReason',
+    };
+    expect(() => importEnvelope(JSON.stringify(invalid))).toThrow('reason is not supported');
+
+    const falseLegacy = JSON.parse(JSON.stringify(createSaveEnvelope(withSale))) as {
+      activeRun: { rush: { recentActivity: Array<Record<string, unknown>> } };
+    };
+    const current = falseLegacy.activeRun.rush.recentActivity[0];
+    if (!current) throw new Error('Expected activity for false-legacy fixture.');
+    falseLegacy.activeRun.rush.recentActivity[0] = { ...current, segment: null };
+    expect(() => importEnvelope(JSON.stringify(falseLegacy))).toThrow(
+      'segment may be null only for normalized legacy sales',
+    );
+
+    const forgedId = JSON.parse(JSON.stringify(createSaveEnvelope(withSale))) as {
+      activeRun: { rush: { recentActivity: Array<Record<string, unknown>> } };
+    };
+    const canonical = forgedId.activeRun.rush.recentActivity[0];
+    if (!canonical) throw new Error('Expected activity for forged-ID fixture.');
+    forgedId.activeRun.rush.recentActivity[0] = { ...canonical, id: 'safe-but-forged' };
+    expect(() => importEnvelope(JSON.stringify(forgedId))).toThrow(
+      'id must match its day and sequence',
+    );
+  });
+
+  it('continues event identity and ordering exactly after an export/import reload', () => {
+    let live = startRush(createCampaign({ seed: 810 }));
+    for (let index = 0; index < 40; index += 1) live = advanceTick(live);
+    const reloaded = importEnvelope(JSON.stringify(createSaveEnvelope(live))).activeRun;
+    if (!reloaded) throw new Error('Expected reloaded active rush.');
+    let uninterrupted = live;
+    let continued = reloaded;
+    for (let index = 0; index < 40; index += 1) {
+      uninterrupted = advanceTick(uninterrupted);
+      continued = advanceTick(continued);
+    }
+    expect(continued.rush?.recentActivity).toEqual(uninterrupted.rush?.recentActivity);
+    expect(continued.rush?.nextActivitySequence).toBe(uninterrupted.rush?.nextActivitySequence);
+    expect(continued).toEqual(uninterrupted);
   });
 
   it('rejects malformed, unbounded, and non-conserving v3 inventory evidence', () => {

@@ -412,7 +412,67 @@ function migrateVersionTwoReport(value: unknown): unknown {
 }
 
 function normalizeVersionThree(value: Record<string, unknown>): Record<string, unknown> {
-  return value;
+  if (!isRecord(value.activeRun) || !isRecord(value.activeRun.rush)) return value;
+  const activeRun = value.activeRun;
+  const rush = activeRun.rush;
+  if (!isRecord(rush)) return value;
+  const day = boundedIntegerOr(activeRun.day, 1, 1, 10_000);
+  return {
+    ...value,
+    activeRun: {
+      ...activeRun,
+      rush: normalizeRushActivity(rush, day),
+    },
+  };
+}
+
+function normalizeRushActivity(
+  value: Record<string, unknown>,
+  day: number,
+): Record<string, unknown> {
+  const rawActivity = value.recentActivity === undefined ? [] : value.recentActivity;
+  const recentActivity = Array.isArray(rawActivity)
+    ? rawActivity.map((event, index) => normalizeLegacySaleActivity(event, day, index))
+    : rawActivity;
+  const derivedSequence = deriveActivitySequence(recentActivity);
+  return {
+    ...value,
+    nextActivitySequence:
+      value.nextActivitySequence === undefined ? derivedSequence : value.nextActivitySequence,
+    recentActivity,
+  };
+}
+
+function deriveActivitySequence(value: unknown): number {
+  if (!Array.isArray(value)) return 0;
+  const events: unknown[] = value;
+  let maximum = 0;
+  for (const event of events) {
+    if (isRecord(event) && typeof event.sequence === 'number') {
+      maximum = Math.max(maximum, event.sequence + 1);
+    }
+  }
+  return maximum;
+}
+
+function normalizeLegacySaleActivity(value: unknown, day: number, index: number): unknown {
+  if (
+    !isRecord(value) ||
+    value.type !== 'sale' ||
+    value.id !== undefined ||
+    value.sequence !== undefined ||
+    value.customerId !== undefined ||
+    value.segment !== undefined
+  ) {
+    return value;
+  }
+  return {
+    ...value,
+    id: `d${day}-legacy-e${index}`,
+    sequence: index,
+    customerId: `legacy-sale-${index + 1}`,
+    segment: null,
+  };
 }
 
 function migrateFlatInventory(value: unknown, day: number, refrigerationTier: number): unknown {
@@ -549,7 +609,7 @@ function validateGameState(value: unknown): asserts value is GameState {
   assertEnum(state.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], 'activeRun.weather');
   validateInventory(state.inventory, 'activeRun.inventory', state.day);
   validatePlan(state.plan);
-  if (state.rush !== null) validateRush(state.rush);
+  if (state.rush !== null) validateRush(state.rush, state.day);
   if (state.report !== null) validateReport(state.report, 'activeRun.report');
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
   expectArray(state.staff, 'activeRun.staff', 8).forEach((member, index) =>
@@ -585,7 +645,7 @@ function validatePlan(value: unknown): asserts value is DayPlan {
   assert(new Set(scheduled).size === scheduled.length, 'Scheduled staff IDs must be unique.');
 }
 
-function validateRush(value: unknown): asserts value is RushState {
+function validateRush(value: unknown, day: number): asserts value is RushState {
   const rush = expectRecord(value, 'activeRun.rush');
   assertNumber(rush.tick, 'rush.tick', 0, 2_000, true);
   assertNumber(rush.durationTicks, 'rush.durationTicks', 1, 2_000, true);
@@ -621,25 +681,74 @@ function validateRush(value: unknown): asserts value is RushState {
   ]) {
     assertNumber(rush[key], `rush.${key}`, -1_000_000_000, 1_000_000_000, true);
   }
+  assertNumber(rush.nextActivitySequence, 'rush.nextActivitySequence', 0, 1_000_000_000, true);
   for (const key of ['demandMultiplier', 'qualityBonus']) {
     assertNumber(rush[key], `rush.${key}`, -10_000, 10_000);
   }
   validateIngredientTotals(rush.openingInventory, 'rush.openingInventory');
   validateIngredientTotals(rush.purchasedInventory, 'rush.purchasedInventory');
+  let previousSequence = -1;
+  const activityIds = new Set<string>();
   expectArray(rush.recentActivity, 'rush.recentActivity', RUSH_ACTIVITY_LIMIT).forEach(
-    (activity, index) => validateCompletedSaleActivity(activity, `rush.recentActivity[${index}]`),
+    (activity, index) => {
+      const validated = validateRushActivityEvent(activity, `rush.recentActivity[${index}]`, day);
+      assert(
+        validated.sequence > previousSequence,
+        'rush.recentActivity sequences must be strictly increasing.',
+      );
+      assert(!activityIds.has(validated.id), 'rush.recentActivity IDs must be unique.');
+      assert(
+        validated.sequence < (rush.nextActivitySequence as number),
+        'rush.nextActivitySequence must follow every retained activity.',
+      );
+      previousSequence = validated.sequence;
+      activityIds.add(validated.id);
+    },
   );
   validateRushStats(rush.stats);
 }
 
-function validateCompletedSaleActivity(value: unknown, path: string): void {
+function validateRushActivityEvent(
+  value: unknown,
+  path: string,
+  day: number,
+): { id: string; sequence: number } {
   const activity = expectRecord(value, path);
-  assert(activity.type === 'sale', `${path}.type is not supported.`);
+  assertEnum(activity.type, ['arrival', 'serviceStarted', 'sale', 'walkaway'], `${path}.type`);
+  assertSafeId(activity.id, `${path}.id`);
+  assertNumber(activity.sequence, `${path}.sequence`, 0, 1_000_000_000, true);
   assertNumber(activity.tick, `${path}.tick`, 0, 2_000, true);
-  assertEnum(activity.drinkId, ALL_DRINK_IDS, `${path}.drinkId`);
-  assertEnum(activity.size, ['regular', 'large'], `${path}.size`);
-  assertEnum(activity.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.milk`);
-  assertNumber(activity.priceCents, `${path}.priceCents`, 0, 10_000, true);
+  assertSafeId(activity.customerId, `${path}.customerId`);
+  if (activity.segment === null) {
+    assert(
+      activity.type === 'sale' &&
+        activity.id === `d${day}-legacy-e${activity.sequence}` &&
+        /^legacy-sale-\d+$/.test(activity.customerId),
+      `${path}.segment may be null only for normalized legacy sales.`,
+    );
+  } else {
+    assertEnum(activity.segment, SEGMENTS, `${path}.segment`);
+    assert(
+      activity.id === `d${day}-e${activity.sequence}`,
+      `${path}.id must match its day and sequence.`,
+    );
+  }
+  if (activity.type === 'serviceStarted' || activity.type === 'sale') {
+    assertEnum(activity.drinkId, ALL_DRINK_IDS, `${path}.drinkId`);
+    assertEnum(activity.size, ['regular', 'large'], `${path}.size`);
+    assertEnum(activity.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.milk`);
+  }
+  if (activity.type === 'sale') {
+    assertNumber(activity.priceCents, `${path}.priceCents`, 0, 10_000, true);
+  }
+  if (activity.type === 'walkaway') {
+    assertEnum(
+      activity.reason,
+      ['patience', 'queueFull', 'stockout', 'rushEnded'],
+      `${path}.reason`,
+    );
+  }
+  return { id: activity.id, sequence: activity.sequence };
 }
 
 function validateRushStats(value: unknown): void {
@@ -868,7 +977,7 @@ function assertEnumArray<T>(
   assert(new Set(items).size === items.length, `${path} entries must be unique.`);
 }
 
-function assertSafeId(value: unknown, path: string): void {
+function assertSafeId(value: unknown, path: string): asserts value is string {
   assertString(value, path, 100);
   assert(/^[\p{L}\p{N}._’ -]+$/u.test(value), `${path} contains unsafe characters.`);
 }

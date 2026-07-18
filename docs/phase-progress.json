@@ -70,7 +70,7 @@
       "phase": 6,
       "components": [
         { "id": "6.1", "name": "Human Setup and Final Release Gate", "status": "committed" },
-        { "id": "6.2", "name": "Deterministic Rush Activity Stream", "status": "queued" },
+        { "id": "6.2", "name": "Deterministic Rush Activity Stream", "status": "committed" },
         {
           "id": "6.3",
           "name": "Expressive Queue, Sale, Exit, and Walkaway Scene",

@@ -1,5 +1,11 @@
 import { useGame } from '../app/GameContext';
-import { completedSaleLabel, formatMoney, rushClock, type RushSpeed } from '../game';
+import {
+  completedSaleLabel,
+  describeRushActivity,
+  formatMoney,
+  rushClock,
+  type RushSpeed,
+} from '../game';
 
 /** Live service metrics and pause/speed controls. */
 export function RushPanel(): React.JSX.Element {
@@ -7,7 +13,8 @@ export function RushPanel(): React.JSX.Element {
   if (!game?.rush) return <></>;
   const { rush } = game;
   const progress = Math.round((rush.tick / rush.durationTicks) * 100);
-  const lastSale = rush.recentActivity.at(-1);
+  const lastSale = rush.recentActivity.findLast((event) => event.type === 'sale');
+  const recentActivity = rush.recentActivity.slice(-6);
 
   return (
     <section className="panel rush-panel" aria-labelledby="rush-title">
@@ -77,6 +84,13 @@ export function RushPanel(): React.JSX.Element {
           Last sale: {completedSaleLabel(lastSale)} — {formatMoney(lastSale.priceCents)} actual
           charge.
         </p>
+      ) : null}
+      {recentActivity.length > 0 ? (
+        <ol aria-label="Recent rush activity" className="explanation-list">
+          {recentActivity.map((event) => (
+            <li key={event.id}>{describeRushActivity(event)}</li>
+          ))}
+        </ol>
       ) : null}
     </section>
   );
