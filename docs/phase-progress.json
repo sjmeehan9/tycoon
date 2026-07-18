@@ -30,6 +30,35 @@
         { "id": "3.4", "name": "Offline-Safe PWA and Release Artifacts", "status": "committed" },
         { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "hosted-pass" }
       ]
+    },
+    {
+      "phase": 4,
+      "components": [
+        { "id": "4.1", "name": "Human Setup and Phase Contracts", "status": "committed" },
+        { "id": "4.2", "name": "Exact Accessible Planner Steppers", "status": "queued" },
+        { "id": "4.3", "name": "Authoritative Sale Pricing and Reconciliation", "status": "queued" },
+        { "id": "4.4", "name": "Phase Validation and Documentation", "status": "queued" }
+      ]
+    },
+    {
+      "phase": 5,
+      "components": [
+        { "id": "5.1", "name": "Human Setup", "status": "queued" },
+        { "id": "5.2", "name": "Schema-v3 Perishable Batch Inventory", "status": "queued" },
+        { "id": "5.3", "name": "Weighted Planning Capacity", "status": "queued" },
+        { "id": "5.4", "name": "Live Rush Stock and Expiry Reporting", "status": "queued" },
+        { "id": "5.5", "name": "Phase Validation and Documentation", "status": "queued" }
+      ]
+    },
+    {
+      "phase": 6,
+      "components": [
+        { "id": "6.1", "name": "Human Setup and Final Release Gate", "status": "queued" },
+        { "id": "6.2", "name": "Deterministic Rush Activity Stream", "status": "queued" },
+        { "id": "6.3", "name": "Expressive Queue, Sale, Exit, and Walkaway Scene", "status": "queued" },
+        { "id": "6.4", "name": "Campaign-Unique Staff Names", "status": "queued" },
+        { "id": "6.5", "name": "Cumulative QA, Documentation, and Hosted Verification", "status": "queued" }
+      ]
     }
   ]
 }

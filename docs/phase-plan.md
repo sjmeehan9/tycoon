@@ -2,12 +2,12 @@
 
 ## Overview
 
-Delivery is divided into exactly three cumulative, demonstrable phases. Phase 1
-is the walking skeleton: one real cart-day loop through the production React,
-Canvas, deterministic-engine, and browser-persistence boundaries. Phase 2
-completes the strategy game and campaign. Phase 3 replaces functional
-presentation with release-quality presentation, makes the complete runtime an
-offline-safe PWA, and prepares and validates public GitHub Pages delivery.
+Delivery now comprises six cumulative, demonstrable phases. Completed Phases
+1-3 remain the approved original release: the walking skeleton, complete
+campaign, and production finish. The user-approved follow-up adds exactly three
+additive phases: accessible and economically exact planning controls (Phase 4),
+perishable batch inventory and live stock intelligence (Phase 5), and a
+deterministic, expressive rush scene plus campaign-unique staff names (Phase 6).
 
 Every implementation component is a vertical slice with a user-visible runtime
 outcome, production wiring, persistence where its outcome changes durable state,
@@ -31,11 +31,13 @@ behavior and pass the complete validation sequence.
 
 ## Summary
 
-- **Number of phases:** 3
-- **Number of components:** 14
+- **Number of phases:** 6
+- **Number of components:** 28
 - **Delivery sequence:** Playable Cart -> Complete Campaign -> Production Finish
+  -> Exact Planning Controls -> Perishable Batch Inventory -> Living Rush Scene
 - **Critical path:** 1.2 -> 1.3 -> 1.4 -> 2.2 -> 2.3 -> 2.4 -> 2.5 ->
-  3.2/3.3/3.4 -> 3.5
+  3.2/3.3/3.4 -> 3.5 -> 4.2 -> 4.3 -> 4.4 -> 5.2 -> 5.3 -> 5.4 ->
+  5.5 -> 6.2 -> 6.3/6.4 -> 6.5
 
 ---
 
@@ -578,6 +580,373 @@ human actions.
 
 ---
 
+## Phase 4: Trustworthy Planning and Sales
+
+### Phase Overview
+
+**Feature statement:** A user can now set every menu price and supply quantity
+through accessible, exact steppers and trust that an amended base price is the
+price used by real orders, rush sales, the day report, and closing cash.
+
+**Overview:** This phase removes free-text numeric planning. Every activation is
+an atomic integer adjustment, the selected value autosaves immediately, and the
+service/report path exposes enough actual-charge detail to prove base price,
+size surcharge, and milk surcharge without changing established economics.
+
+**Dependencies:** Phase 3 hosted PASS. No account, credential, secret, runtime
+service, dependency addition, or human setup is required.
+
+### Phase Key Deliverables
+
+- Semantic minus/value/plus price steppers at exactly 10 cents per activation,
+  bounded from 250 to 1,200 cents.
+- Semantic minus/value/plus supply steppers at exactly one package per
+  activation, bounded from 0 to 20 packages.
+- Atomic planner commands, autosave/reload continuity, and 44px keyboard/touch
+  controls that remain usable at 360 CSS pixels.
+- Observable actual sale charges and exact amended-price revenue/report/cash
+  reconciliation while retaining size and milk surcharges.
+
+### Phase Components
+
+#### Component 4.1 — Human Setup and Phase Contracts
+
+- **Human setup:** None. Phase 4 uses the existing static local-first runtime
+  and public repository with no new service or credential.
+- **Inclusions:** Reconcile the six-phase plan/profile contracts, create the
+  lean Phase 4 component specification and implementation context, and register
+  Components 4.1–4.4 in phase progress.
+- **Post-validation action:** After Component 4.4 records PASS, the human
+  approves or rejects the `phase-4` merge.
+- **Dependencies:** Phase 3 hosted PASS and the approved Phases 4–6 lean
+  contract.
+
+#### Component 4.2 — Exact Accessible Planner Steppers
+
+- **Runtime outcome:** A keyboard, pointer, or touch user can adjust any active
+  menu price or supply quantity by one exact configured increment without
+  entering text, including repeated rapid activations and boundary states.
+- **Inclusions:** Replace every planner `number` input with reusable semantic
+  minus/value/plus controls; centralize integer bounds/increments; use relative
+  typed commands so each activation applies to current state; expose labelled
+  polite value announcements; disable decrement/increment controls at their
+  respective bounds; retain active-menu availability and immediate autosave;
+  and prevent horizontal clipping at 360px.
+- **Essential proof:** Engine tests cover exact relative changes and bounds;
+  React tests cover labels, announcements, disabled states, absence of editable
+  numeric inputs, rapid clicks, Enter/Space, and supply affordability feedback;
+  Playwright covers desktop keyboard and 360px touch targets.
+- **Dependencies:** Component 4.1 and the existing planning command/persistence
+  path.
+
+#### Component 4.3 — Authoritative Sale Pricing and Reconciliation
+
+- **Runtime outcome:** A user can amend a single drink's base price, reload,
+  trade a real deterministic rush, see actual charges with modifiers, and
+  reconcile those sales through the day report and settled cash.
+- **Inclusions:** Reproduce the reported planner-to-report journey; retain the
+  existing authoritative `DayPlan.pricesCents` order formula; add only a
+  minimal bounded completed-sale observation compatible with old schema-v2
+  saves and the future rush activity stream; show the most recent actual charge
+  during service and concise grouped charge evidence in the report; and prove
+  revenue, net flow, closing cash, and exact-once settlement from those sales.
+- **Essential proof:** Unit tests assert every order charge equals amended base
+  price plus configured size/milk surcharges and that sale sums equal rush and
+  report revenue; persistence tests cover old/new active-rush and report data;
+  production Playwright repeats $0.10 activations, reloads planning, runs a
+  single-drink rush on desktop and touch-mobile, and reconciles visible charges
+  to revenue and cash.
+- **Dependencies:** Component 4.2 and the existing order, rush, report, and
+  settlement path.
+
+#### Component 4.4 — Phase Validation and Documentation
+
+- **Runtime outcome:** Trustworthy planning and sales have cumulative PASS
+  evidence without weakening any released campaign, accessibility, offline, or
+  mobile behavior.
+- **Inclusions:** Run all Phase 1–4 tests and the exact profile validation
+  sequence; fix every failure; execute the desktop/mobile planner-price flows;
+  self-review for placeholders, formula drift, and unbounded state; then write
+  `docs/phase-4-test-report.md`, component overviews, implementation context,
+  progress/team state, and runbook guidance.
+- **Dependencies:** Components 4.2–4.3 and all earlier phase PASS evidence.
+
+### Phase Validation Targets
+
+- **Desktop production flow:** Set a one-drink menu; adjust its price by
+  repeated keyboard-operable $0.10 activations; exercise price and quantity
+  boundaries; reload and continue the same plan; complete service; verify each
+  visible actual charge and exact report/closing-cash arithmetic.
+- **Touch-mobile production flow:** At 360px, repeat representative price and
+  supply adjustments with touch only; verify all visible targets are at least
+  44px, values announce/fit, bound controls disable, no text editing exists,
+  and the amended-price day reconciles.
+- **Critical engine/persistence behavior:** Relative commands are exact and
+  bounded; the plan remains integer cents/packages through autosave; every
+  completed sale retains the amended base plus configured modifiers; observed
+  charge totals equal rush revenue, report revenue, and settlement exactly.
+
+### Phase Acceptance Criteria
+
+- [ ] Every planner price and supply quantity uses a semantic
+      minus/value/plus stepper with no free-text numeric editing.
+- [ ] Prices change by exactly 10 cents within 250–1,200 cents and supplies by
+      exactly one package within 0–20; controls disable at bounds.
+- [ ] Labels, value announcements, keyboard/touch operation, 44px targets, and
+      the 360px layout pass component and production-browser tests.
+- [ ] An amended price survives reload and is authoritative for every order,
+      actual charge, rush/report revenue, and closing/settled cash while size
+      and milk surcharges remain exact.
+- [ ] The cumulative exact validation sequence passes and
+      `docs/phase-4-test-report.md` records PASS.
+
+---
+
+## Phase 5: Stock Lifecycle and Capacity Intelligence
+
+### Phase Overview
+
+**Feature statement:** A user can now reason about perishable supplies as dated
+batches, plan from an honest weighted serves estimate, follow live rush stock,
+and understand what was consumed, rolled, or expired.
+
+**Overview:** This phase replaces flat inventory persistence with schema-v3
+per-ingredient batches. Purchase-day stock is usable for that rush and the next
+two trading days, true LIFO consumes newest stock first, and refrigeration adds
+one or two configured days to chilled ingredients at tiers 1 and 2. Player
+surfaces explain capacity without promising a false exact drink count.
+
+**Dependencies:** Phase 4 PASS. No external service or human setup is required.
+
+### Phase Key Deliverables
+
+- Schema-v3 dated inventory batches with bounded validation, legacy migration,
+  LIFO consumption, three-rush shelf life, and refrigeration extensions.
+- Deterministic weighted `~N serves` planning estimates derived from menu,
+  recipes, variants, modifiers, and available batches.
+- A live rush stock grid and report evidence for opening, purchased, consumed,
+  rolled, and expired supply.
+- Cumulative desktop and 360px touch-mobile persistence/economy proof.
+
+### Phase Components
+
+#### Component 5.1 — Human Setup
+
+- **Human setup:** None. Schema migration and inventory behavior are entirely
+  local and require no account, credential, secret, or service.
+- **Post-validation action:** After Component 5.5 records PASS, the human
+  approves or rejects the `phase-5` merge.
+- **Dependencies:** Phase 4 PASS.
+
+#### Component 5.2 — Schema-v3 Perishable Batch Inventory
+
+- **Runtime outcome:** Purchased and rolled supplies retain purchase age,
+  consume newest-first, expire after their configured usable rushes, and reload
+  without loss or duplication.
+- **Inclusions:** Introduce bounded dated batches per ingredient; migrate every
+  legacy flat amount into a current-day full-life batch; consume true LIFO;
+  keep stock usable on purchase day plus two following trading days; extend
+  configured chilled stock one/two days at refrigeration tiers 1/2; and make
+  purchase, service, waste, close-day expiry, import/export, and backup recovery
+  use the same batch path.
+- **Essential proof:** Migration fixtures, age/expiry boundaries, mixed-age
+  LIFO consumption, refrigeration tiers, conservation, reload, malformed input,
+  and exact-once settlement tests.
+- **Dependencies:** Component 5.1 and Phase 4 persistence/economy contracts.
+
+#### Component 5.3 — Weighted Planning Capacity
+
+- **Runtime outcome:** During planning, a user sees a deterministic `~N serves`
+  estimate for servable stock that changes honestly with menu, variants,
+  modifiers, purchases, carried batches, and unavailable ingredients.
+- **Inclusions:** Derive the estimate from configured demand weights and real
+  recipes without mutating engine state; label it explicitly approximate;
+  explain limiting stock and expiry risk; and update it immediately through the
+  production planner controls.
+- **Essential proof:** One-factor estimate tests cover menu/recipe/modifier and
+  batch changes; component/desktop/mobile tests cover announcement, responsive
+  display, and no false exactness.
+- **Dependencies:** Component 5.2 and Component 4.2 planner controls.
+
+#### Component 5.4 — Live Rush Stock and Expiry Reporting
+
+- **Runtime outcome:** A user can watch relevant stock fall during service and
+  read which quantities were purchased, consumed, carried, wasted, or expired
+  after the rush.
+- **Inclusions:** Add a responsive textual live-stock grid driven by current
+  batch totals; retain reduced-motion parity; add concise per-ingredient
+  lifecycle rows to the report; distinguish recipe consumption, waste, and
+  expiry; and preserve exact cash/inventory reconciliation.
+- **Essential proof:** Engine/report conservation tests and production
+  desktop/360px flows verify live depletion, stockout states, expiry labels,
+  refrigeration extensions, reload, and no clipped grid content.
+- **Dependencies:** Components 5.2–5.3.
+
+#### Component 5.5 — Phase Validation and Documentation
+
+- **Runtime outcome:** Schema-v3 stock lifecycle and capacity intelligence have
+  cumulative PASS evidence across campaign, migration, offline, desktop, and
+  touch-mobile paths.
+- **Inclusions:** Run the exact validation sequence; fix all regressions;
+  execute migration, multi-day expiry/LIFO, weighted-estimate, live-grid, and
+  report journeys; self-review bounds/conservation; and write Phase 5 report,
+  context, overviews, progress/team state, and runbook updates.
+- **Dependencies:** Components 5.2–5.4 and all earlier phase PASS evidence.
+
+### Phase Validation Targets
+
+- **Multi-day inventory flow:** Import or create known flat stock -> migrate to
+  current-day batches -> buy multiple dated batches -> prove newest-first
+  consumption -> advance rushes -> prove normal and refrigerated expiry days ->
+  reload/export/import without changing totals or age.
+- **Desktop/mobile intelligence flow:** At planning, compare the weighted
+  `~N serves` estimate with real menu/purchase changes; during service, observe
+  the live grid; at report, reconcile purchased, consumed, rolled, wasted, and
+  expired quantities at desktop and 360px touch-mobile.
+- **Critical persistence/economy behavior:** Migration is deterministic and
+  bounded, no stock is created or double-consumed, expiry occurs exactly once,
+  and inventory plus cash settlement remains conserved.
+
+### Phase Acceptance Criteria
+
+- [ ] Schema-v3 batches migrate legacy flat inventory safely and persist every
+      ingredient's age and quantity through all save/recovery paths.
+- [ ] LIFO, purchase-day-plus-two shelf life, and tier-1/tier-2 chilled-stock
+      extensions match the locked defaults exactly.
+- [ ] Planning shows deterministic weighted `~N serves` estimates with useful
+      limiting/expiry explanations and no false exact promise.
+- [ ] Live rush and report stock surfaces reconcile consumed, rolled, wasted,
+      and expired quantities on desktop and at 360px.
+- [ ] The cumulative exact validation sequence passes and
+      `docs/phase-5-test-report.md` records PASS.
+
+---
+
+## Phase 6: Living Rush and Unique People
+
+### Phase Overview
+
+**Feature statement:** A user can now read a lively but deterministic rush as
+customers queue, order, pay, leave, or walk away, and every staff candidate
+shown during the same campaign has a unique name.
+
+**Overview:** This phase promotes the minimal Phase 4 sale observation into one
+bounded deterministic activity stream consumed by both Canvas and textual UI.
+Presentation becomes more expressive without advancing or changing simulation,
+reduced motion retains the same outcomes, and campaign name allocation prevents
+repetition after a person has been displayed.
+
+**Dependencies:** Phase 5 PASS. No new account, credential, secret, or runtime
+service is required; the final updated Pages release retains a human merge and
+hosted-verification gate.
+
+### Phase Key Deliverables
+
+- A bounded serializable rush activity stream for queue, service, sale, exit,
+  stockout, and walkaway outcomes, emitted only by deterministic engine logic.
+- Clearer Canvas queue/order/sale/exit/walkaway animation and equivalent text,
+  with reduced-motion and reload parity.
+- Campaign-wide non-repeating displayed staff names with deterministic
+  generation/allocation and safe persistence.
+- Cumulative local and hosted desktop/mobile/offline validation.
+
+### Phase Components
+
+#### Component 6.1 — Human Setup and Final Release Gate
+
+- **Human setup:** None before local implementation. After Component 6.5 local
+  PASS, the human approves or rejects the final merge and confirms the updated
+  GitHub Pages URL before hosted PASS.
+- **Dependencies:** Phase 5 PASS and the existing public Pages workflow.
+
+#### Component 6.2 — Deterministic Rush Activity Stream
+
+- **Runtime outcome:** Every meaningful rush transition emits one compact,
+  ordered, bounded activity record that survives reload and can drive both
+  visual and textual feedback without affecting simulation outcomes.
+- **Inclusions:** Evolve the Phase 4 completed-sale precursor into one canonical
+  event contract covering arrival/queue, service start, sale with actual charge,
+  exit, stockout, and walkaway; define pruning bounds and stable sequence/tick
+  identity; validate/migrate persisted activity; and keep renderer time absent
+  from engine policy.
+- **Essential proof:** Equal seed/commands produce equal streams; speed/frame
+  rate do not change them; reload resumes ordering without duplicates; bounds,
+  actual sale charge, stockout, and walkaway events are exact.
+- **Dependencies:** Phase 5 engine/persistence and the minimal Component 4.3 sale
+  observation.
+
+#### Component 6.3 — Expressive Queue, Sale, Exit, and Walkaway Scene
+
+- **Runtime outcome:** A user can visually and textually distinguish waiting,
+  ordering, successful sale/payment, normal exit, stockout, and impatience
+  walkaway while the rush remains readable on desktop and mobile.
+- **Inclusions:** Consume only the canonical activity stream and immutable scene
+  snapshots; improve movement/state cues and actual-charge feedback; retain
+  colour-independent text; make reduced motion show the same ordered outcomes
+  without travel animation; and preserve Canvas performance and 360px layout.
+- **Essential proof:** Snapshot/Canvas/component tests cover every activity;
+  production desktop/mobile flows cover visible and textual parity, reduced
+  motion, reload mid-rush, no overflow, and no simulation mutation.
+- **Dependencies:** Component 6.2 and Phase 3 scene/accessibility contracts.
+
+#### Component 6.4 — Campaign-Unique Staff Names
+
+- **Runtime outcome:** Once a staff candidate's name is displayed, that name is
+  never shown for another person in the same campaign, including after reload
+  and across long/endless play.
+- **Inclusions:** Persist campaign-level displayed-name history; allocate names
+  deterministically without replacement; provide deterministic generated
+  fallback names after the curated pool is exhausted; migrate existing saves;
+  and keep names cosmetic with no economic effect.
+- **Essential proof:** Multi-day and long/endless tests exhaust the curated pool
+  without repeats; rejected/hired candidates remain reserved; reload/import,
+  equal-seed determinism, safe bounds, and fresh-campaign reset all pass.
+- **Dependencies:** Phase 5 persistence and existing staff candidate flow; may
+  proceed alongside Component 6.3 after Component 6.2 contracts settle.
+
+#### Component 6.5 — Cumulative QA, Documentation, and Hosted Verification
+
+- **Runtime outcome:** The complete updated game has local and hosted PASS
+  evidence for deterministic living-rush feedback and unique people while all
+  prior planning, stock, campaign, accessibility, offline, and release behavior
+  remains intact.
+- **Inclusions:** Run/fix the exact cumulative validation sequence; exercise all
+  activity/reduced-motion/name-exhaustion paths; self-review determinism and
+  renderer separation; write Phase 6 report/context/overviews/runbook/release
+  evidence; then, after Component 6.1 approval, verify the deployed Pages build
+  on desktop and 360px touch-mobile including refresh, save/reload, and offline.
+- **Dependencies:** Components 6.2–6.4 and the Component 6.1 hosted gate.
+
+### Phase Validation Targets
+
+- **Deterministic activity flow:** Equal campaign state and commands emit equal
+  bounded activity sequences across 1×/2×/4× and differing animation frames;
+  a mid-rush reload resumes without missing or duplicated customer outcomes.
+- **Desktop/mobile scene flow:** Observe queue, service, actual sale/payment,
+  exit, stockout, and walkaway cues plus their text on desktop and at 360px;
+  repeat with reduced motion and prove equivalent ordered outcomes.
+- **Unique-name flow:** Display candidate pools across enough campaign/endless
+  days to exhaust curated names, reject/hire varied people, reload/import, and
+  prove no displayed name repeats until a fresh campaign begins.
+- **Hosted cumulative flow:** After human-approved merge, repeat responsive,
+  autosave/reload, activity, staff-name, asset/subpath, service-worker, and
+  offline checks at the public Pages URL.
+
+### Phase Acceptance Criteria
+
+- [ ] One bounded deterministic activity stream covers all required rush
+      outcomes and is unchanged by speed, frames, reload, or presentation.
+- [ ] Canvas and textual surfaces clearly distinguish queue, sale/payment,
+      normal exit, stockout, and walkaway with actual charge feedback.
+- [ ] Reduced-motion and 360px touch-mobile users receive equivalent ordered
+      outcomes with accessible controls/text and no clipping.
+- [ ] No staff name repeats after display within a campaign, including after
+      pool exhaustion, rejection, hire, reload, import, and endless play.
+- [ ] The cumulative exact validation sequence and hosted Pages verification
+      pass and `docs/phase-6-test-report.md` records hosted PASS.
+
+---
+
 ## Requirements-to-Component Traceability
 
 | Requirement area | Delivering component(s) | Validation evidence |
@@ -604,6 +973,12 @@ human actions.
 | Security/privacy: bounded input, no secrets/telemetry/personal data | 2.4, 3.4 | Adversarial import tests and release network/config review |
 | GitHub Pages `/tycoon/`, README/contribution, MIT, public repository | 3.1, 3.4, 3.5 | Local subpath plus confirmed hosted release checks |
 | Desktop/mobile, accessibility, performance, offline, and cumulative QA | 1.4, 2.5, 3.5 | PASS phase reports and exact validation sequence |
+| Exact non-editable planner price/supply steppers and persistence | 4.2 | Relative-command unit/RTL tests and desktop/360px Playwright bounds/reload flows |
+| Amended base price, modifier charges, revenue, and cash reconciliation | 4.3 | Per-sale engine invariants and single-drink production Playwright report flow |
+| Dated inventory, LIFO, expiry, refrigeration, and schema-v3 migration | 5.2 | Multi-age conservation/migration tests and multi-day reload/import flows |
+| Weighted serves estimate, live stock, and expiry reporting | 5.3, 5.4 | One-factor estimate tests and desktop/mobile planner-rush-report flows |
+| Deterministic rush activity and expressive reduced-motion parity | 6.2, 6.3 | Stream equality/reload tests and desktop/mobile Canvas/text journeys |
+| Campaign-wide non-repeating displayed staff names | 6.4 | Pool exhaustion, long/endless, reload/import, and fresh-run tests |
 | Explicit v1 non-goals | 1.2, 2.3, 2.4, 3.4 | Scope self-review confirms no food, manual making, weekly rosters, multiple locations, accounts, multiplayer, localization, paid content, analytics, or live services |
 
 ## Cross-Cutting Concerns
@@ -617,7 +992,8 @@ human actions.
   projects. The enduring scenarios are complete day, responsive touch day,
   autosave/reload, strategic progression, victory/endless, bankruptcy,
   transfer/recovery, accessible/reduced-motion play, offline/update, and Pages
-  subpath. They are introduced in the phase that first delivers the behavior
+  subpath, followed by exact planning, stock-lifecycle, and living-rush/name
+  journeys. They are introduced in the phase that first delivers the behavior
   and never removed later.
 - **Unit/component:** Vitest proves pure-engine calculations, deterministic
   behavior, balance, persistence, migrations, and edge conditions. React
@@ -627,9 +1003,10 @@ human actions.
 - **Balance:** Deterministic scripted Day 1-30 campaigns across multiple seeds
   cover victory, bankruptcy, and distinct viable strategies. All tuning resides
   in typed configuration rather than hidden test or UI constants.
-- **Performance:** Simulation ticks remain independent of animation frames.
-  Phase 3 validates responsive mobile rush behavior, asset size, reduced motion,
-  360px layout, and Lighthouse thresholds from the project profile.
+- **Performance:** Simulation ticks and Phase 6 activity records remain
+  independent of animation frames. Every additive phase retains responsive
+  mobile rush behavior, reduced motion, the 360px layout, and the profile's
+  established release budgets.
 - **Security/privacy:** Imported JSON is schema-validated and bounded; unknown
   versions fail safely; no imported content is executable. Release review
   confirms no backend, secret, analytics, ad, personal-data, or runtime external
@@ -666,17 +1043,19 @@ human actions.
 
 ### Delivery & Environments
 
-- Use `phase-1`, `phase-2`, and `phase-3` branches. Component commits follow
+- Use one branch per phase, `phase-1` through `phase-6`. Component commits follow
   `feat(phase-X): Component X.Y — <name>`. Never commit directly to protected
   `main`; a human approves each merge after its PASS report.
-- Phase 2 may branch from validated Phase 1 and Phase 3 from validated Phase 2
-  before earlier human merges, as allowed by the profile. No environment or
-  secret file is required.
+- Each later phase may branch from its predecessor's validated PASS head before
+  the earlier human merge, as allowed by the profile. No environment or secret
+  file is required.
 - Phases 1-2 validate through local dev/production preview. Phase 3 promotes the
   same static build through GitHub Actions to GitHub Pages after the Component
   3.1 public gate. The service worker/update prompt and versioned save migration
   are the release-safety and rollback protections; a bad publication is stopped
   or superseded through the Pages workflow without discarding local saves.
+- Phases 4–5 validate locally on their phase branches. Phase 6 repeats hosted
+  verification after its human-approved merge deploys the updated Pages build.
 
 ## Dependencies & External Factors
 
@@ -685,8 +1064,8 @@ human actions.
 | Dependency | Needed | Risk if delayed | Mitigation/owner |
 |---|---|---|---|
 | Node 22.12+, pnpm 10, compatible pinned frontend/test packages | Phase 1 onward | Build or browser incompatibility | Implement agent pins the lockfile and validates Vite modern-browser/Safari 16.4+ baseline |
-| GitHub Actions and Pages | Phase 3 hosted gate | Public URL cannot be verified | Prepare and locally test workflow/base first; human enables only after local PASS |
-| Human repository visibility/Pages approval | Component 3.1 | Hosted release remains blocked | Keep private release candidate complete; report local PASS separately and never claim hosted PASS |
+| GitHub Actions and Pages | Phase 3 and Phase 6 hosted gates | Public URL cannot be verified | Keep local production proof cumulative; human approves release before hosted claims |
+| Human merge/Pages approval | Components 3.1 and 6.1; each phase merge | Hosted release or next main baseline remains blocked | Report local PASS separately and never claim merge/hosted PASS before approval |
 
 ### Technical Risks
 
@@ -698,14 +1077,17 @@ human actions.
 | Save/update incompatibility loses a campaign | High | Medium | Versioned envelope, last-known-good writes, idempotent settlement, migrations, deferred updates, adversarial tests | Implement agent |
 | PWA serves stale or broken `/tycoon/` assets | High | Medium | Local subpath preview, explicit update prompt, cache-completeness tests, hosted refresh/offline checks | Implement agent |
 | Pixel/audio assets breach size, consistency, or provenance goals | Medium | Medium | Constrained palette/logical resolution, optimized sprite sheets/audio, provenance inventory, Lighthouse/bundle checks | Implement agent |
+| Planner activations display one value but persist or charge another | High | Medium | Integer relative commands, immediate autosave, bounded steppers, observable actual charges, full-path reconciliation tests | Implement agent |
+| Batch aging/migration creates, loses, or double-consumes stock | High | Medium | Bounded schema-v3 migration, LIFO/expiry invariants, multi-day conservation and recovery fixtures | Implement agent |
+| Rush animation diverges from deterministic outcomes or staff names repeat | High | Medium | Canonical bounded activity/name state, renderer-only consumption, equal-seed/reload/exhaustion tests | Implement agent |
 
 ## Change Management
 
 1. Record any requested change and its authority.
 2. Assess affected component outcomes, dependencies, validation targets, and
    traceability rows before implementation changes.
-3. Preserve exactly three phases unless the user explicitly replaces the
-   approved structure; do not silently defer required version 1 behavior.
+3. Preserve the approved six-phase structure unless the user explicitly
+   replaces it; do not silently defer required behavior.
 4. Add approved changes to the amendment log and notify the sole Implement
    agent before the affected component begins or resumes.
 
@@ -714,8 +1096,10 @@ human actions.
 | Date | Phase/Component | Change | Reason | Impact |
 |---|---|---|---|---|
 | 2026-07-18 | All | Initial three-phase lean plan | User-approved delivery structure and sole-Implement override | Establishes 14 components and cumulative gates |
+| 2026-07-18 | Phases 4–6 | Additive feedback plan | User approved exact planning, stock lifecycle/intelligence, living rush, and unique names under the same lean override | Adds 14 components and extends cumulative gates to six phases |
 
 ## Approval
 
-- [ ] Human accepts the phase plan and authorizes the sole Implement agent to
-      begin Component 1.2 on `phase-1`.
+- [x] Human accepted and released the original Phases 1–3 plan.
+- [x] Human accepted additive Phases 4–6 and authorized the sole Implement
+      agent to begin Component 4.1 on `phase-4`.
