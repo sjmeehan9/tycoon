@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { PHASE_ONE_DRINKS, PURCHASE_PACKAGES } from '../content/phase1';
 import { useGame } from '../app/GameContext';
 import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
@@ -11,6 +13,7 @@ const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
 /** Morning menu, pricing, supply, and espresso dial-in controls. */
 export function Planner(): React.JSX.Element {
   const { command, game } = useGame();
+  const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial'>('menu');
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
 
@@ -32,7 +35,34 @@ export function Planner(): React.JSX.Element {
         <p className="forecast-badge">Mild · steady foot traffic</p>
       </div>
 
-      <fieldset>
+      <div aria-label="Morning planning sections" className="mobile-tabs" role="tablist">
+        {(
+          [
+            ['menu', 'Menu'],
+            ['supplies', 'Supplies'],
+            ['dial', 'Dial-in'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            aria-controls={`planner-${id}`}
+            aria-selected={activeSection === id}
+            id={`planner-${id}-tab`}
+            key={id}
+            onClick={() => setActiveSection(id)}
+            role="tab"
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <fieldset
+        aria-labelledby="planner-menu-tab"
+        className={`planner-section ${activeSection === 'menu' ? 'mobile-active' : ''}`}
+        id="planner-menu"
+        role="tabpanel"
+      >
         <legend>Menu and prices · choose up to 3</legend>
         <div className="menu-grid">
           {PHASE_ONE_DRINKS.map((drink) => {
@@ -77,7 +107,12 @@ export function Planner(): React.JSX.Element {
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset
+        aria-labelledby="planner-supplies-tab"
+        className={`planner-section ${activeSection === 'supplies' ? 'mobile-active' : ''}`}
+        id="planner-supplies"
+        role="tabpanel"
+      >
         <legend>Supply order</legend>
         <div className="supply-list">
           {PURCHASE_PACKAGES.map((item) => (
@@ -108,7 +143,12 @@ export function Planner(): React.JSX.Element {
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset
+        aria-labelledby="planner-dial-tab"
+        className={`planner-section ${activeSection === 'dial' ? 'mobile-active' : ''}`}
+        id="planner-dial"
+        role="tabpanel"
+      >
         <legend>Espresso dial-in</legend>
         <div className="segmented-options">
           {DIAL_OPTIONS.map((option) => (

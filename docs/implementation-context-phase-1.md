@@ -31,3 +31,16 @@
 - Display speed changes interval frequency only, so 1x/2x/4x reports are equal.
 - Phase 1 uses a small four-drink menu while retaining stable public types for
   the Phase 2 expansion.
+
+## Component 1.3 — Responsive Autosaved Continuation
+
+- Added a 360px mobile planner with touch-sized Menu, Supplies, and Dial-in tabs;
+  desktop retains the side-by-side scene and complete planner.
+- Pause and 1x/2x/4x changes now save immediately, while service continues to
+  checkpoint every five simulated seconds.
+- Added round-trip proof for planning, rush, event, report, and reinvestment,
+  including queue, PRNG, pending event, speed, pause, and report settlement.
+- Added simulated interrupted-write recovery and a Playwright reload journey
+  proving last-known-good behavior and exact-once close-day settlement.
+- Exact cumulative validation passed: 18 unit/component tests and four
+  desktop/touch-mobile Playwright tests.

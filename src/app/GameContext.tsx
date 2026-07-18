@@ -96,7 +96,10 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
           const next = dispatchGameCommand(current, nextCommand);
           const phaseChanged = next.phase !== current.phase;
           const checkpoint = next.rush && next.rush.tick % 20 === 0;
-          if (phaseChanged || checkpoint || next.phase !== 'rush') persist(next);
+          const controlCheckpoint =
+            nextCommand.type === 'togglePause' || nextCommand.type === 'setSpeed';
+          if (phaseChanged || checkpoint || controlCheckpoint || next.phase !== 'rush')
+            persist(next);
           setMessage(null);
           return next;
         } catch (error) {

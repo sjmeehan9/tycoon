@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { createCampaign } from '../../src/game';
+import {
+  advanceTick,
+  closeDay,
+  createCampaign,
+  resolveEvent,
+  setRushSpeed,
+  startRush,
+  togglePause,
+} from '../../src/game';
 import {
   BACKUP_SAVE_KEY,
   BrowserSaveStore,
@@ -38,4 +46,64 @@ describe('Phase 1 save envelope', () => {
       parseEnvelope(JSON.stringify({ schemaVersion: 1, savedAt: '', activeRun: {} })),
     ).toBeNull();
   });
+
+  it('round-trips every playable game phase and exact rush controls', () => {
+    const planning = createCampaign({ seed: 808 });
+    const rush = togglePause(setRushSpeed(startRush(planning), 4));
+    let event = togglePause(rush);
+    while (event.phase === 'rush') event = advanceTick(event);
+    let report = resolveEvent(event, 'protect-queue');
+    while (report.phase === 'rush') report = advanceTick(report);
+    const reinvest = closeDay(report);
+    for (const state of [planning, rush, event, report, reinvest]) {
+      const parsed = parseEnvelope(JSON.stringify(createSaveEnvelope(state)));
+      expect(parsed?.activeRun).toEqual(state);
+    }
+    expect(rush.rush).toMatchObject({ speed: 4, isPaused: true, tick: 0 });
+  });
+
+  it('restores the previous primary payload when a write is interrupted', () => {
+    const storage = new InterruptingStorage();
+    const store = new BrowserSaveStore(storage);
+    const previous = createSaveEnvelope(createCampaign({ seed: 31 }));
+    store.save(previous);
+    storage.failNextPrimaryWrite = true;
+    expect(() => store.save(createSaveEnvelope(createCampaign({ seed: 32 })))).toThrow(
+      'could not store',
+    );
+    expect(store.load().envelope).toEqual(previous);
+  });
 });
+
+class InterruptingStorage implements Storage {
+  readonly #values = new Map<string, string>();
+  public failNextPrimaryWrite = false;
+
+  public get length(): number {
+    return this.#values.size;
+  }
+
+  public clear(): void {
+    this.#values.clear();
+  }
+
+  public getItem(key: string): string | null {
+    return this.#values.get(key) ?? null;
+  }
+
+  public key(index: number): string | null {
+    return [...this.#values.keys()][index] ?? null;
+  }
+
+  public removeItem(key: string): void {
+    this.#values.delete(key);
+  }
+
+  public setItem(key: string, value: string): void {
+    if (key === SAVE_KEY && this.failNextPrimaryWrite) {
+      this.failNextPrimaryWrite = false;
+      throw new DOMException('Simulated quota interruption', 'QuotaExceededError');
+    }
+    this.#values.set(key, value);
+  }
+}

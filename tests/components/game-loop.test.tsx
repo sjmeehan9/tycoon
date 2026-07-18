@@ -58,6 +58,18 @@ describe('playable cart UI', () => {
     expect(screen.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('provides touch-sized mobile planning tabs without hiding actions from the DOM', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    const supplies = await screen.findByRole('tab', { name: 'Supplies' });
+    expect(supplies).toHaveAttribute('aria-selected', 'false');
+    await user.click(supplies);
+    expect(supplies).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Supplies' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open the cart' })).toBeEnabled();
+  });
+
   it('renders and resolves the seeded event dialog', async () => {
     new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(stateAtEvent()));
     const user = userEvent.setup();

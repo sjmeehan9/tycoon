@@ -26,6 +26,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
   background: radial-gradient(circle at top, #f8efd9 0, #dfcfae 75%);
 }
 button,
@@ -300,6 +301,9 @@ fieldset {
   margin: 0 0 1.25rem;
   padding: 0;
   border: 0;
+}
+.mobile-tabs {
+  display: none;
 }
 legend {
   margin-bottom: 0.65rem;
@@ -677,6 +681,32 @@ legend {
   .menu-grid,
   .supply-list {
     grid-template-columns: 1fr;
+  }
+  .mobile-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0 0 1rem;
+    border: 2px solid var(--ink);
+  }
+  .mobile-tabs button {
+    min-width: 0;
+    min-height: 46px;
+    border: 0;
+    border-left: 1px solid var(--ink);
+    background: var(--paper);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+  .mobile-tabs button:first-child {
+    border-left: 0;
+  }
+  .mobile-tabs button[aria-selected='true'] {
+    color: #fff;
+    background: var(--green);
+  }
+  .planner-section:not(.mobile-active) {
+    display: none;
   }
   .segmented-options {
     grid-template-columns: 1fr;

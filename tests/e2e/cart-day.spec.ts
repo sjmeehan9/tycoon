@@ -9,9 +9,12 @@ test.describe('complete seeded cart day', () => {
     await page.getByRole('button', { name: 'Start new campaign' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
 
+    const suppliesTab = page.getByRole('tab', { name: 'Supplies' });
+    if (await suppliesTab.isVisible()) await suppliesTab.click();
     await page.getByLabel('Ice · 20 serves package quantity').fill('1');
+    const menuTab = page.getByRole('tab', { name: 'Menu' });
+    if (await menuTab.isVisible()) await menuTab.click();
     await page.getByRole('checkbox', { name: /Iced Latte/ }).check();
-    await page.getByRole('radio', { name: /Balanced/ }).check();
     await page.getByRole('button', { name: 'Open the cart' }).click();
 
     await page.getByRole('button', { name: 'Pause' }).click();
