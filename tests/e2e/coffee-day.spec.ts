@@ -16,9 +16,16 @@ test.describe('complete specialty coffee trading day', () => {
 
     const suppliesTab = page.getByRole('tab', { name: 'Supplies' });
     if (await suppliesTab.isVisible()) await suppliesTab.click();
-    await page.getByLabel('Single origin · 500 g package quantity').fill('1');
-    await page.getByLabel('Chocolate · 500 g package quantity').fill('1');
-    await page.getByLabel('Soy milk · 1 L package quantity').fill('1');
+    for (const label of [
+      'Single origin · 500 g package quantity',
+      'Chocolate · 500 g package quantity',
+      'Soy milk · 1 L package quantity',
+    ]) {
+      await page
+        .getByRole('group', { name: label })
+        .getByRole('button', { name: /^Increase/ })
+        .click();
+    }
 
     const dialTab = page.getByRole('tab', { name: 'Dial-in' });
     if (await dialTab.isVisible()) await dialTab.click();

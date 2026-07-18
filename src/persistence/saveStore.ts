@@ -1,4 +1,9 @@
-import { ALL_DRINK_IDS, CAMPAIGN_RULES, INGREDIENT_IDS } from '../content/gameContent';
+import {
+  ALL_DRINK_IDS,
+  CAMPAIGN_RULES,
+  INGREDIENT_IDS,
+  RUSH_ACTIVITY_LIMIT,
+} from '../content/gameContent';
 import type {
   AchievementId,
   CampaignOutcome,
@@ -231,8 +236,9 @@ export function importEnvelope(serialized: string): SaveEnvelope {
     );
   }
   const migrated = value.schemaVersion === 1 ? migrateVersionOne(value) : value;
-  validateEnvelope(migrated);
-  return migrated as unknown as SaveEnvelope;
+  const normalized = normalizeVersionTwo(migrated);
+  validateEnvelope(normalized);
+  return normalized as unknown as SaveEnvelope;
 }
 
 /** Return null for invalid storage payloads; use importEnvelope for actionable errors. */
@@ -286,6 +292,21 @@ function migrateVersionOne(value: Record<string, unknown>): Record<string, unkno
 
 function migrateReport(value: unknown): unknown {
   return isRecord(value) ? { ...value, wageCostCents: finiteOr(value.wageCostCents, 0) } : value;
+}
+
+function normalizeVersionTwo(value: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(value.activeRun) || !isRecord(value.activeRun.rush)) return value;
+  const rush = value.activeRun.rush;
+  return {
+    ...value,
+    activeRun: {
+      ...value.activeRun,
+      rush: {
+        ...rush,
+        recentActivity: rush.recentActivity === undefined ? [] : rush.recentActivity,
+      },
+    },
+  };
 }
 
 function validateEnvelope(value: Record<string, unknown>): void {
@@ -416,7 +437,20 @@ function validateRush(value: unknown): asserts value is RushState {
   for (const key of ['demandMultiplier', 'qualityBonus']) {
     assertNumber(rush[key], `rush.${key}`, -10_000, 10_000);
   }
+  expectArray(rush.recentActivity, 'rush.recentActivity', RUSH_ACTIVITY_LIMIT).forEach(
+    (activity, index) => validateCompletedSaleActivity(activity, `rush.recentActivity[${index}]`),
+  );
   validateRushStats(rush.stats);
+}
+
+function validateCompletedSaleActivity(value: unknown, path: string): void {
+  const activity = expectRecord(value, path);
+  assert(activity.type === 'sale', `${path}.type is not supported.`);
+  assertNumber(activity.tick, `${path}.tick`, 0, 2_000, true);
+  assertEnum(activity.drinkId, ALL_DRINK_IDS, `${path}.drinkId`);
+  assertEnum(activity.size, ['regular', 'large'], `${path}.size`);
+  assertEnum(activity.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.milk`);
+  assertNumber(activity.priceCents, `${path}.priceCents`, 0, 10_000, true);
 }
 
 function validateRushStats(value: unknown): void {

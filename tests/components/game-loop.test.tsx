@@ -116,6 +116,9 @@ describe('playable cart UI', () => {
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Recent actual sale charges' })).toBeVisible();
+    expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
     expect(screen.getByText('Bottleneck')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle the day' }));
     expect(

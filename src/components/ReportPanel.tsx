@@ -1,11 +1,15 @@
 import { useGame } from '../app/GameContext';
-import { formatMoney } from '../game';
+import { completedSaleLabel, formatMoney, type CompletedSaleActivity } from '../game';
 
 /** Reconciled end-of-day trading report. */
 export function ReportPanel(): React.JSX.Element {
   const { command, game } = useGame();
   const report = game?.report;
   if (!game || !report) return <></>;
+  const recentSales = game.rush?.recentActivity ?? [];
+  const chargeGroups = groupSaleCharges(recentSales);
+  const observedTotal = recentSales.reduce((total, sale) => total + sale.priceCents, 0);
+  const includesEverySale = recentSales.length === report.served;
   return (
     <section className="panel report-panel" aria-labelledby="report-title">
       <div className="panel-heading">
@@ -32,6 +36,13 @@ export function ReportPanel(): React.JSX.Element {
             <tr>
               <th scope="row">Sales revenue</th>
               <td>+{formatMoney(report.revenueCents)}</td>
+            </tr>
+            <tr>
+              <th scope="row">Event cash adjustments</th>
+              <td>
+                {report.eventCashDeltaCents >= 0 ? '+' : '−'}
+                {formatMoney(Math.abs(report.eventCashDeltaCents))}
+              </td>
             </tr>
             <tr>
               <th scope="row">Staff wages</th>
@@ -71,6 +82,36 @@ export function ReportPanel(): React.JSX.Element {
           </div>
         </dl>
       </div>
+      {recentSales.length > 0 ? (
+        <section className="sale-evidence" aria-labelledby="sale-evidence-title">
+          <h3 id="sale-evidence-title">Actual charges</h3>
+          <ul aria-label="Recent actual sale charges" className="sale-charge-list">
+            {chargeGroups.map((group) => (
+              <li key={group.key}>
+                <span>{completedSaleLabel(group.sale)}</span>
+                <strong>
+                  {group.quantity} × {formatMoney(group.sale.priceCents)} ={' '}
+                  {formatMoney(group.quantity * group.sale.priceCents)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+          <p className="sale-observation-summary">
+            {includesEverySale ? (
+              <>
+                All {report.served} completed sale charges total{' '}
+                <strong className="sale-observation-total">{formatMoney(observedTotal)}</strong>,
+                matching sales revenue.
+              </>
+            ) : (
+              <>
+                Latest {recentSales.length} of {report.served} completed sales shown; report sales
+                revenue includes every completed sale.
+              </>
+            )}
+          </p>
+        </section>
+      ) : null}
       <div className="bottleneck-card">
         <strong>Bottleneck</strong>
         <span>{report.bottleneck}</span>
@@ -99,4 +140,23 @@ export function ReportPanel(): React.JSX.Element {
       </button>
     </section>
   );
+}
+
+interface SaleChargeGroup {
+  key: string;
+  sale: CompletedSaleActivity;
+  quantity: number;
+}
+
+function groupSaleCharges(sales: CompletedSaleActivity[]): SaleChargeGroup[] {
+  const groups = new Map<string, SaleChargeGroup>();
+  for (const sale of sales) {
+    const key = [sale.drinkId, sale.size, sale.milk, sale.priceCents].join(':');
+    const existing = groups.get(key);
+    groups.set(
+      key,
+      existing ? { ...existing, quantity: existing.quantity + 1 } : { key, sale, quantity: 1 },
+    );
+  }
+  return [...groups.values()];
 }

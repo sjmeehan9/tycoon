@@ -11,6 +11,7 @@ import {
   INITIAL_REPUTATION,
   MILK_SURCHARGE_CENTS,
   PURCHASE_PACKAGES,
+  RUSH_ACTIVITY_LIMIT,
   RUSH_DURATION_TICKS,
   SCENARIO_DETAILS,
   SEGMENT_DRINK_APPEAL,
@@ -32,6 +33,7 @@ import { GameRuleError } from './errors';
 import { nextRandom, randomInt } from './prng';
 import type {
   CampaignOptions,
+  CompletedSaleActivity,
   Customer,
   CustomerSegment,
   DayPlan,
@@ -240,6 +242,7 @@ export function startRush(state: GameState): GameState {
     purchaseCostCents: suppliesCost,
     wageCostCents: scheduledStaff(state).reduce((total, member) => total + member.wageCents, 0),
     operatingCostCents: effects.operatingCostCents,
+    recentActivity: [],
     stats: emptyRushStats(),
   };
   return {
@@ -735,7 +738,23 @@ function progressService(state: GameState): GameState {
       [customer.segment]: (rush.stats.servedBySegment[customer.segment] ?? 0) + 1,
     },
   };
-  return { ...state, rush: { ...rush, activeService: null, stats } };
+  const sale: CompletedSaleActivity = {
+    type: 'sale',
+    tick: rush.tick,
+    drinkId: customer.order.drinkId,
+    size: customer.order.size,
+    milk: customer.order.milk,
+    priceCents: customer.order.priceCents,
+  };
+  return {
+    ...state,
+    rush: {
+      ...rush,
+      activeService: null,
+      recentActivity: [...rush.recentActivity, sale].slice(-RUSH_ACTIVITY_LIMIT),
+      stats,
+    },
+  };
 }
 
 function startNextService(state: GameState): GameState {

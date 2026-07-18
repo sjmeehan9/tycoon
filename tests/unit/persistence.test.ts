@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CAMPAIGN_RULES } from '../../src/content/gameContent';
+import { CAMPAIGN_RULES, RUSH_ACTIVITY_LIMIT } from '../../src/content/gameContent';
 import {
   advanceTick,
   closeDay,
@@ -167,6 +167,33 @@ describe('versioned save envelope', () => {
       expect(parsed?.activeRun).toEqual(state);
     }
     expect(rush.rush).toMatchObject({ speed: 4, isPaused: true, tick: 0 });
+  });
+
+  it('defaults older schema-v2 rushes and validates bounded completed-sale activity', () => {
+    const started = createSaveEnvelope(startRush(createCampaign({ seed: 809 })));
+    const withoutActivity = JSON.parse(JSON.stringify(started)) as {
+      activeRun: { rush: { recentActivity?: unknown } };
+    };
+    delete withoutActivity.activeRun.rush.recentActivity;
+    expect(importEnvelope(JSON.stringify(withoutActivity)).activeRun?.rush?.recentActivity).toEqual(
+      [],
+    );
+
+    let withSale = startRush(createCampaign({ seed: 810 }));
+    while (withSale.phase === 'rush' && (withSale.rush?.recentActivity.length ?? 0) === 0) {
+      withSale = advanceTick(withSale);
+    }
+    const sale = withSale.rush?.recentActivity[0];
+    expect(sale).toBeDefined();
+    const roundTrip = importEnvelope(JSON.stringify(createSaveEnvelope(withSale)));
+    expect(roundTrip.activeRun?.rush?.recentActivity).toEqual(withSale.rush?.recentActivity);
+
+    if (!sale || !started.activeRun?.rush) throw new Error('Expected a completed sale fixture.');
+    started.activeRun.rush.recentActivity = Array.from(
+      { length: RUSH_ACTIVITY_LIMIT + 1 },
+      () => sale,
+    );
+    expect(() => importEnvelope(JSON.stringify(started))).toThrow('20-item limit');
   });
 
   it('restores the previous primary payload when a write is interrupted', () => {

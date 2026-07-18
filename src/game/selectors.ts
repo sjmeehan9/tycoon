@@ -1,11 +1,12 @@
 import {
   CAMPAIGN_RULES,
+  DRINK_MAP,
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
   TICKS_PER_SECOND,
 } from '../content/gameContent';
 import { purchaseCost } from './engine';
-import type { GameState } from './types';
+import type { CompletedSaleActivity, GameState } from './types';
 
 /** Format integer cents as Australian dollars. */
 export function formatMoney(cents: number): string {
@@ -33,6 +34,14 @@ export function canOpen(state: GameState): boolean {
     state.phase === 'planning' &&
     selectedSupplyCost(state) <= state.cashCents - CAMPAIGN_RULES.overdraftFloorCents
   );
+}
+
+/** Format the configured drink, size, and milk represented by an actual sale. */
+export function completedSaleLabel(sale: CompletedSaleActivity): string {
+  const drink = DRINK_MAP.get(sale.drinkId);
+  const size = sale.size === 'large' ? 'Large' : 'Regular';
+  const milk = sale.milk === 'none' ? '' : ` ${sale.milk}`;
+  return `${size}${milk} ${drink?.name ?? sale.drinkId}`;
 }
 
 /** Return only inventory entries available through the Phase 1 supplier. */

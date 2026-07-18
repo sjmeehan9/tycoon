@@ -108,6 +108,16 @@ export interface ServiceJob {
   totalTicks: number;
 }
 
+/** Minimal successful-sale activity; Phase 6 extends this field into a rush-event union. */
+export interface CompletedSaleActivity {
+  type: 'sale';
+  tick: number;
+  drinkId: DrinkId;
+  size: DrinkSize;
+  milk: MilkChoice;
+  priceCents: number;
+}
+
 export interface EventChoiceEffect {
   cashCents?: number;
   demandMultiplier?: number;
@@ -171,6 +181,7 @@ export interface RushState {
   purchaseCostCents: number;
   wageCostCents: number;
   operatingCostCents: number;
+  recentActivity: CompletedSaleActivity[];
   stats: RushStats;
 }
 
