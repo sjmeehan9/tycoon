@@ -1,0 +1,57 @@
+# Phase 1 Implementation Context
+
+## Component 1.1 — Human Setup
+
+- No accounts, credentials, environment variables, or external services are
+  required for the playable-cart phase.
+- Local prerequisites were verified: Node.js 22.13.1 and pnpm 10.15.0 satisfy
+  the project profile.
+- The implementation proceeds on `phase-1`; the protected `main` branch remains
+  untouched.
+
+## Component 1.2 — Complete Seeded Cart Day
+
+- Replaced the bootstrap Python manifest with the pinned React 19.2.7, Vite
+  8.1.5, TypeScript 6.0.3, Vitest 4.1.10, and Playwright 1.61.1 stack.
+- Added a pure fixed-tick simulation with serializable PRNG state, arrivals,
+  queueing, service, ingredient consumption, stockouts, abandonment, sales,
+  satisfaction, waste, reputation, event choice, and cash reconciliation.
+- React now routes typed commands through one controller and renders morning,
+  rush, event, report, and reinvestment phases beside a functional Canvas cart.
+- Added schema-version-1 browser persistence with primary and last-known-good
+  keys. Phase transitions and five-second rush checkpoints autosave.
+- The exact validation sequence passed with 15 unit/component tests and two
+  complete-day Playwright projects (desktop and 360px touch-mobile).
+
+### Design decisions
+
+- A rush contains exactly 300 fixed 250ms ticks (75 simulated seconds).
+- Monetary values are integer cents; ingredient values use recipe-native integer
+  grams, millilitres, or servings.
+- Display speed changes interval frequency only, so 1x/2x/4x reports are equal.
+- Phase 1 uses a small four-drink menu while retaining stable public types for
+  the Phase 2 expansion.
+
+## Component 1.3 — Responsive Autosaved Continuation
+
+- Added a 360px mobile planner with touch-sized Menu, Supplies, and Dial-in tabs;
+  desktop retains the side-by-side scene and complete planner.
+- Pause and 1x/2x/4x changes now save immediately, while service continues to
+  checkpoint every five simulated seconds.
+- Added round-trip proof for planning, rush, event, report, and reinvestment,
+  including queue, PRNG, pending event, speed, pause, and report settlement.
+- Added simulated interrupted-write recovery and a Playwright reload journey
+  proving last-known-good behavior and exact-once close-day settlement.
+- Exact cumulative validation passed: 18 unit/component tests and four
+  desktop/touch-mobile Playwright tests.
+
+## Component 1.4 — Phase Validation & Documentation
+
+- Self-reviewed source and tests for placeholders, unsafe typing, runtime
+  services, engine/render coupling, and persistence boundary violations; none
+  were found.
+- Re-ran the exact project-profile validation sequence with cumulative PASS.
+- Added the Phase 1 test report and agent runbook with reproducible install,
+  development, production-preview, E2E, deterministic-engine, and recovery
+  instructions.
+- Phase 1 is validated locally and ready to serve as the parent of `phase-2`.

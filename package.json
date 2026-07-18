@@ -1,0 +1,51 @@
+{
+  "name": "laneway-tycoon",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A cosy, deterministic Australian specialty-coffee tycoon game.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "assets:audio": "node --experimental-strip-types scripts/generate-audio.ts",
+    "audit:lighthouse": "pnpm dlx lighthouse@12.8.2 http://127.0.0.1:4173/tycoon/ --output=json --output-path=docs/evidence/lighthouse-mobile.json --only-categories=performance,accessibility,best-practices --form-factor=mobile --chrome-flags='--headless=new --no-sandbox --disable-gpu' --quiet",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "lint": "eslint . --max-warnings 0 && prettier --check src tests *.ts *.json *.html",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.61.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "22.20.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.3",
+    "jsdom": "28.1.0",
+    "prettier": "3.9.5",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.64.0",
+    "vite": "8.1.5",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "4.1.10",
+    "workbox-window": "7.4.1"
+  },
+  "packageManager": "pnpm@10.15.0"
+}
