@@ -426,17 +426,8 @@ legend {
   font-size: 0.78rem;
   font-weight: 850;
 }
-.price-field span {
-  display: flex;
-  align-items: center;
-}
-.price-field input {
-  width: 78px;
-  min-height: 44px;
-  margin-left: 0.2rem;
-  padding: 0.35rem;
-  border: 2px solid #71584b;
-  background: #fff;
+.price-field > span {
+  flex: 0 0 auto;
 }
 .supply-list {
   display: grid;
@@ -452,16 +443,50 @@ legend {
   border: 2px solid #a48b78;
   background: var(--paper);
 }
+.supply-row > span {
+  min-width: 0;
+}
 .supply-row small {
   color: #6d5548;
 }
-.supply-row input {
-  width: 62px;
-  min-height: 44px;
-  padding: 0.35rem;
+.stepper {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 44px minmax(3.7rem, auto) 44px;
+  align-items: stretch;
   border: 2px solid #71584b;
   background: #fff;
+}
+.stepper button {
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: var(--paper);
+  cursor: pointer;
+  place-items: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+.stepper button:first-child {
+  border-right: 1px solid #71584b;
+}
+.stepper button:last-child {
+  border-left: 1px solid #71584b;
+}
+.stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.stepper output {
+  display: grid;
+  min-width: 0;
+  padding: 0.35rem 0.25rem;
+  place-items: center;
   text-align: center;
+  white-space: nowrap;
 }
 .segmented-options {
   display: grid;

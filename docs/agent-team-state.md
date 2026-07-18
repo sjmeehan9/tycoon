@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-Implementation — Phase 4 Component 4.1 complete; Component 4.2 starting
+Implementation — Phase 4 Components 4.1–4.2 complete; Component 4.3 starting
 
 ## Lean team contract
 

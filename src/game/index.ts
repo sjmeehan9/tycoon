@@ -1,6 +1,8 @@
 /** Public simulation API for application code and tests. */
 export {
   advanceTick,
+  adjustPlanPrice,
+  adjustPlanPurchase,
   buyEquipment,
   buyImprovement,
   candidatePoolForDay,

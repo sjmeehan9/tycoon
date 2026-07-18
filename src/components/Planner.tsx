@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { handleTabListKeyDown } from '../accessibility/keyboard';
 import {
   BEAN_DETAILS,
+  DAY_PLAN_LIMITS,
   DRINKS,
   PURCHASE_PACKAGES,
   VENUES,
@@ -12,6 +13,7 @@ import {
 import { useGame } from '../app/GameContext';
 import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
 import { TeamPlanner } from './TeamPlanner';
+import { AccessibleStepper } from './AccessibleStepper';
 
 const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
   { id: 'speed', label: 'Speed', detail: 'Quicker cups, less finesse' },
@@ -102,31 +104,29 @@ export function Planner(): React.JSX.Element {
                     </small>
                   </span>
                 </label>
-                <label className="price-field">
-                  Price
-                  <span>
-                    $
-                    <input
-                      aria-label={`${drink.name} price in dollars`}
-                      disabled={!checked}
-                      inputMode="decimal"
-                      max="12"
-                      min="2.5"
-                      onChange={(event) => {
-                        const dollars = Number(event.target.value);
-                        if (Number.isFinite(dollars)) {
-                          command({
-                            type: 'prepareDay',
-                            patch: { pricesCents: { [drink.id]: Math.round(dollars * 100) } },
-                          });
-                        }
-                      }}
-                      step="0.1"
-                      type="number"
-                      value={(game.plan.pricesCents[drink.id] / 100).toFixed(2)}
-                    />
-                  </span>
-                </label>
+                <div className="price-field">
+                  <span>Price</span>
+                  <AccessibleStepper
+                    decrementDisabled={
+                      !checked ||
+                      game.plan.pricesCents[drink.id] <= DAY_PLAN_LIMITS.priceCents.minimum
+                    }
+                    decrementLabel={`Decrease ${drink.name} price by ${formatMoney(DAY_PLAN_LIMITS.priceCents.increment)}`}
+                    incrementDisabled={
+                      !checked ||
+                      game.plan.pricesCents[drink.id] >= DAY_PLAN_LIMITS.priceCents.maximum
+                    }
+                    incrementLabel={`Increase ${drink.name} price by ${formatMoney(DAY_PLAN_LIMITS.priceCents.increment)}`}
+                    label={`${drink.name} price`}
+                    onDecrement={() =>
+                      command({ type: 'adjustPlanPrice', drinkId: drink.id, direction: -1 })
+                    }
+                    onIncrement={() =>
+                      command({ type: 'adjustPlanPrice', drinkId: drink.id, direction: 1 })
+                    }
+                    value={formatMoney(game.plan.pricesCents[drink.id])}
+                  />
+                </div>
               </div>
             );
           })}
@@ -151,31 +151,39 @@ export function Planner(): React.JSX.Element {
       >
         <legend>Supply order</legend>
         <div className="supply-list">
-          {PURCHASE_PACKAGES.map((item) => (
-            <label className="supply-row" key={item.ingredientId}>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{formatMoney(item.costCents)} per pack</small>
-              </span>
-              <input
-                aria-label={`${item.label} package quantity`}
-                inputMode="numeric"
-                max={20}
-                min={0}
-                onChange={(event) => {
-                  const quantity = Number(event.target.value);
-                  if (Number.isInteger(quantity)) {
+          {PURCHASE_PACKAGES.map((item) => {
+            const quantity = game.plan.purchases[item.ingredientId];
+            return (
+              <div className="supply-row" key={item.ingredientId}>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{formatMoney(item.costCents)} per pack</small>
+                </span>
+                <AccessibleStepper
+                  decrementDisabled={quantity <= DAY_PLAN_LIMITS.packageQuantity.minimum}
+                  decrementLabel={`Decrease ${item.label} package quantity by 1 package`}
+                  incrementDisabled={quantity >= DAY_PLAN_LIMITS.packageQuantity.maximum}
+                  incrementLabel={`Increase ${item.label} package quantity by 1 package`}
+                  label={`${item.label} package quantity`}
+                  onDecrement={() =>
                     command({
-                      type: 'prepareDay',
-                      patch: { purchases: { [item.ingredientId]: quantity } },
-                    });
+                      type: 'adjustPlanPurchase',
+                      ingredientId: item.ingredientId,
+                      direction: -1,
+                    })
                   }
-                }}
-                type="number"
-                value={game.plan.purchases[item.ingredientId]}
-              />
-            </label>
-          ))}
+                  onIncrement={() =>
+                    command({
+                      type: 'adjustPlanPurchase',
+                      ingredientId: item.ingredientId,
+                      direction: 1,
+                    })
+                  }
+                  value={String(quantity)}
+                />
+              </div>
+            );
+          })}
         </div>
       </fieldset>
 

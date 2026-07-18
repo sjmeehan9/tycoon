@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   GameRuleError,
   advanceTick,
+  adjustPlanPrice,
+  adjustPlanPurchase,
   buyImprovement,
   closeDay,
   createCampaign,
@@ -91,6 +93,36 @@ describe('seeded cart engine', () => {
     expect(tomorrow.day).toBe(2);
     expect(tomorrow.phase).toBe('planning');
     expect(tomorrow.plan.purchases.houseBeans).toBe(0);
+  });
+
+  it('applies exact relative planner increments atomically and stops at bounds', () => {
+    let state = createCampaign({ seed: 56 });
+    for (let index = 0; index < 65; index += 1) {
+      state = adjustPlanPrice(state, 'flatWhite', 1);
+    }
+    expect(state.plan.pricesCents.flatWhite).toBe(1_200);
+    expect(adjustPlanPrice(state, 'flatWhite', 1)).toBe(state);
+
+    for (let index = 0; index < 95; index += 1) {
+      state = adjustPlanPrice(state, 'flatWhite', -1);
+    }
+    expect(state.plan.pricesCents.flatWhite).toBe(250);
+    expect(adjustPlanPrice(state, 'flatWhite', -1)).toBe(state);
+
+    for (let index = 0; index < 19; index += 1) {
+      state = adjustPlanPurchase(state, 'ice', 1);
+    }
+    expect(state.plan.purchases.ice).toBe(19);
+    state = adjustPlanPurchase(state, 'ice', 1);
+    expect(state.plan.purchases.ice).toBe(20);
+    expect(adjustPlanPurchase(state, 'ice', 1)).toBe(state);
+
+    for (let index = 0; index < 20; index += 1) {
+      state = adjustPlanPurchase(state, 'ice', -1);
+    }
+    expect(state.plan.purchases.ice).toBe(0);
+    expect(adjustPlanPurchase(state, 'ice', -1)).toBe(state);
+    expect(() => adjustPlanPrice(startRush(state), 'flatWhite', 1)).toThrow('requires planning');
   });
 
   it('runs a 75-second simulated rush', () => {

@@ -398,6 +398,13 @@ export const MILK_SURCHARGE_CENTS: Record<MilkChoice, number> = {
   oat: 80,
   soy: 60,
 };
+
+/** Exact integer bounds and activation increments shared by planner UI and validation. */
+export const DAY_PLAN_LIMITS = {
+  priceCents: { minimum: 250, maximum: 1_200, increment: 10 },
+  packageQuantity: { minimum: 0, maximum: 20, increment: 1 },
+} as const;
+
 export const INITIAL_CASH_CENTS = 18_000;
 export const INITIAL_REPUTATION = 35;
 export const CART_IMPROVEMENT_COST_CENTS = 2_500;

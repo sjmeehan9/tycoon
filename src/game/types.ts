@@ -39,6 +39,7 @@ export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
 export type CosmeticId = 'classicAwning' | 'wattleAwning' | 'neonCup';
 export type AchievementId = 'cafeFounder' | 'goldenCup' | 'hardLessons';
 export type RushSpeed = 1 | 2 | 4;
+export type StepDirection = -1 | 1;
 
 export interface IngredientAmount {
   ingredientId: IngredientId;
@@ -339,6 +340,8 @@ export interface PlanPatch {
 
 export type GameCommand =
   | { type: 'prepareDay'; patch: PlanPatch }
+  | { type: 'adjustPlanPrice'; drinkId: DrinkId; direction: StepDirection }
+  | { type: 'adjustPlanPurchase'; ingredientId: IngredientId; direction: StepDirection }
   | { type: 'startRush' }
   | { type: 'advanceTick'; ticks?: number }
   | { type: 'togglePause' }

@@ -2,6 +2,7 @@ import {
   BEAN_DETAILS,
   CAMPAIGN_RULES,
   CART_IMPROVEMENT_COST_CENTS,
+  DAY_PLAN_LIMITS,
   DRINK_MAP,
   EQUIPMENT,
   EQUIPMENT_IDS,
@@ -54,12 +55,10 @@ import type {
   SimulationEvent,
   StaffMember,
   StaffTrait,
+  StepDirection,
   VenueId,
 } from './types';
 
-const MIN_PRICE_CENTS = 250;
-const MAX_PRICE_CENTS = 1_200;
-const MAX_PURCHASE_PACKAGES = 20;
 const MAX_HIRED_STAFF = 8;
 const CANDIDATE_NAMES = [
   'Ari Nguyen',
@@ -176,6 +175,40 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
     throw new GameRuleError('Those supplies exceed the available cash and overdraft buffer.');
   }
   return { ...state, plan };
+}
+
+/** Adjust one configured menu price by exactly one bounded planner increment. */
+export function adjustPlanPrice(
+  state: GameState,
+  drinkId: DrinkId,
+  direction: StepDirection,
+): GameState {
+  requirePhase(state, 'planning');
+  assertStepDirection(direction);
+  getDrink(drinkId);
+  const limits = DAY_PLAN_LIMITS.priceCents;
+  const current = state.plan.pricesCents[drinkId];
+  const next = clamp(current + direction * limits.increment, limits.minimum, limits.maximum);
+  if (next === current) return state;
+  return prepareDay(state, { pricesCents: { [drinkId]: next } });
+}
+
+/** Adjust one supply order by exactly one bounded package increment. */
+export function adjustPlanPurchase(
+  state: GameState,
+  ingredientId: IngredientId,
+  direction: StepDirection,
+): GameState {
+  requirePhase(state, 'planning');
+  assertStepDirection(direction);
+  if (!PURCHASE_PACKAGES.some((item) => item.ingredientId === ingredientId)) {
+    throw new GameRuleError('That supply package is not available.');
+  }
+  const limits = DAY_PLAN_LIMITS.packageQuantity;
+  const current = state.plan.purchases[ingredientId];
+  const next = clamp(current + direction * limits.increment, limits.minimum, limits.maximum);
+  if (next === current) return state;
+  return prepareDay(state, { purchases: { [ingredientId]: next } });
 }
 
 /** Commit supply purchases and begin the deterministic service rush. */
@@ -468,6 +501,10 @@ export function dispatchGameCommand(state: GameState, command: GameCommand): Gam
   switch (command.type) {
     case 'prepareDay':
       return prepareDay(state, command.patch);
+    case 'adjustPlanPrice':
+      return adjustPlanPrice(state, command.drinkId, command.direction);
+    case 'adjustPlanPurchase':
+      return adjustPlanPurchase(state, command.ingredientId, command.direction);
     case 'startRush':
       return startRush(state);
     case 'advanceTick':
@@ -1224,13 +1261,15 @@ function validatePlan(state: GameState, plan: DayPlan): void {
   for (const drinkId of plan.activeMenu) {
     getDrink(drinkId);
     const price = plan.pricesCents[drinkId];
-    if (!Number.isInteger(price) || price < MIN_PRICE_CENTS || price > MAX_PRICE_CENTS) {
+    const limits = DAY_PLAN_LIMITS.priceCents;
+    if (!Number.isInteger(price) || price < limits.minimum || price > limits.maximum) {
       throw new GameRuleError('Drink prices must be between $2.50 and $12.00.');
     }
   }
   for (const item of PURCHASE_PACKAGES) {
     const quantity = plan.purchases[item.ingredientId];
-    if (!Number.isInteger(quantity) || quantity < 0 || quantity > MAX_PURCHASE_PACKAGES) {
+    const limits = DAY_PLAN_LIMITS.packageQuantity;
+    if (!Number.isInteger(quantity) || quantity < limits.minimum || quantity > limits.maximum) {
       throw new GameRuleError('Supply package quantities must be whole numbers from 0 to 20.');
     }
   }
@@ -1290,6 +1329,12 @@ function venueMeetsRequirement(current: VenueId, required: VenueId): boolean {
 function requireManagementPhase(state: GameState): void {
   if (state.phase !== 'planning' && state.phase !== 'reinvest') {
     throw new GameRuleError('Staff can only be hired while planning or reinvesting.');
+  }
+}
+
+function assertStepDirection(direction: number): asserts direction is StepDirection {
+  if (direction !== -1 && direction !== 1) {
+    throw new GameRuleError('Planner adjustments must move by exactly one increment.');
   }
 }
 
