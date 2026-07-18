@@ -64,7 +64,7 @@ export function RushPanel(): React.JSX.Element {
           ))}
         </div>
       </div>
-      <p className="service-note" aria-live="polite">
+      <p className="service-note">
         {rush.activeService
           ? `Making ${rush.activeService.customer.order.drinkId.replace(/([A-Z])/g, ' $1').toLowerCase()} for ${rush.activeService.customer.segment}.`
           : rush.queue.length > 0

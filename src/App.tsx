@@ -1,10 +1,12 @@
 import { useGame } from './app/GameContext';
 import { AudioDirector } from './audio/AudioDirector';
+import { GameAnnouncer } from './accessibility/GameAnnouncer';
 import { EventDialog } from './components/EventDialog';
 import { EndingPanel } from './components/EndingPanel';
 import { GameHeader } from './components/GameHeader';
 import { GameTools } from './components/GameTools';
 import { Planner } from './components/Planner';
+import { OnboardingGuide } from './components/OnboardingGuide';
 import { ReinvestPanel } from './components/ReinvestPanel';
 import { ReportPanel } from './components/ReportPanel';
 import { RushPanel } from './components/RushPanel';
@@ -19,6 +21,7 @@ export default function App(): React.JSX.Element {
     return (
       <>
         <AudioDirector />
+        <GameAnnouncer />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <TitleScreen />
         <GameTools />
@@ -29,6 +32,7 @@ export default function App(): React.JSX.Element {
   return (
     <>
       <AudioDirector />
+      <GameAnnouncer />
       <div className="app-shell">
         <GameHeader />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
@@ -40,7 +44,8 @@ export default function App(): React.JSX.Element {
               <span>{VENUES[game.venueId].description}</span>
             </section>
           </div>
-          <div className="control-column">
+          <div className="control-column" tabIndex={-1}>
+            <OnboardingGuide />
             {game.phase === 'planning' ? <Planner /> : null}
             {game.phase === 'rush' || game.phase === 'event' ? <RushPanel /> : null}
             {game.phase === 'report' ? <ReportPanel /> : null}

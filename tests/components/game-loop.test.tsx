@@ -49,7 +49,7 @@ describe('playable cart UI', () => {
     expect(await screen.findByRole('heading', { name: 'Set up the cart' })).toBeVisible();
     await user.click(screen.getByRole('checkbox', { name: /Long Black/ }));
     await user.click(screen.getByRole('checkbox', { name: /Flat White/ }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Choose between 1 and 3');
+    expect(await screen.findByText('Choose between 1 and 3 cart drinks.')).toBeVisible();
     expect(screen.getAllByRole('checkbox', { checked: true })).toHaveLength(1);
   });
 
@@ -99,9 +99,13 @@ describe('playable cart UI', () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
-    expect(await screen.findByRole('dialog')).toHaveTextContent('office coffee run');
+    expect(await screen.findByRole('dialog', { name: /office coffee run/i })).toHaveTextContent(
+      'office coffee run',
+    );
     await user.click(screen.getByRole('button', { name: /Protect the queue/ }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /office coffee run/i })).not.toBeInTheDocument(),
+    );
     expect(screen.getByRole('heading', { name: 'The laneway is moving' })).toBeVisible();
   });
 

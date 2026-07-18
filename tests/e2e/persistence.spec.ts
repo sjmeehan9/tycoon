@@ -7,9 +7,11 @@ test.describe('autosaved continuation', () => {
     test.setTimeout(100_000);
     await page.goto('/');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Open the cart' }).click();

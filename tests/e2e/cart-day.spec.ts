@@ -7,6 +7,7 @@ test.describe('complete seeded cart day', () => {
     test.setTimeout(90_000);
     await page.goto('/');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
 
     const suppliesTab = page.getByRole('tab', { name: 'Supplies' });

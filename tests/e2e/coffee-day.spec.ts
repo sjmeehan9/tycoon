@@ -7,6 +7,7 @@ test.describe('complete specialty coffee trading day', () => {
     test.setTimeout(90_000);
     await page.goto('/');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
 
     const menuTab = page.getByRole('tab', { name: 'Menu' });
     if (await menuTab.isVisible()) await menuTab.click();

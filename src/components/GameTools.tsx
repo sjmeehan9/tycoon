@@ -1,5 +1,7 @@
-import { useState, type ChangeEvent } from 'react';
+import { useCallback, useState, type ChangeEvent } from 'react';
 
+import { handleTabListKeyDown } from '../accessibility/keyboard';
+import { useModalFocus } from '../accessibility/useModalFocus';
 import { CAMPAIGN_RULES } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import { ACHIEVEMENT_DETAILS, formatMoney, type Preferences } from '../game';
@@ -21,6 +23,8 @@ export function GameTools(): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [section, setSection] = useState<ToolSection>('settings');
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const closeDialog = useCallback(() => setIsOpen(false), []);
+  const dialogRef = useModalFocus<HTMLElement>({ active: isOpen, onEscape: closeDialog });
 
   const downloadSave = (): void => {
     const exported = exportSave();
@@ -58,7 +62,9 @@ export function GameTools(): React.JSX.Element {
             aria-labelledby="game-tools-title"
             aria-modal="true"
             className="game-tools-dialog"
+            ref={dialogRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="panel-heading">
               <div>
@@ -68,7 +74,8 @@ export function GameTools(): React.JSX.Element {
               <button
                 aria-label="Close game menu"
                 className="button"
-                onClick={() => setIsOpen(false)}
+                data-dialog-initial-focus
+                onClick={closeDialog}
                 type="button"
               >
                 Close
@@ -85,9 +92,13 @@ export function GameTools(): React.JSX.Element {
               ).map(([id, label]) => (
                 <button
                   aria-selected={section === id}
+                  aria-controls={`tools-${id}-panel`}
+                  id={`tools-${id}-tab`}
                   key={id}
                   onClick={() => setSection(id)}
+                  onKeyDown={handleTabListKeyDown}
                   role="tab"
+                  tabIndex={section === id ? 0 : -1}
                   type="button"
                 >
                   {label}
@@ -96,7 +107,7 @@ export function GameTools(): React.JSX.Element {
             </div>
 
             {section === 'settings' ? (
-              <ToolSectionPanel title="Settings">
+              <ToolSectionPanel id="settings" title="Settings">
                 <PreferenceToggle
                   checked={preferences.soundEnabled}
                   label="Interface sounds"
@@ -123,7 +134,7 @@ export function GameTools(): React.JSX.Element {
             ) : null}
 
             {section === 'records' ? (
-              <ToolSectionPanel title="Records and unlocks">
+              <ToolSectionPanel id="records" title="Records and unlocks">
                 <p>
                   Endless mode:{' '}
                   <strong>{meta.endlessUnlocked ? 'Unlocked' : 'Win once to unlock'}</strong>
@@ -159,7 +170,7 @@ export function GameTools(): React.JSX.Element {
             ) : null}
 
             {section === 'help' ? (
-              <ToolSectionPanel title="How to run the laneway">
+              <ToolSectionPanel id="help" title="How to run the laneway">
                 <ol className="help-list">
                   <li>Plan a focused menu, prices, beans, stock, dial-in, and scheduled team.</li>
                   <li>Open for 75 seconds; pause or accelerate while staff serve automatically.</li>
@@ -177,11 +188,38 @@ export function GameTools(): React.JSX.Element {
                   Bankruptcy occurs only after day-close cash falls below{' '}
                   {formatMoney(CAMPAIGN_RULES.overdraftFloorCents)}. Equality is safe.
                 </p>
+                <div className="contextual-help">
+                  <HelpTopic summary="Pricing, recipes, and dial-in">
+                    Price changes alter demand; modifiers add surcharges and consume their fixed
+                    recipe ingredients. Speed makes cups faster, quality improves satisfaction, and
+                    balanced splits the difference.
+                  </HelpTopic>
+                  <HelpTopic summary="Queues, reports, and progression">
+                    Queue length, patience, staff, equipment, and stock decide service outcomes. The
+                    report names the bottleneck and reconciles every cost before you invest or
+                    promote the same business.
+                  </HelpTopic>
+                  <HelpTopic summary="Endings, saves, audio, and offline play">
+                    Outcomes settle once. Exported JSON is portable and recovery keeps a validated
+                    backup. Audio is local and opt-in. Install/offline controls appear only when the
+                    browser confirms the release build is ready.
+                  </HelpTopic>
+                </div>
+                <button
+                  className="button"
+                  onClick={() => {
+                    updatePreferences({ onboardingComplete: false });
+                    closeDialog();
+                  }}
+                  type="button"
+                >
+                  Replay onboarding
+                </button>
               </ToolSectionPanel>
             ) : null}
 
             {section === 'save' ? (
-              <ToolSectionPanel title="Save transfer and recovery">
+              <ToolSectionPanel id="save" title="Save transfer and recovery">
                 <div className="save-actions">
                   <button className="button" onClick={downloadSave} type="button">
                     Export save JSON
@@ -219,16 +257,39 @@ export function GameTools(): React.JSX.Element {
 
 function ToolSectionPanel({
   children,
+  id,
   title,
 }: {
   children: React.ReactNode;
+  id: ToolSection;
   title: string;
 }): React.JSX.Element {
   return (
-    <section className="tool-section" role="tabpanel">
+    <section
+      aria-labelledby={`tools-${id}-tab`}
+      className="tool-section"
+      id={`tools-${id}-panel`}
+      role="tabpanel"
+      tabIndex={0}
+    >
       <h3>{title}</h3>
       {children}
     </section>
+  );
+}
+
+function HelpTopic({
+  children,
+  summary,
+}: {
+  children: React.ReactNode;
+  summary: string;
+}): React.JSX.Element {
+  return (
+    <details>
+      <summary>{summary}</summary>
+      <p>{children}</p>
+    </details>
   );
 }
 

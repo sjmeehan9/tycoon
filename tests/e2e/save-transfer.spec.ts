@@ -10,14 +10,14 @@ import {
 test.describe('portable save controls', () => {
   test('exports a safe JSON filename and reimports through the production UI', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles({
       name: 'active-campaign.json',
       mimeType: 'application/json',
       buffer: Buffer.from(serializeEnvelope(nearVictoryEnvelope())),
     });
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('checkbox', { name: 'Reduce motion' }).check();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
@@ -31,7 +31,7 @@ test.describe('portable save controls', () => {
 
     await page.getByText('Start clean (keep settings and unlocks)').click();
     await page.getByRole('button', { name: 'Start new campaign' }).click();
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles(path);
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
@@ -42,7 +42,8 @@ test.describe('portable save controls', () => {
   test('rejects a future schema without replacing the current campaign', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles({
       name: 'future.json',
@@ -58,7 +59,7 @@ test.describe('portable save controls', () => {
     page,
   }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     const fileInput = page.getByLabel('Import save JSON file');
     await fileInput.setInputFiles({
@@ -68,7 +69,7 @@ test.describe('portable save controls', () => {
     });
     await expect(page.getByRole('heading', { name: 'Day 30/30 · Specialty Cafe' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles({
       name: 'broken.json',
@@ -92,7 +93,7 @@ test.describe('portable save controls', () => {
     );
     await page.reload();
     await expect(page.getByText(/last-known-good save was restored/)).toBeVisible();
-    await page.getByRole('button', { name: 'Game menu' }).click();
+    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByRole('button', { name: 'Restore last-known-good save' }).click();
 

@@ -38,3 +38,26 @@
 - The in-app browser runtime exposed no available instance during optional
   interactive QA; real configured Playwright rendering checks passed and this
   did not alter scope or acceptance evidence.
+
+## Component 3.3 — Onboarding, Accessibility, and Mobile Polish
+
+- Added a first-day guide tied directly to planning, service, event, report,
+  reinvestment, and ending phases. It can be skipped, finished, or replayed from
+  Help; durable completion and active tab choices live in versioned preferences.
+- Added shared modal-focus management and WAI-ARIA automatic tab keyboard
+  behavior. Game menu and event dialogs now place, trap, and restore focus;
+  Escape closes non-critical menu/onboarding dialogs without bypassing required
+  event decisions.
+- Added concise screen-reader phase announcements, explicit scene/service/report
+  summaries, colour-independent icons and text, visible focus, contextual help,
+  and progression requirements without per-tick live-region noise.
+- Refined the responsive layout for scene-above-controls progressive disclosure,
+  coarse-pointer 44px targets, 360px overflow safety, and reduced-motion parity.
+- Added `@axe-core/playwright` as a test-only dependency. Component and real
+  Chromium tests cover onboarding state, labels, focus trap/restoration,
+  keyboard-only desktop completion, touch-only mobile completion, target sizes,
+  horizontal overflow, and axe serious/critical findings.
+- Primary-source rechecks confirmed the WAI-ARIA tabs/dialog patterns and the
+  current axe Playwright package. Exact validation passed: frozen install,
+  production build, lint/format, 67 Vitest tests, and 26 Playwright tests with
+  two intentional browser-profile skips.

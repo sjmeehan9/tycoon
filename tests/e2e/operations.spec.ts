@@ -10,6 +10,7 @@ test.describe('staff and investment operations', () => {
     test.setTimeout(90_000);
     await page.goto('/');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
 
     const teamTab = page.getByRole('tab', { name: 'Team' });
     if (await teamTab.isVisible()) await teamTab.click();

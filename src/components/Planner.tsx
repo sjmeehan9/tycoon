@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { handleTabListKeyDown } from '../accessibility/keyboard';
 import {
   BEAN_DETAILS,
   DRINKS,
@@ -20,8 +21,10 @@ const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
 
 /** Morning menu, pricing, supply, and espresso dial-in controls. */
 export function Planner(): React.JSX.Element {
-  const { command, game } = useGame();
-  const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial' | 'team'>('menu');
+  const { command, game, preferences, updatePreferences } = useGame();
+  const [activeSection, setActiveSection] = useState<'menu' | 'supplies' | 'dial' | 'team'>(() =>
+    isPlannerSection(preferences.activeTab) ? preferences.activeTab : 'menu',
+  );
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
   const weather = WEATHER_DETAILS[game.weather];
@@ -39,7 +42,9 @@ export function Planner(): React.JSX.Element {
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Morning planning</p>
-          <h2 id="planner-title">Set up the {game.venueId}</h2>
+          <h2 id="planner-title" tabIndex={-1}>
+            Set up the {game.venueId}
+          </h2>
         </div>
         <p className="forecast-badge">
           {weather.name} · {weather.note}
@@ -60,8 +65,13 @@ export function Planner(): React.JSX.Element {
             aria-selected={activeSection === id}
             id={`planner-${id}-tab`}
             key={id}
-            onClick={() => setActiveSection(id)}
+            onClick={() => {
+              setActiveSection(id);
+              updatePreferences({ activeTab: id });
+            }}
+            onKeyDown={handleTabListKeyDown}
             role="tab"
+            tabIndex={activeSection === id ? 0 : -1}
             type="button"
           >
             {label}
@@ -242,4 +252,8 @@ export function Planner(): React.JSX.Element {
       </div>
     </section>
   );
+}
+
+function isPlannerSection(value: string): value is 'menu' | 'supplies' | 'dial' | 'team' {
+  return ['menu', 'supplies', 'dial', 'team'].includes(value);
 }

@@ -28,7 +28,7 @@ export function nearVictoryEnvelope(): SaveEnvelope {
     },
     report: fixtureReport(base, CAMPAIGN_RULES.durationDays, closingCashCents),
   };
-  return createSaveEnvelope(state, createDefaultPreferences(), createDefaultMeta());
+  return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
 
 /** Valid production-import fixture one settlement away from bankruptcy. */
@@ -44,7 +44,7 @@ export function nearBankruptcyEnvelope(): SaveEnvelope {
     lastSettledDay: 11,
     report: fixtureReport(base, 12, closingCashCents),
   };
-  return createSaveEnvelope(state, createDefaultPreferences(), createDefaultMeta());
+  return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
 
 /** Valid production-import fixture with enough earned progress to exercise both promotions. */
@@ -58,7 +58,7 @@ export function growthReadyEnvelope(): SaveEnvelope {
     reputation: 70,
     lastSettledDay: 18,
   };
-  return createSaveEnvelope(state, createDefaultPreferences(), createDefaultMeta());
+  return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
 
 /** Supported version-1 fixture used to prove migration through the production upload control. */
@@ -76,6 +76,10 @@ interface MutableLegacyEnvelope {
     stateVersion: number;
     report: Partial<DayReport>;
   };
+}
+
+function fixturePreferences(): ReturnType<typeof createDefaultPreferences> {
+  return { ...createDefaultPreferences(), onboardingComplete: true };
 }
 
 function fixtureReport(base: GameState, day: number, closingCashCents: number): DayReport {

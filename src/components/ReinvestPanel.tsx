@@ -89,16 +89,16 @@ export function ReinvestPanel(): React.JSX.Element {
             <h3>Promote to {VENUES[promotion.to].shortName}</h3>
             <p>{VENUES[promotion.to].description}</p>
             <ul>
-              <li className={game.cashCents >= promotion.costCents ? 'met' : ''}>
+              <Requirement met={game.cashCents >= promotion.costCents}>
                 {formatMoney(promotion.costCents)} available
-              </li>
-              <li className={game.reputation >= promotion.reputationRequired ? 'met' : ''}>
+              </Requirement>
+              <Requirement met={game.reputation >= promotion.reputationRequired}>
                 {promotion.reputationRequired} reputation
-              </li>
+              </Requirement>
               {Object.entries(promotion.requiredEquipment).map(([id, level]) => (
-                <li className={game.equipment[id as EquipmentId] >= level ? 'met' : ''} key={id}>
+                <Requirement key={id} met={game.equipment[id as EquipmentId] >= level}>
                   {EQUIPMENT[id as EquipmentId].name} level {level}
-                </li>
+                </Requirement>
               ))}
             </ul>
           </div>
@@ -146,5 +146,21 @@ export function ReinvestPanel(): React.JSX.Element {
         Plan Day {game.day + 1}
       </button>
     </section>
+  );
+}
+
+function Requirement({
+  children,
+  met,
+}: {
+  children: React.ReactNode;
+  met: boolean;
+}): React.JSX.Element {
+  return (
+    <li className={met ? 'met' : ''}>
+      <span aria-hidden="true">{met ? '✓' : '○'}</span>{' '}
+      <span className="sr-only">{met ? 'Ready: ' : 'Still needed: '}</span>
+      {children}
+    </li>
   );
 }

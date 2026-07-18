@@ -14,6 +14,7 @@ test.describe('pixel presentation and local audio', () => {
     ).toBe(true);
 
     await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Show current step' }).click();
     const scene = page.getByRole('img', { name: /Coffee Cart in/ });
     await expect(scene).toHaveAttribute('width', '320');
     await expect(scene).toHaveAttribute('height', '180');
