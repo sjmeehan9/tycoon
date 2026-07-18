@@ -4,11 +4,14 @@ import type {
   EquipmentState,
   GamePhase,
   GameState,
+  RushActivityEvent,
+  RushSpeed,
   StaffRole,
   VenueId,
   WeatherId,
 } from '../game';
-import { VENUES } from '../content/gameContent';
+import { DRINK_MAP, VENUES } from '../content/gameContent';
+import { describeRushActivity } from '../game/selectors';
 
 export const LOGICAL_SCENE_SIZE = Object.freeze({ width: 320, height: 180 });
 
@@ -17,7 +20,14 @@ export interface SceneSnapshot {
   readonly venueId: VenueId;
   readonly weather: WeatherId;
   readonly phase: GamePhase;
+  readonly rushTick: number;
+  readonly rushSpeed: RushSpeed;
+  readonly isPaused: boolean;
+  readonly queueCount: number;
+  readonly queueCustomers: readonly SceneCustomerSnapshot[];
   readonly queueSegments: readonly CustomerSegment[];
+  readonly activeCustomer: SceneActiveCustomerSnapshot | null;
+  readonly recentActivity: readonly RushActivityEvent[];
   readonly isServing: boolean;
   readonly scheduledRoles: readonly StaffRole[];
   readonly equipment: Readonly<EquipmentState>;
@@ -25,6 +35,22 @@ export interface SceneSnapshot {
   readonly awning: CosmeticId;
   readonly reducedMotion: boolean;
 }
+
+export interface SceneCustomerSnapshot {
+  readonly id: string;
+  readonly segment: CustomerSegment;
+}
+
+export interface SceneActiveCustomerSnapshot extends SceneCustomerSnapshot {
+  readonly order: Readonly<{
+    drinkId: RushActivityOrder['drinkId'];
+    size: RushActivityOrder['size'];
+    milk: RushActivityOrder['milk'];
+    priceCents: number;
+  }>;
+}
+
+type RushActivityOrder = Extract<RushActivityEvent, { type: 'sale' }>;
 
 /** Extract the only immutable game and preference data the presentation layer may consume. */
 export function createSceneSnapshot(
@@ -38,13 +64,36 @@ export function createSceneSnapshot(
     : cosmetics.includes('wattleAwning')
       ? 'wattleAwning'
       : 'classicAwning';
+  const queueCustomers =
+    game.rush?.queue.slice(0, 8).map(({ id, segment }) => Object.freeze({ id, segment })) ?? [];
+  const activeCustomer = game.rush?.activeService
+    ? Object.freeze({
+        id: game.rush.activeService.customer.id,
+        segment: game.rush.activeService.customer.segment,
+        order: Object.freeze({
+          drinkId: game.rush.activeService.customer.order.drinkId,
+          size: game.rush.activeService.customer.order.size,
+          milk: game.rush.activeService.customer.order.milk,
+          priceCents: game.rush.activeService.customer.order.priceCents,
+        }),
+      })
+    : null;
   return Object.freeze({
     day: game.day,
     venueId: game.venueId,
     weather: game.weather,
     phase: game.phase,
-    queueSegments: Object.freeze(game.rush?.queue.slice(0, 6).map(({ segment }) => segment) ?? []),
-    isServing: Boolean(game.rush?.activeService),
+    rushTick: game.rush?.tick ?? 0,
+    rushSpeed: game.rush?.speed ?? 1,
+    isPaused: game.rush?.isPaused ?? false,
+    queueCount: game.rush?.queue.length ?? 0,
+    queueCustomers: Object.freeze(queueCustomers),
+    queueSegments: Object.freeze(queueCustomers.map(({ segment }) => segment)),
+    activeCustomer,
+    recentActivity: Object.freeze(
+      game.rush?.recentActivity.map((event) => Object.freeze({ ...event })) ?? [],
+    ),
+    isServing: activeCustomer !== null,
     scheduledRoles: Object.freeze(
       game.staff.filter(({ id }) => scheduled.has(id)).map(({ role }) => role),
     ),
@@ -57,15 +106,38 @@ export function createSceneSnapshot(
 
 /** Human-readable equivalent of every animated scene state. */
 export function describeScene(snapshot: SceneSnapshot): string {
-  const queue = snapshot.queueSegments.length;
+  const queue = snapshot.queueCount;
   const team = snapshot.scheduledRoles.length;
   const activity = snapshot.isServing ? 'serving a drink' : 'between drinks';
-  return `${VENUES[snapshot.venueId].shortName} in ${weatherLabel(snapshot.weather)} weather. Day ${snapshot.day}, ${snapshot.phase} phase, ${queue} customers waiting, ${team} staff scheduled, ${activity}.`;
+  const latest = snapshot.recentActivity.at(-1);
+  const latestSale = snapshot.recentActivity.findLast((event) => event.type === 'sale');
+  const latestWalkaway = snapshot.recentActivity.findLast((event) => event.type === 'walkaway');
+  const base = `${VENUES[snapshot.venueId].shortName} in ${weatherLabel(snapshot.weather)} weather. Day ${snapshot.day}, ${snapshot.phase} phase, ${queue} customers waiting, ${team} staff scheduled, ${activity}.`;
+  const details = [
+    snapshot.activeCustomer ? activeCustomerDescription(snapshot.activeCustomer) : null,
+    latest ? `Latest activity: ${describeRushActivity(latest)}` : null,
+    latestSale && latestSale !== latest ? `Latest sale: ${describeRushActivity(latestSale)}` : null,
+    latestWalkaway && latestWalkaway !== latest
+      ? `Latest walkaway: ${describeRushActivity(latestWalkaway)}`
+      : null,
+  ].filter((detail): detail is string => detail !== null);
+  return [base, ...details].join(' ');
 }
 
 /** Animate visual flourishes only while service is moving and motion is allowed. */
 export function shouldAnimateScene(snapshot: SceneSnapshot): boolean {
-  return !snapshot.reducedMotion && (snapshot.phase === 'rush' || snapshot.phase === 'event');
+  return !snapshot.reducedMotion && !snapshot.isPaused && snapshot.phase === 'rush';
+}
+
+function activeCustomerDescription(customer: SceneActiveCustomerSnapshot): string {
+  const drink = DRINK_MAP.get(customer.order.drinkId)?.name ?? customer.order.drinkId;
+  const size = customer.order.size === 'large' ? 'large' : 'regular';
+  const milk = customer.order.milk === 'none' ? '' : ` ${customer.order.milk}`;
+  return `At the counter: ${segmentLabel(customer.segment)} customer ${customer.id} is being served a ${size}${milk} ${drink}.`;
+}
+
+function segmentLabel(segment: CustomerSegment): string {
+  return segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
 function weatherLabel(weather: WeatherId): string {

@@ -17,7 +17,11 @@
         { "id": "2.1", "name": "Human Setup", "status": "committed" },
         { "id": "2.2", "name": "Full Coffee Trading Day", "status": "committed" },
         { "id": "2.3", "name": "Staff, Equipment, and Venue Growth", "status": "committed" },
-        { "id": "2.4", "name": "Campaign Outcomes, Meta Progress, and Save Transfer", "status": "committed" },
+        {
+          "id": "2.4",
+          "name": "Campaign Outcomes, Meta Progress, and Save Transfer",
+          "status": "committed"
+        },
         { "id": "2.5", "name": "Phase Validation & Documentation", "status": "committed" }
       ]
     },
@@ -26,9 +30,58 @@
       "components": [
         { "id": "3.1", "name": "Human Setup & Public Release Gate", "status": "committed" },
         { "id": "3.2", "name": "Cohesive Pixel Scene and Local Audio", "status": "committed" },
-        { "id": "3.3", "name": "Onboarding, Accessibility, and Mobile Polish", "status": "committed" },
+        {
+          "id": "3.3",
+          "name": "Onboarding, Accessibility, and Mobile Polish",
+          "status": "committed"
+        },
         { "id": "3.4", "name": "Offline-Safe PWA and Release Artifacts", "status": "committed" },
-        { "id": "3.5", "name": "Cumulative QA, Phase Documentation, and Public Verification", "status": "hosted-pass" }
+        {
+          "id": "3.5",
+          "name": "Cumulative QA, Phase Documentation, and Public Verification",
+          "status": "hosted-pass"
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "components": [
+        { "id": "4.1", "name": "Human Setup and Phase Contracts", "status": "committed" },
+        { "id": "4.2", "name": "Exact Accessible Planner Steppers", "status": "committed" },
+        {
+          "id": "4.3",
+          "name": "Authoritative Sale Pricing and Reconciliation",
+          "status": "committed"
+        },
+        { "id": "4.4", "name": "Phase Validation and Documentation", "status": "committed" }
+      ]
+    },
+    {
+      "phase": 5,
+      "components": [
+        { "id": "5.1", "name": "Human Setup", "status": "committed" },
+        { "id": "5.2", "name": "Schema-v3 Perishable Batch Inventory", "status": "committed" },
+        { "id": "5.3", "name": "Weighted Planning Capacity", "status": "committed" },
+        { "id": "5.4", "name": "Live Rush Stock and Expiry Reporting", "status": "committed" },
+        { "id": "5.5", "name": "Phase Validation and Documentation", "status": "committed" }
+      ]
+    },
+    {
+      "phase": 6,
+      "components": [
+        { "id": "6.1", "name": "Human Setup and Final Release Gate", "status": "committed" },
+        { "id": "6.2", "name": "Deterministic Rush Activity Stream", "status": "committed" },
+        {
+          "id": "6.3",
+          "name": "Expressive Queue, Sale, Exit, and Walkaway Scene",
+          "status": "committed"
+        },
+        { "id": "6.4", "name": "Campaign-Unique Staff Names", "status": "committed" },
+        {
+          "id": "6.5",
+          "name": "Cumulative QA, Documentation, and Hosted Verification",
+          "status": "local-pass-hosted-pending"
+        }
       ]
     }
   ]

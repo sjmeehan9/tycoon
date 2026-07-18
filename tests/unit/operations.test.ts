@@ -4,6 +4,7 @@ import { ALL_DRINK_IDS, EQUIPMENT, EQUIPMENT_IDS } from '../../src/content/gameC
 import {
   advanceTick,
   buyEquipment,
+  batchExpiryDay,
   candidatePoolForDay,
   closeDay,
   createCampaign,
@@ -15,6 +16,7 @@ import {
   promoteVenue,
   resolveEvent,
   serviceQueueCapacity,
+  startNextDay,
   startRush,
   type EquipmentId,
   type GameState,
@@ -70,6 +72,59 @@ describe('staff operations', () => {
     expect(first.filter((candidate) => candidate.role === 'barista')).toHaveLength(2);
     expect(first.filter((candidate) => candidate.role === 'frontOfHouse')).toHaveLength(2);
     expect(new Set(first.map((candidate) => candidate.id)).size).toBe(4);
+    expect(new Set(first.map((candidate) => candidate.name)).size).toBe(4);
+    expect(
+      first.map((member) => ({
+        role: member.role,
+        speed: member.speed,
+        skill: member.skill,
+        wageCents: member.wageCents,
+        trait: member.trait,
+      })),
+    ).toEqual([
+      {
+        role: 'barista',
+        speed: 58,
+        skill: 51,
+        wageCents: 2_150,
+        trait: 'perfectionist',
+      },
+      {
+        role: 'frontOfHouse',
+        speed: 55,
+        skill: 51,
+        wageCents: 2_150,
+        trait: 'quickHands',
+      },
+      {
+        role: 'barista',
+        speed: 62,
+        skill: 81,
+        wageCents: 2_500,
+        trait: 'quickHands',
+      },
+      {
+        role: 'frontOfHouse',
+        speed: 54,
+        skill: 69,
+        wageCents: 2_300,
+        trait: 'perfectionist',
+      },
+    ]);
+  });
+
+  it('keeps hired and rejected identities disjoint from every later daily pool', () => {
+    let state = createCampaign({ seed: 83 });
+    const hired = state.candidateStaff[0];
+    const rejected = state.candidateStaff[3];
+    if (!hired || !rejected) throw new Error('Expected four deterministic candidates.');
+    state = hireStaff(state, hired.id);
+    state = startNextDay({ ...state, phase: 'reinvest', lastSettledDay: state.day });
+
+    const retainedAndNew = [...state.staff, ...state.candidateStaff];
+    expect(new Set(retainedAndNew.map((member) => member.id)).size).toBe(retainedAndNew.length);
+    expect(new Set(retainedAndNew.map((member) => member.name)).size).toBe(retainedAndNew.length);
+    expect(state.candidateStaff.map((member) => member.name)).not.toContain(rejected.name);
   });
 
   it('hires, schedules, and enforces venue staff capacity', () => {
@@ -106,7 +161,7 @@ describe('staff operations', () => {
     expect(frontOfHouse.demandMultiplier).toBeGreaterThan(baseline.demandMultiplier);
     expect(frontOfHouse.satisfactionBonus).toBeGreaterThan(baseline.satisfactionBonus);
     expect(perfectionist.qualityBonus).toBeGreaterThan(barista.qualityBonus);
-    expect(steady.wasteMultiplier).toBeLessThan(baseline.wasteMultiplier);
+    expect(steady.preparationMultiplier).toBeLessThan(baseline.preparationMultiplier);
   });
 
   it('charges scheduled payroll and exposes its causal service contribution', () => {
@@ -133,7 +188,7 @@ describe('equipment and venue growth', () => {
     expect(equipmentPreparationMultiplier(withEquipment(base, 'batchBrewer'), 'batchBrew')).toBe(
       0.75,
     );
-    expect(operationalEffects(withEquipment(base, 'refrigeration')).wasteMultiplier).toBe(0.65);
+    expect(batchExpiryDay('dairyMilk', 1, 1)).toBe(4);
     const withPos = operationalEffects(withEquipment(base, 'pos'));
     expect(withPos.demandMultiplier).toBeGreaterThan(1);
     expect(withPos.preparationMultiplier).toBeLessThan(1);
@@ -150,23 +205,13 @@ describe('equipment and venue growth', () => {
     expect(reportState.report?.explanations.join(' ')).toContain(EQUIPMENT[equipmentId].name);
   });
 
-  it('moves demand, preparation, waste, and capacity in their intended directions', () => {
+  it('moves demand and chilled-stock shelf life in their intended directions', () => {
     const base = startRush(createCampaign({ seed: 2 }));
     const pos = startRush(withEquipment(createCampaign({ seed: 2 }), 'pos'));
     expect(demandRate(pos)).toBeGreaterThan(demandRate(base));
-    const refrigerated = runToReport(
-      startRush(
-        prepareDay(withEquipment(createCampaign({ seed: 2 }), 'refrigeration'), {
-          purchases: { dairyMilk: 4 },
-        }),
-      ),
-    );
-    const unrefrigerated = runToReport(
-      startRush(prepareDay(createCampaign({ seed: 2 }), { purchases: { dairyMilk: 4 } })),
-    );
-    expect(refrigerated.report?.waste.dairyMilk ?? 0).toBeLessThan(
-      unrefrigerated.report?.waste.dairyMilk ?? 0,
-    );
+    expect(batchExpiryDay('dairyMilk', 1, 1)).toBe(batchExpiryDay('dairyMilk', 1, 0) + 1);
+    expect(batchExpiryDay('dairyMilk', 1, 2)).toBe(batchExpiryDay('dairyMilk', 1, 0) + 2);
+    expect(batchExpiryDay('houseBeans', 1, 2)).toBe(batchExpiryDay('houseBeans', 1, 0));
   });
 
   it('enforces tier availability, affordability, and both promotion gates', () => {

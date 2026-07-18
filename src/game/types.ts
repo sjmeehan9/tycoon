@@ -39,6 +39,7 @@ export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
 export type CosmeticId = 'classicAwning' | 'wattleAwning' | 'neonCup';
 export type AchievementId = 'cafeFounder' | 'goldenCup' | 'hardLessons';
 export type RushSpeed = 1 | 2 | 4;
+export type StepDirection = -1 | 1;
 
 export interface IngredientAmount {
   ingredientId: IngredientId;
@@ -70,7 +71,16 @@ export interface PurchasePackage {
   unit: 'g' | 'ml' | 'serve';
 }
 
-export type IngredientInventory = Record<IngredientId, number>;
+/** One dated quantity in the canonical per-ingredient inventory. */
+export interface InventoryBatch {
+  quantity: number;
+  acquiredDay: number;
+  /** Inclusive last trading day; expiry is applied after this day's rush. */
+  expiresAfterDay: number;
+}
+
+export type IngredientInventory = Record<IngredientId, InventoryBatch[]>;
+export type IngredientTotals = Record<IngredientId, number>;
 export type IngredientPurchases = Record<IngredientId, number>;
 export type DrinkPrices = Record<DrinkId, number>;
 
@@ -106,6 +116,54 @@ export interface ServiceJob {
   remainingTicks: number;
   totalTicks: number;
 }
+
+/** Walkaway causes emitted at the exact engine transition that removes a customer. */
+export type RushWalkawayReason = 'patience' | 'queueFull' | 'stockout' | 'rushEnded';
+
+/** Stable identity shared by every bounded rush observation. */
+export interface RushActivityBase {
+  id: string;
+  sequence: number;
+  tick: number;
+  customerId: string;
+  /** `null` is reserved for honestly migrated observations that predate customer identity. */
+  segment: CustomerSegment | null;
+}
+
+/** A generated customer reaching the business, whether or not the queue can accept them. */
+export interface ArrivalActivityEvent extends RushActivityBase {
+  type: 'arrival';
+}
+
+/** A queued order whose ingredients were reserved and preparation began. */
+export interface ServiceStartedActivityEvent extends RushActivityBase {
+  type: 'serviceStarted';
+  drinkId: DrinkId;
+  size: DrinkSize;
+  milk: MilkChoice;
+}
+
+/** A completed order charged at the engine-recorded actual price. */
+export interface SaleActivityEvent extends RushActivityBase {
+  type: 'sale';
+  drinkId: DrinkId;
+  size: DrinkSize;
+  milk: MilkChoice;
+  priceCents: number;
+}
+
+/** A customer leaving without a completed sale. */
+export interface WalkawayActivityEvent extends RushActivityBase {
+  type: 'walkaway';
+  reason: RushWalkawayReason;
+}
+
+/** Ordered, bounded engine observations used by presentation and accessible feedback. */
+export type RushActivityEvent =
+  ArrivalActivityEvent | ServiceStartedActivityEvent | SaleActivityEvent | WalkawayActivityEvent;
+
+/** Backward-compatible public name for consumers that operate specifically on sale events. */
+export type CompletedSaleActivity = SaleActivityEvent;
 
 export interface EventChoiceEffect {
   cashCents?: number;
@@ -170,6 +228,10 @@ export interface RushState {
   purchaseCostCents: number;
   wageCostCents: number;
   operatingCostCents: number;
+  openingInventory: IngredientTotals;
+  purchasedInventory: IngredientTotals;
+  nextActivitySequence: number;
+  recentActivity: RushActivityEvent[];
   stats: RushStats;
 }
 
@@ -251,11 +313,21 @@ export interface DayReport {
   satisfactionPercent: number;
   reputationChange: number;
   waste: Partial<Record<IngredientId, number>>;
-  remainingInventory: IngredientInventory;
+  remainingInventory: IngredientTotals;
+  inventoryLifecycle: InventoryLifecycleReport | null;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
   bottleneck: string;
   explanations: string[];
   settled: boolean;
+}
+
+/** Exact per-ingredient conservation evidence captured for a completed v3 rush. */
+export interface InventoryLifecycleReport {
+  opening: IngredientTotals;
+  purchased: IngredientTotals;
+  consumed: IngredientTotals;
+  expired: IngredientTotals;
+  remaining: IngredientTotals;
 }
 
 export interface CampaignOutcome {
@@ -265,7 +337,7 @@ export interface CampaignOutcome {
 }
 
 export interface GameState {
-  stateVersion: 2;
+  stateVersion: 3;
   campaignId: string;
   seed: number;
   rngState: number;
@@ -316,7 +388,7 @@ export interface MetaProgress {
 }
 
 export interface SaveEnvelope {
-  schemaVersion: 2;
+  schemaVersion: 3;
   savedAt: string;
   activeRun: GameState | null;
   preferences: Preferences;
@@ -339,6 +411,8 @@ export interface PlanPatch {
 
 export type GameCommand =
   | { type: 'prepareDay'; patch: PlanPatch }
+  | { type: 'adjustPlanPrice'; drinkId: DrinkId; direction: StepDirection }
+  | { type: 'adjustPlanPurchase'; ingredientId: IngredientId; direction: StepDirection }
   | { type: 'startRush' }
   | { type: 'advanceTick'; ticks?: number }
   | { type: 'togglePause' }

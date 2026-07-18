@@ -1,5 +1,11 @@
 import { useGame } from '../app/GameContext';
-import { formatMoney, rushClock, type RushSpeed } from '../game';
+import {
+  completedSaleLabel,
+  describeRushActivity,
+  formatMoney,
+  rushClock,
+  type RushSpeed,
+} from '../game';
 
 /** Live service metrics and pause/speed controls. */
 export function RushPanel(): React.JSX.Element {
@@ -7,6 +13,9 @@ export function RushPanel(): React.JSX.Element {
   if (!game?.rush) return <></>;
   const { rush } = game;
   const progress = Math.round((rush.tick / rush.durationTicks) * 100);
+  const lastSale = rush.recentActivity.findLast((event) => event.type === 'sale');
+  const lastWalkaway = rush.recentActivity.findLast((event) => event.type === 'walkaway');
+  const recentActivity = rush.recentActivity.slice(-6);
 
   return (
     <section className="panel rush-panel" aria-labelledby="rush-title">
@@ -71,6 +80,24 @@ export function RushPanel(): React.JSX.Element {
             ? 'Calling the next order.'
             : 'A rare quiet second in the laneway.'}
       </p>
+      {lastSale ? (
+        <p aria-atomic="true" aria-live="polite" className="last-sale-note">
+          Last sale: {completedSaleLabel(lastSale)} — {formatMoney(lastSale.priceCents)} actual
+          charge.
+        </p>
+      ) : null}
+      {lastWalkaway ? (
+        <p className="last-walkaway-note" data-reason={lastWalkaway.reason}>
+          Latest walkaway: {describeRushActivity(lastWalkaway)}
+        </p>
+      ) : null}
+      {recentActivity.length > 0 ? (
+        <ol aria-label="Recent rush activity" className="explanation-list">
+          {recentActivity.map((event) => (
+            <li key={event.id}>{describeRushActivity(event)}</li>
+          ))}
+        </ol>
+      ) : null}
     </section>
   );
 }

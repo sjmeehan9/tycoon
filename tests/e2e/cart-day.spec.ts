@@ -12,7 +12,10 @@ test.describe('complete seeded cart day', () => {
 
     const suppliesTab = page.getByRole('tab', { name: 'Supplies' });
     if (await suppliesTab.isVisible()) await suppliesTab.click();
-    await page.getByLabel('Ice · 20 serves package quantity').fill('1');
+    await page
+      .getByRole('group', { name: 'Ice · 20 serves package quantity' })
+      .getByRole('button', { name: /^Increase/ })
+      .click();
     const menuTab = page.getByRole('tab', { name: 'Menu' });
     if (await menuTab.isVisible()) await menuTab.click();
     await page.getByRole('checkbox', { name: /Iced Latte/ }).check();

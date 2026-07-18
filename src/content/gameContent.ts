@@ -10,6 +10,7 @@ import type {
   IngredientId,
   IngredientInventory,
   IngredientPurchases,
+  IngredientTotals,
   MilkChoice,
   PurchasePackage,
   ScenarioId,
@@ -25,6 +26,8 @@ import type {
 export const TICKS_PER_SECOND = 4;
 /** Every trading rush lasts 75 simulated seconds. */
 export const RUSH_DURATION_TICKS = 75 * TICKS_PER_SECOND;
+/** Recent engine observations retained for player feedback and reload continuity. */
+export const RUSH_ACTIVITY_LIMIT = 80;
 
 export const INGREDIENT_IDS: IngredientId[] = [
   'houseBeans',
@@ -37,6 +40,39 @@ export const INGREDIENT_IDS: IngredientId[] = [
   'ice',
   'coldBrewConcentrate',
 ];
+
+export interface IngredientDetails {
+  name: string;
+  unit: PurchasePackage['unit'];
+  shelfLifeRushes: number;
+  chilled: boolean;
+}
+
+/** Canonical display and shelf-life rules shared by engine, persistence, and UI. */
+export const INGREDIENT_DETAILS: Record<IngredientId, IngredientDetails> = {
+  houseBeans: { name: 'House blend', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  singleOriginBeans: {
+    name: 'Single origin',
+    unit: 'g',
+    shelfLifeRushes: 3,
+    chilled: false,
+  },
+  darkRoastBeans: { name: 'Dark roast', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  dairyMilk: { name: 'Dairy milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  oatMilk: { name: 'Oat milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  soyMilk: { name: 'Soy milk', unit: 'ml', shelfLifeRushes: 3, chilled: true },
+  chocolate: { name: 'Chocolate', unit: 'g', shelfLifeRushes: 3, chilled: false },
+  ice: { name: 'Ice', unit: 'serve', shelfLifeRushes: 3, chilled: false },
+  coldBrewConcentrate: {
+    name: 'Cold brew concentrate',
+    unit: 'ml',
+    shelfLifeRushes: 3,
+    chilled: true,
+  },
+};
+
+/** Defensive import bound; reachable stock retains at most five daily batches. */
+export const MAX_INVENTORY_BATCHES_PER_INGREDIENT = 8;
 
 export const ALL_DRINK_IDS: DrinkId[] = [
   'espresso',
@@ -253,6 +289,30 @@ export const SEGMENT_DRINK_APPEAL: Record<CustomerSegment, Record<DrinkId, numbe
   regular: weights({ flatWhite: 1.55, latte: 1.3, cappuccino: 1.45, longBlack: 1.2 }),
 };
 
+/** Exact deterministic segment probabilities used by service and capacity forecasts. */
+export const SEGMENT_DEMAND_SHARES: Record<CustomerSegment, number> = {
+  commuter: 0.34,
+  student: 0.25,
+  enthusiast: 0.2,
+  regular: 0.21,
+};
+
+/** Price-response divisor used for each segment's drink-choice weighting. */
+export const SEGMENT_PRICE_SENSITIVITY_CENTS: Record<CustomerSegment, number> = {
+  commuter: 760,
+  student: 520,
+  enthusiast: 900,
+  regular: 900,
+};
+
+/** Probability of choosing large when a configured drink offers that variant. */
+export const SEGMENT_LARGE_SIZE_PROBABILITY: Record<CustomerSegment, number> = {
+  commuter: 0.35,
+  student: 0.3,
+  enthusiast: 0.42,
+  regular: 0.42,
+};
+
 /** Functional venue stages used by planning, service, settlement, and the scene. */
 export const VENUES: Record<VenueId, VenueConfig> = {
   cart: {
@@ -328,10 +388,10 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
   refrigeration: equipment(
     'refrigeration',
     'Refrigeration',
-    'Protects milk and cold-drink stock from end-of-day spoilage.',
+    'Extends the usable life of milk and cold-brew concentrate.',
     [
-      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '35% less chilled waste'),
-      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '65% less chilled waste'),
+      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '+1 chilled-stock day'),
+      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '+2 chilled-stock days total'),
     ],
   ),
   pos: equipment(
@@ -389,7 +449,7 @@ export const STAFF_TRAIT_DETAILS: Record<StaffTrait, { name: string; effect: str
   quickHands: { name: 'Quick hands', effect: 'Works 10% faster.' },
   peoplePerson: { name: 'People person', effect: 'Lifts demand and satisfaction.' },
   perfectionist: { name: 'Perfectionist', effect: 'Adds quality but takes extra care.' },
-  steady: { name: 'Steady', effect: 'Works consistently and trims avoidable waste.' },
+  steady: { name: 'Steady', effect: 'Works consistently and keeps service moving.' },
 };
 export const SIZE_SURCHARGE_CENTS = 90;
 export const MILK_SURCHARGE_CENTS: Record<MilkChoice, number> = {
@@ -398,6 +458,13 @@ export const MILK_SURCHARGE_CENTS: Record<MilkChoice, number> = {
   oat: 80,
   soy: 60,
 };
+
+/** Exact integer bounds and activation increments shared by planner UI and validation. */
+export const DAY_PLAN_LIMITS = {
+  priceCents: { minimum: 250, maximum: 1_200, increment: 10 },
+  packageQuantity: { minimum: 0, maximum: 20, increment: 1 },
+} as const;
+
 export const INITIAL_CASH_CENTS = 18_000;
 export const INITIAL_REPUTATION = 35;
 export const CART_IMPROVEMENT_COST_CENTS = 2_500;
@@ -415,7 +482,22 @@ export const CAMPAIGN_RULES = {
 
 /** Create a full inventory record with zero stock. */
 export function emptyInventory(): IngredientInventory {
-  return Object.fromEntries(INGREDIENT_IDS.map((id) => [id, 0])) as IngredientInventory;
+  return {
+    houseBeans: [],
+    singleOriginBeans: [],
+    darkRoastBeans: [],
+    dairyMilk: [],
+    oatMilk: [],
+    soyMilk: [],
+    chocolate: [],
+    ice: [],
+    coldBrewConcentrate: [],
+  };
+}
+
+/** Create a complete flat ingredient-total record for selectors and reports. */
+export function emptyIngredientTotals(): IngredientTotals {
+  return Object.fromEntries(INGREDIENT_IDS.map((id) => [id, 0])) as IngredientTotals;
 }
 
 /** Create a full purchase record with zero selected packages. */

@@ -1,4 +1,14 @@
-import { ALL_DRINK_IDS, CAMPAIGN_RULES, INGREDIENT_IDS } from '../content/gameContent';
+import {
+  ALL_DRINK_IDS,
+  CAMPAIGN_RULES,
+  INGREDIENT_DETAILS,
+  INGREDIENT_IDS,
+  MAX_INVENTORY_BATCHES_PER_INGREDIENT,
+  PURCHASE_PACKAGES,
+  RUSH_ACTIVITY_LIMIT,
+} from '../content/gameContent';
+import { batchExpiryDay } from '../game/inventory';
+import { RESERVED_STAFF_NAME_COUNT, reservedStaffName } from '../game/staffNames';
 import type {
   AchievementId,
   CampaignOutcome,
@@ -11,6 +21,8 @@ import type {
   EquipmentId,
   GamePhase,
   GameState,
+  IngredientId,
+  IngredientTotals,
   MetaProgress,
   Preferences,
   RushState,
@@ -20,8 +32,10 @@ import type {
   VenueId,
 } from '../game';
 
-export const SAVE_KEY = 'laneway-tycoon.save.v2';
-export const BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v2';
+export const SAVE_KEY = 'laneway-tycoon.save.v3';
+export const BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v3';
+export const LEGACY_V2_SAVE_KEY = 'laneway-tycoon.save.v2';
+export const LEGACY_V2_BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v2';
 export const LEGACY_SAVE_KEY = 'laneway-tycoon.save.v1';
 export const LEGACY_BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v1';
 
@@ -77,7 +91,7 @@ export function createSaveEnvelope(
   meta: MetaProgress = createDefaultMeta(),
 ): SaveEnvelope {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     savedAt: new Date().toISOString(),
     activeRun,
     preferences,
@@ -87,7 +101,7 @@ export function createSaveEnvelope(
 
 export interface LoadSaveResult {
   envelope: SaveEnvelope | null;
-  source: 'primary' | 'backup' | 'legacy' | 'empty';
+  source: 'primary' | 'backup' | 'legacy-v2' | 'legacy-v1' | 'empty';
   warning: string | null;
   recoveryAvailable: boolean;
 }
@@ -125,7 +139,13 @@ export class BrowserSaveStore {
     const serialized = serializeEnvelope(envelope);
     const previous = this.storage.getItem(SAVE_KEY);
     try {
-      if (previous && parseEnvelope(previous)) this.storage.setItem(BACKUP_SAVE_KEY, previous);
+      const previousEnvelope = previous ? parseEnvelope(previous) : null;
+      if (previousEnvelope) {
+        this.storage.setItem(BACKUP_SAVE_KEY, serializeEnvelope(previousEnvelope));
+      } else {
+        const legacy = this.firstValidLegacyEnvelope();
+        if (legacy) this.storage.setItem(BACKUP_SAVE_KEY, serializeEnvelope(legacy));
+      }
       this.storage.setItem(SAVE_KEY, serialized);
       const verified = this.storage.getItem(SAVE_KEY);
       if (verified !== serialized || !parseEnvelope(verified)) {
@@ -163,20 +183,36 @@ export class BrowserSaveStore {
       };
     }
 
-    for (const key of [LEGACY_SAVE_KEY, LEGACY_BACKUP_SAVE_KEY]) {
+    for (const [key, source, isBackup] of [
+      [LEGACY_V2_SAVE_KEY, 'legacy-v2', false],
+      [LEGACY_V2_BACKUP_SAVE_KEY, 'legacy-v2', true],
+      [LEGACY_SAVE_KEY, 'legacy-v1', false],
+      [LEGACY_BACKUP_SAVE_KEY, 'legacy-v1', true],
+    ] as const) {
       const legacyRaw = this.storage.getItem(key);
       const legacy = legacyRaw ? parseEnvelope(legacyRaw) : null;
       if (legacy) {
         return {
           envelope: legacy,
-          source: 'legacy',
-          warning: 'A version 1 save was safely migrated to the current format.',
-          recoveryAvailable: false,
+          source,
+          warning: isBackup
+            ? `The old version ${source === 'legacy-v2' ? '2' : '1'} primary was unreadable, so its last-known-good backup was migrated.`
+            : source === 'legacy-v2'
+              ? 'A version 2 save was safely migrated to dated stock batches.'
+              : 'A version 1 save was safely migrated to the current format.',
+          recoveryAvailable: isBackup,
         };
       }
     }
 
-    const hadData = Boolean(primaryRaw || backupRaw || this.storage.getItem(LEGACY_SAVE_KEY));
+    const hadData = [
+      primaryRaw,
+      backupRaw,
+      this.storage.getItem(LEGACY_V2_SAVE_KEY),
+      this.storage.getItem(LEGACY_V2_BACKUP_SAVE_KEY),
+      this.storage.getItem(LEGACY_SAVE_KEY),
+      this.storage.getItem(LEGACY_BACKUP_SAVE_KEY),
+    ].some(Boolean);
     return {
       envelope: null,
       source: 'empty',
@@ -189,8 +225,10 @@ export class BrowserSaveStore {
 
   /** Replace an unreadable primary with its validated last-known-good backup. */
   public restoreBackup(): SaveEnvelope {
-    const raw = this.storage.getItem(BACKUP_SAVE_KEY);
-    const backup = raw ? parseEnvelope(raw) : null;
+    const backup = [BACKUP_SAVE_KEY, LEGACY_V2_BACKUP_SAVE_KEY, LEGACY_BACKUP_SAVE_KEY]
+      .map((key) => this.storage.getItem(key))
+      .map((raw) => (raw ? parseEnvelope(raw) : null))
+      .find((candidate): candidate is SaveEnvelope => candidate !== null);
     if (!backup) throw new SaveStoreError('No valid last-known-good save is available.');
     this.storage.setItem(SAVE_KEY, serializeEnvelope(backup));
     return backup;
@@ -200,8 +238,24 @@ export class BrowserSaveStore {
   public clear(): void {
     this.storage.removeItem(SAVE_KEY);
     this.storage.removeItem(BACKUP_SAVE_KEY);
+    this.storage.removeItem(LEGACY_V2_SAVE_KEY);
+    this.storage.removeItem(LEGACY_V2_BACKUP_SAVE_KEY);
     this.storage.removeItem(LEGACY_SAVE_KEY);
     this.storage.removeItem(LEGACY_BACKUP_SAVE_KEY);
+  }
+
+  private firstValidLegacyEnvelope(): SaveEnvelope | null {
+    for (const key of [
+      LEGACY_V2_SAVE_KEY,
+      LEGACY_V2_BACKUP_SAVE_KEY,
+      LEGACY_SAVE_KEY,
+      LEGACY_BACKUP_SAVE_KEY,
+    ]) {
+      const raw = this.storage.getItem(key);
+      const envelope = raw ? parseEnvelope(raw) : null;
+      if (envelope) return envelope;
+    }
+    return null;
   }
 }
 
@@ -224,15 +278,17 @@ export function importEnvelope(serialized: string): SaveEnvelope {
   if (!isRecord(value)) {
     throw new SaveValidationError('The save must contain one JSON object.', 'invalidSchema');
   }
-  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) {
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3) {
     throw new SaveValidationError(
       `Save schema ${String(value.schemaVersion)} is not supported by this version.`,
       'unknownVersion',
     );
   }
-  const migrated = value.schemaVersion === 1 ? migrateVersionOne(value) : value;
-  validateEnvelope(migrated);
-  return migrated as unknown as SaveEnvelope;
+  const versionTwo = value.schemaVersion === 1 ? migrateVersionOne(value) : value;
+  const migrated = versionTwo.schemaVersion === 2 ? migrateVersionTwo(versionTwo) : versionTwo;
+  const normalized = normalizeVersionThree(migrated);
+  validateEnvelope(normalized);
+  return normalized as unknown as SaveEnvelope;
 }
 
 /** Return null for invalid storage payloads; use importEnvelope for actionable errors. */
@@ -246,7 +302,8 @@ export function parseEnvelope(serialized: string): SaveEnvelope | null {
 
 /** Produce canonical, bounded JSON for browser storage and file export. */
 export function serializeEnvelope(envelope: SaveEnvelope): string {
-  const serialized = JSON.stringify(envelope, null, 2);
+  const normalized = importEnvelope(JSON.stringify(envelope));
+  const serialized = JSON.stringify(normalized, null, 2);
   importEnvelope(serialized);
   return serialized;
 }
@@ -260,9 +317,9 @@ function migrateVersionOne(value: Record<string, unknown>): Record<string, unkno
         rush: isRecord(activeRun.rush)
           ? { ...activeRun.rush, wageCostCents: finiteOr(activeRun.rush.wageCostCents, 0) }
           : activeRun.rush,
-        report: migrateReport(activeRun.report),
+        report: migrateVersionOneReport(activeRun.report),
         history: Array.isArray(activeRun.history)
-          ? activeRun.history.map((report) => migrateReport(report))
+          ? activeRun.history.map((report) => migrateVersionOneReport(report))
           : activeRun.history,
       }
     : activeRun;
@@ -284,12 +341,280 @@ function migrateVersionOne(value: Record<string, unknown>): Record<string, unkno
   };
 }
 
-function migrateReport(value: unknown): unknown {
+function migrateVersionOneReport(value: unknown): unknown {
   return isRecord(value) ? { ...value, wageCostCents: finiteOr(value.wageCostCents, 0) } : value;
 }
 
+function migrateVersionTwo(value: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(value.activeRun)) return { ...value, schemaVersion: 3 };
+  const activeRun = value.activeRun;
+  const day = boundedIntegerOr(activeRun.day, 1, 1, 10_000);
+  const equipment = isRecord(activeRun.equipment) ? activeRun.equipment : {};
+  const refrigeration = boundedIntegerOr(equipment.refrigeration, 0, 0, 2);
+  const flatInventory = activeRun.inventory;
+  const migratedInventory = migrateFlatInventory(flatInventory, day, refrigeration);
+  const currentTotals = legacyInventoryTotals(flatInventory);
+  const purchased = legacyPurchaseTotals(activeRun.plan);
+  const report = migrateVersionTwoReport(activeRun.report);
+  const rush = isRecord(activeRun.rush)
+    ? migrateVersionTwoRush(activeRun.rush, currentTotals, purchased, activeRun.report)
+    : activeRun.rush;
+  return {
+    ...value,
+    schemaVersion: 3,
+    activeRun: {
+      ...activeRun,
+      stateVersion: 3,
+      inventory: migratedInventory,
+      rush,
+      report,
+      history: Array.isArray(activeRun.history)
+        ? activeRun.history.map((historyReport) => migrateVersionTwoReport(historyReport))
+        : activeRun.history,
+    },
+  };
+}
+
+function migrateVersionTwoRush(
+  value: Record<string, unknown>,
+  current: IngredientTotals,
+  purchased: IngredientTotals,
+  reportValue: unknown,
+): Record<string, unknown> {
+  const stats = isRecord(value.stats) ? value.stats : {};
+  const consumed = boundedTotalsFromUnknown(stats.consumed);
+  const report = isRecord(reportValue) ? reportValue : {};
+  const expired = boundedTotalsFromUnknown(report.waste);
+  const opening = emptyTotalsRecord();
+  for (const ingredientId of INGREDIENT_IDS) {
+    opening[ingredientId] = Math.max(
+      0,
+      current[ingredientId] +
+        consumed[ingredientId] +
+        expired[ingredientId] -
+        purchased[ingredientId],
+    );
+  }
+  return {
+    ...value,
+    wageCostCents: finiteOr(value.wageCostCents, 0),
+    recentActivity: value.recentActivity === undefined ? [] : value.recentActivity,
+    openingInventory: opening,
+    purchasedInventory: purchased,
+  };
+}
+
+function migrateVersionTwoReport(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    wageCostCents: finiteOr(value.wageCostCents, 0),
+    inventoryLifecycle: null,
+  };
+}
+
+function normalizeVersionThree(value: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(value.activeRun)) return value;
+  const activeRun = value.activeRun;
+  const people = normalizeStaffNames(activeRun);
+  const rush = isRecord(activeRun.rush)
+    ? normalizeRushActivity(activeRun.rush, boundedIntegerOr(activeRun.day, 1, 1, 10_000))
+    : activeRun.rush;
+  return {
+    ...value,
+    activeRun: {
+      ...activeRun,
+      ...people,
+      rush,
+    },
+  };
+}
+
+function normalizeStaffNames(
+  activeRun: Record<string, unknown>,
+): Pick<Record<string, unknown>, 'staff' | 'candidateStaff'> {
+  const staff = activeRun.staff;
+  const candidateStaff = activeRun.candidateStaff;
+  const seed = activeRun.seed;
+  if (
+    !isUnknownArray(staff) ||
+    !isUnknownArray(candidateStaff) ||
+    typeof seed !== 'number' ||
+    !Number.isInteger(seed) ||
+    seed < 0 ||
+    seed > 0xffff_ffff
+  ) {
+    return { staff, candidateStaff };
+  }
+
+  const people = [...staff, ...candidateStaff];
+  const originalNames = new Set(
+    people.flatMap((person) =>
+      isRecord(person) && typeof person.name === 'string' ? [person.name] : [],
+    ),
+  );
+  const retainedNames = new Set<string>();
+  let repairIndex = 0;
+
+  const normalizePeople = (records: unknown[]): unknown[] =>
+    records.map((person) => {
+      if (!isRecord(person) || typeof person.name !== 'string') return person;
+      if (!retainedNames.has(person.name)) {
+        retainedNames.add(person.name);
+        return person;
+      }
+
+      while (repairIndex < RESERVED_STAFF_NAME_COUNT) {
+        const repairedName = reservedStaffName(seed, repairIndex);
+        repairIndex += 1;
+        if (originalNames.has(repairedName) || retainedNames.has(repairedName)) continue;
+        retainedNames.add(repairedName);
+        return { ...person, name: repairedName };
+      }
+      throw new SaveValidationError(
+        'Duplicate staff names exceed the deterministic repair namespace.',
+        'invalidSchema',
+      );
+    });
+
+  return {
+    staff: normalizePeople(staff),
+    candidateStaff: normalizePeople(candidateStaff),
+  };
+}
+
+function normalizeRushActivity(
+  value: Record<string, unknown>,
+  day: number,
+): Record<string, unknown> {
+  const rawActivity = value.recentActivity === undefined ? [] : value.recentActivity;
+  const recentActivity = Array.isArray(rawActivity)
+    ? rawActivity.map((event, index) => normalizeLegacySaleActivity(event, day, index))
+    : rawActivity;
+  const derivedSequence = deriveActivitySequence(recentActivity);
+  return {
+    ...value,
+    nextActivitySequence:
+      value.nextActivitySequence === undefined ? derivedSequence : value.nextActivitySequence,
+    recentActivity,
+  };
+}
+
+function deriveActivitySequence(value: unknown): number {
+  if (!Array.isArray(value)) return 0;
+  const events: unknown[] = value;
+  let maximum = 0;
+  for (const event of events) {
+    if (isRecord(event) && typeof event.sequence === 'number') {
+      maximum = Math.max(maximum, event.sequence + 1);
+    }
+  }
+  return maximum;
+}
+
+function normalizeLegacySaleActivity(value: unknown, day: number, index: number): unknown {
+  if (
+    !isRecord(value) ||
+    value.type !== 'sale' ||
+    value.id !== undefined ||
+    value.sequence !== undefined ||
+    value.customerId !== undefined ||
+    value.segment !== undefined
+  ) {
+    return value;
+  }
+  return {
+    ...value,
+    id: `d${day}-legacy-e${index}`,
+    sequence: index,
+    customerId: `legacy-sale-${index + 1}`,
+    segment: null,
+  };
+}
+
+function migrateFlatInventory(value: unknown, day: number, refrigerationTier: number): unknown {
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    INGREDIENT_IDS.map((ingredientId) => {
+      const quantity = value[ingredientId];
+      return [
+        ingredientId,
+        quantity === 0
+          ? []
+          : [
+              {
+                quantity,
+                acquiredDay: day,
+                expiresAfterDay: batchExpiryDay(ingredientId, day, refrigerationTier),
+              },
+            ],
+      ];
+    }),
+  );
+}
+
+function legacyInventoryTotals(value: unknown): IngredientTotals {
+  const inventory = isRecord(value) ? value : {};
+  const totals = emptyTotalsRecord();
+  for (const ingredientId of INGREDIENT_IDS) {
+    totals[ingredientId] = boundedNumberOr(inventory[ingredientId], 0, 0, 1_000_000_000);
+  }
+  return totals;
+}
+
+function legacyPurchaseTotals(value: unknown): IngredientTotals {
+  const plan = isRecord(value) ? value : {};
+  const purchases = isRecord(plan.purchases) ? plan.purchases : {};
+  const totals = emptyTotalsRecord();
+  for (const item of PURCHASE_PACKAGES) {
+    const packages = boundedIntegerOr(purchases[item.ingredientId], 0, 0, 20);
+    totals[item.ingredientId] = packages * item.amount;
+  }
+  return totals;
+}
+
+function boundedTotalsFromUnknown(value: unknown): IngredientTotals {
+  const record = isRecord(value) ? value : {};
+  const totals = emptyTotalsRecord();
+  for (const ingredientId of INGREDIENT_IDS) {
+    totals[ingredientId] = boundedNumberOr(record[ingredientId], 0, 0, 1_000_000_000);
+  }
+  return totals;
+}
+
+function emptyTotalsRecord(): IngredientTotals {
+  return Object.fromEntries(
+    INGREDIENT_IDS.map((ingredientId) => [ingredientId, 0]),
+  ) as IngredientTotals;
+}
+
+function boundedIntegerOr(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= minimum &&
+    value <= maximum
+    ? value
+    : fallback;
+}
+
+function boundedNumberOr(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum
+    ? value
+    : fallback;
+}
+
 function validateEnvelope(value: Record<string, unknown>): void {
-  assert(value.schemaVersion === 2, 'Save schema must be version 2.');
+  assert(value.schemaVersion === 3, 'Save schema must be version 3.');
   assertString(value.savedAt, 'savedAt', 64);
   assert(!Number.isNaN(Date.parse(value.savedAt)), 'savedAt must be an ISO date.');
   validatePreferences(value.preferences);
@@ -327,7 +652,7 @@ function validateCampaignRecord(value: unknown, path: string): asserts value is 
 
 function validateGameState(value: unknown): asserts value is GameState {
   const state = expectRecord(value, 'activeRun');
-  assert(state.stateVersion === 2, 'activeRun.stateVersion must be 2.');
+  assert(state.stateVersion === 3, 'activeRun.stateVersion must be 3.');
   assertSafeId(state.campaignId, 'activeRun.campaignId');
   assertNumber(state.seed, 'activeRun.seed', 0, 0xffff_ffff, true);
   assertNumber(state.rngState, 'activeRun.rngState', 0, 0xffff_ffff, true);
@@ -339,17 +664,14 @@ function validateGameState(value: unknown): asserts value is GameState {
   assertNumber(state.reputation, 'activeRun.reputation', 0, 100, true);
   assertEnum(state.venueId, VENUES, 'activeRun.venueId');
   assertEnum(state.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], 'activeRun.weather');
-  validateInventory(state.inventory, 'activeRun.inventory');
+  validateInventory(state.inventory, 'activeRun.inventory', state.day);
   validatePlan(state.plan);
-  if (state.rush !== null) validateRush(state.rush);
+  if (state.rush !== null) validateRush(state.rush, state.day);
   if (state.report !== null) validateReport(state.report, 'activeRun.report');
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
-  expectArray(state.staff, 'activeRun.staff', 8).forEach((member, index) =>
-    validateStaff(member, `activeRun.staff[${index}]`),
-  );
-  expectArray(state.candidateStaff, 'activeRun.candidateStaff', 4).forEach((member, index) =>
-    validateStaff(member, `activeRun.candidateStaff[${index}]`),
-  );
+  const staff = validateStaffArray(state.staff, 'activeRun.staff', 8);
+  const candidateStaff = validateStaffArray(state.candidateStaff, 'activeRun.candidateStaff', 4);
+  validateStaffIdentities(staff, candidateStaff);
   validateEquipment(state.equipment);
   const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
   improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
@@ -377,7 +699,7 @@ function validatePlan(value: unknown): asserts value is DayPlan {
   assert(new Set(scheduled).size === scheduled.length, 'Scheduled staff IDs must be unique.');
 }
 
-function validateRush(value: unknown): asserts value is RushState {
+function validateRush(value: unknown, day: number): asserts value is RushState {
   const rush = expectRecord(value, 'activeRun.rush');
   assertNumber(rush.tick, 'rush.tick', 0, 2_000, true);
   assertNumber(rush.durationTicks, 'rush.durationTicks', 1, 2_000, true);
@@ -413,10 +735,74 @@ function validateRush(value: unknown): asserts value is RushState {
   ]) {
     assertNumber(rush[key], `rush.${key}`, -1_000_000_000, 1_000_000_000, true);
   }
+  assertNumber(rush.nextActivitySequence, 'rush.nextActivitySequence', 0, 1_000_000_000, true);
   for (const key of ['demandMultiplier', 'qualityBonus']) {
     assertNumber(rush[key], `rush.${key}`, -10_000, 10_000);
   }
+  validateIngredientTotals(rush.openingInventory, 'rush.openingInventory');
+  validateIngredientTotals(rush.purchasedInventory, 'rush.purchasedInventory');
+  let previousSequence = -1;
+  const activityIds = new Set<string>();
+  expectArray(rush.recentActivity, 'rush.recentActivity', RUSH_ACTIVITY_LIMIT).forEach(
+    (activity, index) => {
+      const validated = validateRushActivityEvent(activity, `rush.recentActivity[${index}]`, day);
+      assert(
+        validated.sequence > previousSequence,
+        'rush.recentActivity sequences must be strictly increasing.',
+      );
+      assert(!activityIds.has(validated.id), 'rush.recentActivity IDs must be unique.');
+      assert(
+        validated.sequence < (rush.nextActivitySequence as number),
+        'rush.nextActivitySequence must follow every retained activity.',
+      );
+      previousSequence = validated.sequence;
+      activityIds.add(validated.id);
+    },
+  );
   validateRushStats(rush.stats);
+}
+
+function validateRushActivityEvent(
+  value: unknown,
+  path: string,
+  day: number,
+): { id: string; sequence: number } {
+  const activity = expectRecord(value, path);
+  assertEnum(activity.type, ['arrival', 'serviceStarted', 'sale', 'walkaway'], `${path}.type`);
+  assertSafeId(activity.id, `${path}.id`);
+  assertNumber(activity.sequence, `${path}.sequence`, 0, 1_000_000_000, true);
+  assertNumber(activity.tick, `${path}.tick`, 0, 2_000, true);
+  assertSafeId(activity.customerId, `${path}.customerId`);
+  if (activity.segment === null) {
+    assert(
+      activity.type === 'sale' &&
+        activity.id === `d${day}-legacy-e${activity.sequence}` &&
+        /^legacy-sale-\d+$/.test(activity.customerId),
+      `${path}.segment may be null only for normalized legacy sales.`,
+    );
+  } else {
+    assertEnum(activity.segment, SEGMENTS, `${path}.segment`);
+    assert(
+      activity.id === `d${day}-e${activity.sequence}`,
+      `${path}.id must match its day and sequence.`,
+    );
+  }
+  if (activity.type === 'serviceStarted' || activity.type === 'sale') {
+    assertEnum(activity.drinkId, ALL_DRINK_IDS, `${path}.drinkId`);
+    assertEnum(activity.size, ['regular', 'large'], `${path}.size`);
+    assertEnum(activity.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.milk`);
+  }
+  if (activity.type === 'sale') {
+    assertNumber(activity.priceCents, `${path}.priceCents`, 0, 10_000, true);
+  }
+  if (activity.type === 'walkaway') {
+    assertEnum(
+      activity.reason,
+      ['patience', 'queueFull', 'stockout', 'rushEnded'],
+      `${path}.reason`,
+    );
+  }
+  return { id: activity.id, sequence: activity.sequence };
 }
 
 function validateRushStats(value: unknown): void {
@@ -503,7 +889,38 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
   }
   assertEnum(report.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], `${path}.weather`);
   validateBoundedNumberRecord(report.waste, INGREDIENT_IDS, `${path}.waste`);
-  validateInventory(report.remainingInventory, `${path}.remainingInventory`);
+  validateIngredientTotals(report.remainingInventory, `${path}.remainingInventory`);
+  if (report.inventoryLifecycle !== null) {
+    const lifecycle = expectRecord(report.inventoryLifecycle, `${path}.inventoryLifecycle`);
+    for (const key of ['opening', 'purchased', 'consumed', 'expired', 'remaining']) {
+      validateIngredientTotals(lifecycle[key], `${path}.inventoryLifecycle.${key}`);
+    }
+    const opening = lifecycle.opening as IngredientTotals;
+    const purchased = lifecycle.purchased as IngredientTotals;
+    const consumed = lifecycle.consumed as IngredientTotals;
+    const expired = lifecycle.expired as IngredientTotals;
+    const remaining = lifecycle.remaining as IngredientTotals;
+    const reportRemaining = report.remainingInventory as IngredientTotals;
+    const waste = report.waste as Partial<Record<IngredientId, number>>;
+    for (const ingredientId of INGREDIENT_IDS) {
+      assert(
+        opening[ingredientId] +
+          purchased[ingredientId] -
+          consumed[ingredientId] -
+          expired[ingredientId] ===
+          remaining[ingredientId],
+        `${path}.inventoryLifecycle.${ingredientId} does not conserve quantity.`,
+      );
+      assert(
+        remaining[ingredientId] === reportRemaining[ingredientId],
+        `${path}.remainingInventory.${ingredientId} does not match lifecycle evidence.`,
+      );
+      assert(
+        expired[ingredientId] === (waste[ingredientId] ?? 0),
+        `${path}.waste.${ingredientId} does not match expiry evidence.`,
+      );
+    }
+  }
   validateBoundedNumberRecord(report.servedBySegment, SEGMENTS, `${path}.servedBySegment`);
   assertString(report.bottleneck, `${path}.bottleneck`, 300);
   expectArray(report.explanations, `${path}.explanations`, 30).forEach((item, index) =>
@@ -512,9 +929,37 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
   assert(typeof report.settled === 'boolean', `${path}.settled must be boolean.`);
 }
 
-function validateInventory(value: unknown, path: string): void {
+function validateInventory(value: unknown, path: string, currentDay: number): void {
   const inventory = expectRecord(value, path);
-  for (const id of INGREDIENT_IDS) assertNumber(inventory[id], `${path}.${id}`, 0, 1_000_000_000);
+  for (const id of INGREDIENT_IDS) {
+    const batches = expectArray(
+      inventory[id],
+      `${path}.${id}`,
+      MAX_INVENTORY_BATCHES_PER_INGREDIENT,
+    );
+    let total = 0;
+    for (const [index, value] of batches.entries()) {
+      const batch = expectRecord(value, `${path}.${id}[${index}]`);
+      assertNumber(batch.quantity, `${path}.${id}[${index}].quantity`, 1, 1_000_000_000, true);
+      assertNumber(batch.acquiredDay, `${path}.${id}[${index}].acquiredDay`, 1, currentDay, true);
+      assertNumber(
+        batch.expiresAfterDay,
+        `${path}.${id}[${index}].expiresAfterDay`,
+        Math.max(batch.acquiredDay, currentDay),
+        batchExpiryDay(id, batch.acquiredDay, INGREDIENT_DETAILS[id].chilled ? 2 : 0),
+        true,
+      );
+      total += batch.quantity;
+    }
+    assertNumber(total, `${path}.${id} total`, 0, 1_000_000_000, true);
+  }
+}
+
+function validateIngredientTotals(value: unknown, path: string): void {
+  const totals = expectRecord(value, path);
+  assert(Object.keys(totals).length === INGREDIENT_IDS.length, `${path} must be complete.`);
+  for (const id of INGREDIENT_IDS)
+    assertNumber(totals[id], `${path}.${id}`, 0, 1_000_000_000, true);
 }
 
 function validateStaff(value: unknown, path: string): asserts value is StaffMember {
@@ -531,6 +976,25 @@ function validateStaff(value: unknown, path: string): asserts value is StaffMemb
     `${path}.trait`,
   );
   assertNumber(member.hiredOnDay, `${path}.hiredOnDay`, 0, 10_000, true);
+}
+
+function validateStaffArray(value: unknown, path: string, maximum: number): StaffMember[] {
+  return expectArray(value, path, maximum).map((member, index) => {
+    validateStaff(member, `${path}[${index}]`);
+    return member;
+  });
+}
+
+function validateStaffIdentities(staff: StaffMember[], candidateStaff: StaffMember[]): void {
+  const people = [...staff, ...candidateStaff];
+  assert(
+    new Set(people.map((member) => member.id)).size === people.length,
+    'Staff and candidate IDs must be unique.',
+  );
+  assert(
+    new Set(people.map((member) => member.name)).size === people.length,
+    'Staff and candidate names must be unique after normalization.',
+  );
 }
 
 function validateEquipment(value: unknown): void {
@@ -586,7 +1050,7 @@ function assertEnumArray<T>(
   assert(new Set(items).size === items.length, `${path} entries must be unique.`);
 }
 
-function assertSafeId(value: unknown, path: string): void {
+function assertSafeId(value: unknown, path: string): asserts value is string {
   assertString(value, path, 100);
   assert(/^[\p{L}\p{N}._’ -]+$/u.test(value), `${path} contains unsafe characters.`);
 }
@@ -625,4 +1089,8 @@ function finiteOr(value: unknown, fallback: number): number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
 }

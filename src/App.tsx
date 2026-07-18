@@ -10,6 +10,7 @@ import { OnboardingGuide } from './components/OnboardingGuide';
 import { ReinvestPanel } from './components/ReinvestPanel';
 import { ReportPanel } from './components/ReportPanel';
 import { RushPanel } from './components/RushPanel';
+import { RushStockGrid } from './components/RushStockGrid';
 import { TitleScreen } from './components/TitleScreen';
 import { CanvasScene } from './scene/CanvasScene';
 import { VENUES } from './content/gameContent';
@@ -46,6 +47,7 @@ export default function App(): React.JSX.Element {
               <strong>{VENUES[game.venueId].name}</strong>
               <span>{VENUES[game.venueId].description}</span>
             </section>
+            {game.phase === 'rush' || game.phase === 'event' ? <RushStockGrid /> : null}
           </div>
           <div className="control-column" tabIndex={-1}>
             <OnboardingGuide />

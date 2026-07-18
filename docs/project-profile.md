@@ -69,13 +69,13 @@ No `.env.local` is required for the game. Never add secrets to the repository.
 ## Git workflow contract
 
 - `main` is protected; never commit to it directly.
-- Use one branch per phase: `phase-1`, `phase-2`, and `phase-3`.
+- Use one branch per phase: `phase-1` through `phase-6`.
 - Components are committed to their phase branch with messages in the form
   `feat(phase-X): Component X.Y — <name>`.
 - A phase may merge only after its validation targets pass, a
   `docs/phase-X-test-report.md` records PASS, and the human approves the merge.
-- Phase 2 may branch from the validated Phase 1 head and Phase 3 from the
-  validated Phase 2 head so implementation can continue before final merges.
+- Each later phase may branch from the preceding phase's validated PASS head so
+  implementation can continue before the preceding human-approved merge.
 - Production publication and repository visibility changes require the final
   release gate, already identified as an intended outcome by the user.
 
@@ -84,6 +84,11 @@ No `.env.local` is required for the game. Never add secrets to the repository.
 - Phases 1–2: none.
 - Phase 3 release: make `sjmeehan9/tycoon` public, enable GitHub Pages with
   GitHub Actions, and confirm the published game URL.
+- Phases 4–5: no account, credential, secret, external service, or publication
+  setup. After each phase records PASS, the human approves or rejects its merge.
+- Phase 6: no new account, credential, or secret. After local PASS, the human
+  approves or rejects the final merge and confirms the updated GitHub Pages
+  release before hosted cumulative PASS is recorded.
 
 ## Performance budgets
 

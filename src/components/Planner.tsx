@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { handleTabListKeyDown } from '../accessibility/keyboard';
 import {
   BEAN_DETAILS,
+  DAY_PLAN_LIMITS,
   DRINKS,
   PURCHASE_PACKAGES,
   VENUES,
@@ -10,8 +11,17 @@ import {
   WEATHER_DETAILS,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
-import { canOpen, formatMoney, selectedSupplyCost, type DialIn, type DrinkId } from '../game';
+import {
+  canOpen,
+  formatIngredientQuantity,
+  formatMoney,
+  ingredientCapacities,
+  selectedSupplyCost,
+  type DialIn,
+  type DrinkId,
+} from '../game';
 import { TeamPlanner } from './TeamPlanner';
+import { AccessibleStepper } from './AccessibleStepper';
 
 const DIAL_OPTIONS: Array<{ id: DialIn; label: string; detail: string }> = [
   { id: 'speed', label: 'Speed', detail: 'Quicker cups, less finesse' },
@@ -28,6 +38,9 @@ export function Planner(): React.JSX.Element {
   if (!game) return <></>;
   const supplyCost = selectedSupplyCost(game);
   const weather = WEATHER_DETAILS[game.weather];
+  const capacityByIngredient = new Map(
+    ingredientCapacities(game).map((capacity) => [capacity.ingredientId, capacity] as const),
+  );
 
   const toggleDrink = (drinkId: DrinkId): void => {
     const active = game.plan.activeMenu.includes(drinkId);
@@ -102,31 +115,29 @@ export function Planner(): React.JSX.Element {
                     </small>
                   </span>
                 </label>
-                <label className="price-field">
-                  Price
-                  <span>
-                    $
-                    <input
-                      aria-label={`${drink.name} price in dollars`}
-                      disabled={!checked}
-                      inputMode="decimal"
-                      max="12"
-                      min="2.5"
-                      onChange={(event) => {
-                        const dollars = Number(event.target.value);
-                        if (Number.isFinite(dollars)) {
-                          command({
-                            type: 'prepareDay',
-                            patch: { pricesCents: { [drink.id]: Math.round(dollars * 100) } },
-                          });
-                        }
-                      }}
-                      step="0.1"
-                      type="number"
-                      value={(game.plan.pricesCents[drink.id] / 100).toFixed(2)}
-                    />
-                  </span>
-                </label>
+                <div className="price-field">
+                  <span>Price</span>
+                  <AccessibleStepper
+                    decrementDisabled={
+                      !checked ||
+                      game.plan.pricesCents[drink.id] <= DAY_PLAN_LIMITS.priceCents.minimum
+                    }
+                    decrementLabel={`Decrease ${drink.name} price by ${formatMoney(DAY_PLAN_LIMITS.priceCents.increment)}`}
+                    incrementDisabled={
+                      !checked ||
+                      game.plan.pricesCents[drink.id] >= DAY_PLAN_LIMITS.priceCents.maximum
+                    }
+                    incrementLabel={`Increase ${drink.name} price by ${formatMoney(DAY_PLAN_LIMITS.priceCents.increment)}`}
+                    label={`${drink.name} price`}
+                    onDecrement={() =>
+                      command({ type: 'adjustPlanPrice', drinkId: drink.id, direction: -1 })
+                    }
+                    onIncrement={() =>
+                      command({ type: 'adjustPlanPrice', drinkId: drink.id, direction: 1 })
+                    }
+                    value={formatMoney(game.plan.pricesCents[drink.id])}
+                  />
+                </div>
               </div>
             );
           })}
@@ -151,31 +162,71 @@ export function Planner(): React.JSX.Element {
       >
         <legend>Supply order</legend>
         <div className="supply-list">
-          {PURCHASE_PACKAGES.map((item) => (
-            <label className="supply-row" key={item.ingredientId}>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{formatMoney(item.costCents)} per pack</small>
-              </span>
-              <input
-                aria-label={`${item.label} package quantity`}
-                inputMode="numeric"
-                max={20}
-                min={0}
-                onChange={(event) => {
-                  const quantity = Number(event.target.value);
-                  if (Number.isInteger(quantity)) {
+          {PURCHASE_PACKAGES.map((item) => {
+            const quantity = game.plan.purchases[item.ingredientId];
+            const capacity = capacityByIngredient.get(item.ingredientId);
+            return (
+              <div className="supply-row" key={item.ingredientId}>
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{formatMoney(item.costCents)} per pack</small>
+                </span>
+                <AccessibleStepper
+                  decrementDisabled={quantity <= DAY_PLAN_LIMITS.packageQuantity.minimum}
+                  decrementLabel={`Decrease ${item.label} package quantity by 1 package`}
+                  incrementDisabled={quantity >= DAY_PLAN_LIMITS.packageQuantity.maximum}
+                  incrementLabel={`Increase ${item.label} package quantity by 1 package`}
+                  label={`${item.label} package quantity`}
+                  onDecrement={() =>
                     command({
-                      type: 'prepareDay',
-                      patch: { purchases: { [item.ingredientId]: quantity } },
-                    });
+                      type: 'adjustPlanPurchase',
+                      ingredientId: item.ingredientId,
+                      direction: -1,
+                    })
                   }
-                }}
-                type="number"
-                value={game.plan.purchases[item.ingredientId]}
-              />
-            </label>
-          ))}
+                  onIncrement={() =>
+                    command({
+                      type: 'adjustPlanPurchase',
+                      ingredientId: item.ingredientId,
+                      direction: 1,
+                    })
+                  }
+                  value={String(quantity)}
+                />
+                {capacity ? (
+                  <output
+                    aria-atomic="true"
+                    aria-label={`${capacity.name} usable stock and weighted serves after selected purchase`}
+                    aria-live="polite"
+                    className="supply-capacity"
+                  >
+                    <span>
+                      <strong>
+                        {formatIngredientQuantity(capacity.usableQuantity, capacity.unit)} usable
+                        after order
+                      </strong>
+                      <small>
+                        {formatIngredientQuantity(capacity.carriedQuantity, capacity.unit)} carried
+                        {capacity.pendingPurchaseQuantity > 0
+                          ? ` + ${formatIngredientQuantity(capacity.pendingPurchaseQuantity, capacity.unit)} pending`
+                          : ' · no pending purchase'}
+                      </small>
+                    </span>
+                    <span className="capacity-estimate">
+                      {capacity.isUsedToday
+                        ? `~${String(capacity.estimatedServes)} serves${capacity.isLimiting ? ' · limiting stock' : ''}`
+                        : 'Not used today'}
+                    </span>
+                    <small className="capacity-expiry">
+                      {capacity.earliestExpiry
+                        ? `${formatIngredientQuantity(capacity.earliestExpiry.quantity, capacity.unit)} expires after Day ${String(capacity.earliestExpiry.day)} rush`
+                        : 'No stock awaiting expiry'}
+                    </small>
+                  </output>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </fieldset>
 
