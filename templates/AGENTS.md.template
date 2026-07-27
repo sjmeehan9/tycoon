@@ -2,7 +2,7 @@
 
 Bootstrapped from `project-template`. Read these before doing anything stack-specific:
 
-- **`docs/project-profile.md`** — the stack contract: platform, validation sequence, test frameworks, UI/E2E harness, project layout, run instructions, git workflow, human tasks, budgets. Agents trust this file over their own assumptions.
+- **`docs/project-profile.md`** — the stack contract: platform, targeted/component/phase validation tiers, test frameworks, UI/E2E harness, shared-resource locks, project layout, run instructions, git workflow, human tasks, budgets. Agents trust this file over their own assumptions.
 - **`.github/instructions/copilot.instructions.md`** — coding standards (per-stack sections; the profile says which applies).
 - **`supporting-files/AGENT_FLOWS.md`** — how the agent pipeline fits together.
 
