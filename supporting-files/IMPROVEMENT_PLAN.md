@@ -50,7 +50,7 @@ The Claude and Copilot copies of each agent are ~80% duplicated and have already
 Written by `bootstrap.sh`; the single place agents look for anything stack- or repo-specific. Required sections:
 
 - **Platform & language(s)** (e.g. "iOS 26+, Swift 6, SwiftUI, iPhone-only").
-- **Validation sequence** — the ordered, copy-pasteable commands that define "all checks pass" for this repo (e.g. `xcodebuild build/test -scheme <Name> -destination 'platform=iOS Simulator,name=<device>'`, `swiftlint`; or `black/isort/pytest`; or `pnpm build/lint/test`). Replaces every hardcoded `source .venv/bin/activate` … `pnpm test` block in implement/test/review/debug/skills — which today make Review permanently BLOCKED on any iOS project ("All must pass. Failures are blockers." against commands that cannot run).
+- **Validation tiers** — ordered, copy-pasteable targeted, component, and phase commands. Targeted checks are Implement's inner loop; exactly one component gate runs for a final source-tree fingerprint; independent Test always owns the cumulative phase gate. This replaces both hardcoded stack commands and the legacy rule that every role reruns the same full sequence.
 - **Test frameworks** — unit (XCTest / pytest / Jest) and **UI/E2E harness** (XCUITest on simulator / Playwright / Cypress) — consumed by the phase-validation mode (C2).
 - **Test & coverage policy** — whether coverage is measured at all, and any target. No default floor (see C5).
 - **Project layout** — where source, tests, and scripts live (replaces hardcoded `app/src/`, `scripts/evals.py`).
@@ -61,7 +61,7 @@ Written by `bootstrap.sh`; the single place agents look for anything stack- or r
 - **Framework versions** — e.g. the Next.js major for the validation path (currently hardcoded "Next.js 15 App Router" in agent text, which will rot).
 - **Standards file pointer** — path to the coding-standards instructions (referenced by both `CLAUDE.md` and the Copilot agents, so Claude agents stop hard-depending on the Copilot-branded filename).
 
-**Agent-side change (all delivery-chain agents):** replace embedded command blocks with *"Run the validation sequence defined in `docs/project-profile.md`. If the file is missing, stop and raise it as a blocker — do not guess commands."*
+**Agent-side change (all delivery-chain agents):** replace embedded command blocks with *"Run the smallest tier assigned by `docs/project-profile.md`; reuse passing evidence while its source-tree fingerprint is unchanged. If the profile is missing or still defines only the legacy single sequence, stop and raise profile migration as a blocker — do not guess commands."*
 
 **Instructions files:**
 - `copilot.instructions.md` already has good Swift/iOS standards — keep them, parameterise the leaked `Topics` scheme and `iPhone 16` simulator via bootstrap, and **un-comment the `applyTo: '**'` line** (currently commented out, so the file that defines all standards is never auto-loaded in Copilot).
@@ -81,7 +81,7 @@ Written by `bootstrap.sh`; the single place agents look for anything stack- or r
 ### B1. Remove all stated ranges; size by feature completeness (feedback 5, 7)
 
 **Delete (TBA, all variants):** "Define 5-20 high-level phases" · "Prefer 3-8 components per phase" · "No more than 8 components to a phase" · "The next 1-3 phases … MVP" · "The final 2-3 phases …" · **"Aim to defer human manual testing and validation to the final phases" and "The bulk of human manual testing should occur in these final phases"** (this deferral doctrine directly contradicts feedback 6 — deleting only the numeric ranges would leave the planning layer pushing UI validation to project end while the delivery layer tests per phase).
-**Delete (build skill):** "components sized 2-8 hours" (appears in Stage Validation *and* Definition of Done) · the 2-3/4-6/7-10-component agent-budget framing and "Typical: 1 TBA + 2-3 TLs". Replacement concurrency text: *"Concurrency is bounded by the max-agents argument and by file-ownership independence: run as many parallel Implement agents as there are non-conflicting ready components (per the dependency graph), up to the limit; queue the remainder in dependency order."*
+**Delete (build skill):** "components sized 2-8 hours" (appears in Stage Validation *and* Definition of Done) · the 2-3/4-6/7-10-component agent-budget framing and "Typical: 1 TBA + 2-3 TLs". Replacement concurrency text: *"Treat max-agents as a ceiling. Serialize component authoring on the phase branch by default; opt into parallel authors only when the project profile defines a complete branch/worktree integration protocol. Queue components in dependency order."*
 **Delete (tech-lead):** "[2-3 sentences describing…]" · "max 2 paragraphs per file" — descriptiveness caps applied to the spec itself.
 **Delete (both TBA/Review/instructions):** every "30% coverage" figure (currently self-contradictory: minimum in two files, maximum in a third).
 **Delete (both skills):** "≥5 competitor profiles" floors → replace with a completeness criterion: *"all materially competing products in the defined market, and the analysis states why the set is complete"*. Align `validate-with-waitlist`'s "Agent budget: 2-3 task agents" ranges with the concurrency-only guidance above.
@@ -139,21 +139,20 @@ This keeps the existing anti-laziness machinery (scope-integrity gates, "no holl
 New mandatory step, owned by **Tech Lead** at spec time and re-checked by **Implement** at build time:
 
 - **Tech Lead (refinement stage):** after drafting each component spec, validate it against (a) the project docs (solution design, requirements, prior phase summaries) and (b) **current external documentation** for every product/platform/service the component touches — SDK/API references, version constraints, platform rules (for iOS: HIG patterns, App Store review guidelines, entitlement requirements). Record a `Technical Validation` section in the spec: sources checked (with URLs/versions), assumptions confirmed, discrepancies found, open risks. Reuse the `technical-research` agent's method (inventory → check against official docs → graded findings); in team mode the orchestrator may spawn `technical-research` scoped to the phase breakdown. Completing this section is what transitions the component to **Spec-Validated**.
-- **Implement (implementation stage):** at orientation, re-verify the spec's external assumptions are still current (APIs exist as described, versions available). A failed re-verification **demotes the component to Queued**, reported as **Drift / Open questions** in the structured report *before* coding — never silently worked around.
-- **Component lifecycle (build skill):**
-  `Queued → Spec-Validated → Implementing → Testing → [Debugging → Re-testing]* → Reviewing → {Committed | Blocked}`
-  - **Spec-Validated** is set during refinement by the Tech Lead (above); the implementation-stage precondition is simply *"no Implement agent is spawned for a component that is not Spec-Validated."*
-  - **Blocked** (new): Review records BLOCKED in the state file (today only "Committed" is ever written), enumerates findings by category (C5), and the Lead Coordinator routes each finding — spec deviations / missing features to **Implement**, defects to **Debug** — then Test re-runs and Review re-reviews. If Review's own test re-run contradicts the Test agent's earlier PASS, the discrepancy itself is a Problems/blockers item for the coordinator: Debug fixes, Test re-verifies, Review re-reviews. Cycle cap consistent with the existing "max 3 debug cycles, then escalate to the user."
-- Review's orientation table gains the Technical Validation section as a required input.
+- **Implement (implementation stage):** at orientation, re-verify the spec's external assumptions are still current (APIs exist as described, versions available). A failed re-verification **demotes the component to Queued**, reported as **Drift / Open questions** before coding — never silently worked around. Uncertain serialization or framework composition requires an executable capability probe, not signature checking alone.
+- **Component lifecycle (build skill):** all components start `Queued → Spec-Validated → Implementing`; only states required by the assigned assurance lane follow: `fast` goes directly to Committed after Implement's gate; `test` adds Testing; `review` adds Reviewing; `full` adds both; `phase-gate` uses aggregate Reviewing, mandatory Test Phase X, then a commit-only Review resume. Review is not a mandatory per-component state.
+  - **Spec-Validated** is set during refinement; no Implement agent is spawned before it. The handoff assigns exactly one lane and the component overview becomes the sole delivery manifest.
+  - On a clear component-gate or Review failure, the original Implement receives one bounded remediation. Debug is reserved for ambiguous, repeated, flaky, or systemic component failures and is immediate for cumulative phase-test failures. The component re-enters at its earliest invalidated gate; maximum three cycles before human escalation.
+- Review's orientation table gains the Technical Validation section and trusts unchanged-tree validation evidence instead of rerunning it.
 
 ### C2. Phase-end UI + critical-backend testing (feedback 6)
 
-- **Test agent gains a second mode: `Test Phase X` (phase validation).** Executes every phase E2E scenario; runs the **UI harness from the project profile** (XCUITest on simulator for iOS, Playwright/Cypress for web) over the phase's user-facing flows; exercises critical backend paths end-to-end; runs the full cumulative suite. The current restriction "Test only YOUR assigned component" is amended: *"…unless invoked in phase-validation mode."*
+- **Test agent has two modes, but component mode is conditional.** It owns the single component gate only in `test` and `full`. `Test Phase X` is mandatory, executes every phase E2E scenario, runs the **UI harness from the project profile** over the phase's user-facing flows, exercises critical backend paths end-to-end, and runs the full cumulative suite.
 - **Suite authorship (currently unassigned — the gate would be vacuous):** the **phase-final validation component's Implement engagement builds/extends the UI + critical-backend E2E suites** for the flows named in that component's spec (which the Tech Lead populates from the phase plan's named flows, B2). Feature components contribute flow-level tests where practical (B3 §8); the phase-final component owns the cumulative harness.
 - **Phase-mode reading contract (exemption from C4's component scoping):** the phase section of `docs/phase-plan.md`, the phase-final component spec, every component's overview doc (not full specs), the phase E2E scenarios, and `docs/project-profile.md`.
-- **Durable artifact:** phase mode writes `docs/phase-X-test-report.md`, **with failures enumerated per owning component** (makes remediation routable). Component mode also writes its report to file — today Test's output is chat-only, so Review/Debug have no artifact contract. Full command/output transcripts live in the report file, **not** chat (satisfies the strict comms protocol; replaces "always show your work" in chat).
-- **Gating (build skill + Review):** the phase-final validation component's Review may not commit, and `phase-docs` may not run, until the phase test report is PASS. The skill's stage validation replaces its formatter/pytest-only block with: profile validation sequence + phase test report check.
-- **Phase-failure remediation (previously undefined — the gate would deadlock on the first cross-component failure):** new lifecycle transition **Committed → Reopened**. The Lead Coordinator assigns each phase-test failure to the owning component (from the report), grants Debug ownership of that component's file list for the fix, then re-runs `Test Phase X`. Cycle cap consistent with the existing max-3-then-escalate rule.
+- **Durable artifact:** phase mode writes `docs/phase-X-test-report.md`, with failures enumerated per owning component. Conditional component mode writes `docs/test-reports/phase-X-component-X-Y-test-report.md`. Both record a source-tree fingerprint; detailed transcripts live in files, while Agent Reports stay concise.
+- **Gating (build skill + Review):** the phase-final validation component's Review, aggregate phase Review, and `phase-docs` require a PASS phase report. Review consumes valid evidence and performs static/spec/diff analysis; it does not create another validation run.
+- **Phase-failure remediation (previously undefined — the gate would deadlock on the first cross-component failure):** new lifecycle transition **Committed → Reopened**. The Lead Coordinator assigns each cumulative failure to its owning component and routes it immediately to scoped Debug. Any changed candidate refreshes the aggregate audit before `Test Phase X` reruns. Cycle cap remains max-3-then-escalate.
 - Tech Lead's phase-final component spec must name the UI flows and critical backend features to be validated — "UI" appears explicitly, not implied by "E2E scenarios".
 
 ### C3. Strict structured communication protocol (feedback 8) — all agents
@@ -182,7 +181,7 @@ Autonomous variants: same block, but Open questions become **Assumptions** (logg
 ### C4. Dependency-driven reading (feedback 11)
 
 - **Component Overview docs get a defined contract** (today they have only a 100-line cap and *no consumer anywhere in the pipeline*): What was delivered (feature outcome) · Public interfaces/contracts exposed · Files owned · How to run/verify it · Integration notes & gotchas. **They remain summary artifacts:** soft target "concise — a consumer should absorb it in one read", with the same completeness-wins override as phase summaries. (Uncapping them entirely would erode the context economy this section exists to create.)
-- **Implement orientation rewritten** (currently: "thoroughly read" ~9 documents every session): read (1) your component's spec section — including its Dependencies list and Technical Validation; (2) the **overview docs of the components you depend on**; (3) `implementation-context-phase-X.md`; (4) `docs/project-profile.md`. Consult brief/solution-design/phase-plan **only** when a specific decision requires context they provide, and say so under Outputs/Drift if they change your plan.
+- **Implement orientation rewritten** (currently: "thoroughly read" ~9 documents every session): read (1) your component's spec section — including Dependencies, Technical Validation, and assigned assurance lane; (2) the **overview manifests of declared dependencies**; and (3) `docs/project-profile.md`. Consult brief/solution-design/phase-plan only when a specific decision requires them. The current component overview is the sole delivery manifest; no duplicate phase-level implementation log is maintained.
 - Same targeted principle applied to **Test, Review, Debug** (Review currently marks the component overview — the one doc that matters most — as "read only if needed" while mandating everything else; Debug's "read the codebase" is unbounded → point it at the failing component's spec + overview first). Test's phase mode uses the C2 reading contract instead.
 - The build skill's Implement input contract adds: "the overview docs of the component's declared dependencies." The skill's Steward line-limit checklist and Step-5 output contract are updated to the new cap policy and overview content contract (they currently enforce the old caps and would silently reinstate them).
 
@@ -205,7 +204,7 @@ Concrete edits:
 - Define the state file's report fields to match the C3 block.
 - `validate-with-waitlist`: make `DESIGN.md` either a required Design-stage output or give the Build cross-review and Asset Producer an explicit no-DESIGN.md fallback (today it's optional to produce but assumed present by two consumers).
 
-**Doc caps:** keep caps only on *state/summary* artifacts (state file, implementation-context appends, phase summary — raise phase summary from a hard 150 to a soft target with a "completeness wins" override; overview docs per C4); remove caps from specs where they fight descriptiveness (B3).
+**Doc caps:** keep caps only on *state/summary* artifacts (state file and phase summary — raise phase summary from a hard 150 to a soft target with a "completeness wins" override; overview manifests per C4); remove caps from specs where they fight descriptiveness (B3).
 
 **Paths & names:** `docs/phase-plan.md`; all doc references get explicit `docs/` paths; `.env` location decided once (root-level `.env.local` is the ecosystem default) and encoded in the profile; date/name format for the repo-analysis output pinned down.
 
@@ -229,6 +228,49 @@ Concrete edits:
 **repo-analysis:** recommendations cap removed (B1); solo/team routing per C3.
 
 **AGENT_FLOWS.md:** update after implementation — add Spec-Validated/Blocked/Reopened lifecycle states, the phase-test gate, `project-profile.md` and test reports to the ownership map, `agents-src/` + generator to a new "repo architecture" section, and the bootstrap flow.
+
+---
+
+## Part D — Post-implementation review correction (2026-07-21)
+
+A component-session review found that the mandatory `Implement → Test → Review` chain produced useful independent findings but multiplied full-suite runs, forced serial cold starts, discarded valid evidence at role boundaries, and allowed shared simulator/tool contention. The correction is an **Implement-led assurance model**, not an Implement-only quality model.
+
+### D1. Assurance lanes
+
+The coordinator assigns one lane from explicit risk triggers before spawning Implement:
+
+| Lane | Component/phase gate owner | Review | Commit owner |
+|------|----------------------------|--------|--------------|
+| `fast` | Implement, component tier; targeted proof only for explicitly non-runtime setup/docs | — | Implement |
+| `test` | Test, component tier | — | Implement |
+| `review` | Implement, component tier | Independent component Review | Review |
+| `full` | Test, component tier | Independent component Review | Review |
+| `phase-gate` | Test Phase X, phase tier | Mandatory aggregate phase Review | Review |
+
+Test triggers: UI/OS/external behaviour not fully proven by deterministic component tests, cross-component or persistence round trips, primary-path mocks/fakes, permissions/privacy/security, migrations or destructive state, concurrency/background execution, first use of a runtime/integration pattern, or regression-prone observable behaviour. Review triggers: shared/core/app-entry/build/config/signing files, new or changed public API/schema/protocol/cross-component contracts, security/privacy authorization, a spec deviation or ADR, an open Technical Validation risk, an ownership exception, broad scope, or incomplete/contradictory evidence. Both sets or any critical signal trigger `full`; neither triggers `fast`; the phase-final validation component is always `phase-gate`.
+
+### D2. Validation and evidence invariants
+
+1. **Targeted tier:** Implement may repeat focused checks during its inner loop.
+2. **Component tier:** exactly one owner runs exactly one final component gate for a source-tree fingerprint — Implement in runtime `fast`/`review`, Test in `test`/`full`. An explicitly non-runtime setup/documentation `fast` component may use one targeted proof as its completion gate; runtime source/config never uses that exception.
+3. **Phase tier:** independent Test always runs `Test Phase X`, regardless of component lanes. It is the only cumulative full-suite gate required by the agent pipeline before phase close.
+4. Every durable result records commands, result, duration, and the output of `python3 scripts/worktree-fingerprint.py`. A role handoff does not invalidate it; a source change does.
+5. Review is primarily a static/spec/diff audit and never reruns valid evidence. The aggregate phase audit covers components that skipped per-component Review and precedes Test Phase X; after PASS, Review resumes for a commit-only pass while the candidate is unchanged.
+6. If an MCP client timeout is shorter than the last recorded suite duration, use the profile-approved runner with a sufficient timeout instead of making a predictably doomed first attempt.
+
+### D3. Coordination invariants
+
+- The approved component spec is already the plan. There are no per-component plan-approval waits unless new information requires a material spec change, descope, external authority, or explicit human gate.
+- Component reports are concise. Detailed transcripts stay in test artifacts; chat carries decisions, blockers, paths, fingerprints, and next ownership.
+- `docs/components/phase-X-component-X-Y-overview.md` is the sole delivery manifest. It includes delivered files, interfaces, integration notes, assurance lane, and evidence. Parallel running logs are removed.
+- Component authoring is serialized by default on the phase branch. Parallel authors require a project-profile-defined complete branch/worktree integration protocol; worktree isolation or file disjointness alone is insufficient. Shared simulator/browser/database/service/port operations require a coordinator lease. Git index writes, commits, pushes, and branch integration use a separate serialized lane.
+- The team topology stays flat: only the coordinator spawns task agents, and existing role engagements are resumed for remediation or commit-only passes instead of paying avoidable cold starts.
+- The original Implement owns the first bounded remediation for a clear component-gate or Review failure. Debug is invoked for ambiguous, repeated, flaky, or systemic component failures and immediately for any `Test Phase X` failure.
+- Technical Validation uses executable capability probes for uncertain binary serialization, framework composition, and runtime round trips. A failed foundational assumption demotes the component for re-specification rather than opening unbounded remediation.
+
+### D4. Migration
+
+Generated agent and skill definitions update through `agents-src/`, `skills-src/`, and `scripts/build-agents.py`, but downstream `docs/project-profile.md` files are intentionally protected from template sync. Existing projects must manually adopt the targeted/component/phase sections from the matching profile template before invoking the updated implementation pipeline.
 
 ---
 

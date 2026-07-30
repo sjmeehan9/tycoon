@@ -5,10 +5,10 @@ applyTo: '**' # instructions are automatically added to the request context when
 # Instructions for all Agents
 
 ## Preliminaries
-- **First read:** `docs/project-profile.md` is the per-repo stack contract and the single source of truth for anything stack- or repo-specific: platform and languages, the validation sequence (exact build, lint, and test commands — including the Xcode scheme and simulator destination for iOS projects), test frameworks, coverage policy, project layout, run instructions, and the git workflow. If the file is missing, stop and raise it as a blocker — do not guess commands or configuration.
+- **First read:** `docs/project-profile.md` is the per-repo stack contract and the single source of truth for anything stack- or repo-specific: platform and languages, targeted/component/phase validation tiers (including the exact scheme and simulator destination for iOS), test frameworks, coverage policy, shared-resource locks, project layout, run instructions, and the git workflow. If the file is missing or still has only the legacy single validation sequence, stop and raise profile migration as a blocker — do not guess commands or configuration.
 - **Platform & versions:** Platform, language, and framework versions are defined per repo in the Platform & languages and Framework versions sections of `docs/project-profile.md`. Do not assume versions this file or your training data suggest — the profile is authoritative.
 - **Your role:** Provide clean, production-grade, production-ready, high-quality code that adheres to the standards below. Do not partially implement anything — deliver complete working components, never placeholders or production TODOs. Every delivery is a complete, end-to-end feature slice: if the work is too much at once, take more components or phases, never a thinner feature. Never shrink a feature to fit a count, a time budget, or a document length.
-- **Communication:** All agents communicate via the structured Agent Report format defined in their agent definitions. Use that format for every user-facing message; do not invent ad-hoc report formats. The format is not duplicated here.
+- **Communication:** All agents communicate via the structured Agent Report format defined in their agent definitions. Keep it concise: outcomes, decisions, blockers, artifact paths, and the next owner only. Put command transcripts and detailed evidence in the named report/overview artifact. Do not invent ad-hoc report formats.
 - **Local development:** Follow the run instructions in `docs/project-profile.md`. Typical setup by stack: Swift/iOS — generate the Xcode project with `xcodegen generate` at the repo root; Python — activate the virtual environment with `source .venv/bin/activate` before running any Python code; TypeScript — install dependencies with `pnpm install`.
 - **MCP servers:** GitHub MCP enabled.
 
@@ -21,7 +21,7 @@ applyTo: '**' # instructions are automatically added to the request context when
 xcodegen generate
 
 # iOS (build & test via CLI)
-# Use the scheme, simulator destination, and validation sequence defined in docs/project-profile.md.
+# Use the scheme, simulator destination, and smallest applicable validation tier defined in docs/project-profile.md.
 
 # VENV (repo root)
 source .venv/bin/activate
@@ -30,7 +30,7 @@ source .venv/bin/activate
 set -o allexport; source .env.local; set +o allexport
 
 # TESTS
-# Run the validation sequence defined in docs/project-profile.md.
+# Run the smallest applicable validation tier defined in docs/project-profile.md.
 ```
 
 ## 1) Application Overview
@@ -104,15 +104,39 @@ The following documents drive phased implementation and must be kept up to date.
 
 | Document | Producer | Purpose |
 |----------|----------|---------|
-| `docs/project-profile.md` | Bootstrap script; maintained by the repo owner | **First read.** Per-repo stack contract: platform & languages, validation sequence, test frameworks, coverage policy, project layout, run instructions, git workflow |
+| `docs/project-profile.md` | Bootstrap script; maintained by the repo owner | **First read.** Per-repo stack contract: platform & languages, validation tiers, test frameworks, shared-resource locks, coverage policy, project layout, run instructions, git workflow |
 | `docs/*-product-solution-doc-*.md` | Supplied by the user; updated by the phase-docs agent | Application overview, architecture, design decisions |
 | `docs/brief.md` | project-manager agent | Synthesized project brief with problem statement, goals, users, requirements, constraints |
 | `docs/solution-design.md` | solutions-architect agent | Detailed technical solution design document |
 | `docs/phase-plan.md` | technical-business-analyst agent | Phase sequencing, dependencies, delivery strategy |
 | `docs/phase-X-component-breakdown.md` | tech-lead agent | Complete requirements for every component in a phase |
-| `docs/implementation-context-phase-X.md` | implement agents (appended per component) | Running log of implemented components within a phase |
-| `docs/components/phase-X-component-X-Y-overview.md` | implement agent | Summary of the component implementation |
+| `docs/phase-progress.json` | Lead Coordinator in team mode, from tech-lead phase-entry proposals | Component state, assurance lane, validation owner, and commit owner |
+| `docs/components/phase-X-component-X-Y-overview.md` | implement agent | **Sole component delivery manifest:** outcome, delivered files, public interfaces, integration notes, assurance lane, source-tree fingerprint, and validation evidence |
+| `docs/test-reports/phase-X-component-X-Y-test-report.md` | test agent, `test`/`full` only | Independent component-gate evidence tied to the candidate fingerprint |
+| `docs/phase-X-test-report.md` | Test Phase X | Mandatory phase-tier results and failures mapped to owning components |
 | `docs/phase-summary.md` | phase-docs agent | Post-completion summary of delivered phases |
+
+### Implement-led assurance lanes
+
+The approved component spec is the plan; interactive agents do not stop for another per-component plan approval. Pause only when delivery requires a material spec change, conscious descope, new external authority, or a human gate named in the project profile.
+
+Every component receives exactly one lane at handoff:
+
+| Lane | Component gate owner | Independent Review | Commit owner |
+|------|----------------------|--------------------|--------------|
+| `fast` | Implement | No | Implement |
+| `test` | Test | No | Implement |
+| `review` | Implement | Yes | Review |
+| `full` | Test | Yes | Review |
+| `phase-gate` | Test Phase X (phase tier) | Aggregate phase Review | Review |
+
+Test is triggered by UI/OS/external behaviour not fully proven by deterministic component tests, cross-component or persistence round trips, primary-path mocks/fakes, permissions/privacy/security, migrations or destructive state, concurrency/background execution, first use of a runtime/integration pattern, or regression-prone observable behaviour. Review is triggered by shared/core/app-entry/build/config/signing files, new or changed public API/schema/protocol/cross-component contracts, security/privacy authorization, a spec deviation or ADR, an open Technical Validation risk, an ownership exception, broad scope, or incomplete/contradictory evidence. Both trigger `full`; any critical signal also triggers `full`; neither triggers `fast`. The phase-final validation component always uses `phase-gate`.
+
+Run targeted checks freely during implementation, but run only one component gate for a final source-tree fingerprint. A validation artifact records a scoped command formed by appending explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --`; downstream roles reuse it while that scope is unchanged. Any in-scope source change invalidates that evidence and assigns one new gate to the lane's owner. Review performs static/spec/diff analysis and does not rerun valid evidence. Aggregate Review receives the phase-base SHA and ordered component commit SHAs, verifies historical scoped identities with `--rev`, and audits later integration diffs.
+
+Code authoring is serialized by default on the phase branch, with one active component-delivery engagement at a time: finish its assigned gate and commit before starting the next component. Parallel component authors are forbidden unless `docs/project-profile.md` explicitly defines the complete branch/worktree integration protocol; isolated worktrees or file disjointness alone are insufficient. The Lead Coordinator leases simulators, browsers, mutable test databases, ports, and equivalent validation resources one operation at a time. Every `git add`, commit, push, or branch-integrating write also passes through one serialized Git lane.
+
+Commit ownership is executable, not advisory. In `fast`, Implement runs its allowed completion gate and commits; in `test`, Test reports PASS and the same Implement engagement resumes commit-only. In team mode, the commit owner acquires the coordinator's Git lease; in solo/direct mode it verifies an uncontended index and self-holds the guard. The owner checks unrelated pre-staged work, stages explicit paths only, reviews the staged diff, commits/pushes exactly as the profile permits, and verifies the committed scoped fingerprint with `python3 scripts/worktree-fingerprint.py --rev HEAD -- [component paths]`. `review`, `full`, and `phase-gate` commits remain Review-owned.
 
 ## 2) Code Style and Conventions
 
@@ -209,20 +233,21 @@ SwiftLint runs as a build tool plugin on every build. The following thresholds a
 ---
 
 ## 3) CI/CD and Security
-- **iOS pipeline:** `xcodebuild build` + `xcodebuild test` via Xcode Cloud or GitHub Actions. SwiftLint runs as a build tool plugin (zero-warning policy on new files).
-- **Python pipeline:** Black, isort, pytest per the profile's validation sequence.
+- **iOS pipeline:** use the phase tier from the project profile in CI (`xcodebuild build` + cumulative `xcodebuild test`, with SwiftLint as configured).
+- **Python pipeline:** Black, isort, and cumulative pytest per the profile's phase tier.
 - **Web pipeline (pnpm):** build + type check; lint.
 - **Security pipeline:** Gitleaks; CodeQL as configured.
 - **Blocking policy:** CI must be green for PR merge. SwiftLint errors are build-blocking; warnings must not increase.
 
 ### Pre-Commit Validation
-All agents and contributors must run the validation sequence defined in `docs/project-profile.md` before considering work complete. For iOS projects, use the scheme, simulator destination, and validation sequence defined in `docs/project-profile.md` — never guess or invent them. The profile's commands are authoritative; the typical shape by stack is:
+
+Run the gate assigned by the component's assurance lane in `docs/project-profile.md`; do not automatically run the phase tier before every component commit. `fast` and `review` use Implement's one component gate. `test` and `full` use Test's one component gate. `phase-gate` uses the mandatory phase tier. A later role reuses passing evidence when the source-tree fingerprint is unchanged. The typical command families by stack are:
 
 ```bash
 # iOS (repo root)
 xcodegen generate
-# then xcodebuild build / xcodebuild test with the scheme and simulator destination
-# defined in docs/project-profile.md
+# then the targeted, component, or phase xcodebuild commands with the scheme and
+# simulator destination defined in docs/project-profile.md
 
 # Python
 source .venv/bin/activate
@@ -236,7 +261,7 @@ pnpm lint
 pnpm test
 ```
 
-Additional project-specific quality gates apply only if they are named in the profile's validation sequence. CI must be green before merge.
+Additional project-specific quality gates apply only if they are named in the corresponding profile tier. Independent Test must run the phase tier and record `docs/phase-X-test-report.md` PASS before merge; CI must also be green.
 
 ---
 
