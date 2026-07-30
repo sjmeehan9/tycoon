@@ -63,8 +63,11 @@ Rules:
   - `shared/feature-vertical.md` — end-to-end feature slicing rules (TBA, tech-lead, implement, review)
   - `shared/bugs-vs-polish.md` — error-handling/coverage exclusion rule (debug, review, test)
   - `shared/profile-reference.md` — `docs/project-profile.md` contract (all delivery agents)
+  - `shared/implementation-assurance.md` — versioned assurance lanes, risk triggers, gate ownership, and commit ownership (build coordinator + delivery agents)
+  - `shared/validation-tiers.md` — targeted/component/phase validation ownership, evidence fingerprints, fallback, and exclusive-resource rules (build skill + delivery agents)
   - `shared/memory-section.md` — persistent memory section (Claude outputs only; conditional inside the include)
-  - `shared/steward-prompt.md` — the Steward agent prompt (both skills)
+  - `shared/steward-prompt.md` — persistent validation-path Steward prompt
+  - `shared/build-steward-prompt.md` — event-driven, coordinator-run build-path Steward checklist (not a separate task agent)
 - Autonomous variants: put mode differences in `%%% begin interactive` / `%%% begin autonomous` blocks. The canonical difference set: clarification steps and approval waits are interactive-only; autonomous variants log **Assumptions** and proceed (see `shared/agent-report.md` and `shared/priority-doctrine.md`, which already carry the conditionals).
 
 ## Commands
