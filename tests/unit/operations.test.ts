@@ -11,12 +11,14 @@ import {
 } from '../../src/content/gameContent';
 import {
   advanceTick,
+  activeServiceJobs,
   buyEquipment,
   batchExpiryDay,
   candidatePoolForDay,
   closeDay,
   createCampaign,
   demandRate,
+  defaultStationAssignments,
   equipmentPreparationMultiplier,
   hireStaff,
   operationalEffects,
@@ -66,7 +68,11 @@ function withScheduledStaff(state: GameState, members: StaffMember[]): GameState
   return {
     ...state,
     staff: members,
-    plan: { ...state.plan, scheduledStaffIds: members.map((member) => member.id) },
+    plan: {
+      ...state.plan,
+      scheduledStaffIds: members.map((member) => member.id),
+      stationAssignments: defaultStationAssignments(state.venueId, members),
+    },
   };
 }
 
@@ -77,7 +83,7 @@ function withEquipment(state: GameState, equipmentId: EquipmentId, level = 1): G
 function advanceToFirstService(initial: GameState): GameState {
   let state = startRush(initial);
   let safety = 0;
-  while (!state.rush?.activeService && safety < 500) {
+  while ((!state.rush || activeServiceJobs(state.rush).length === 0) && safety < 500) {
     if (state.phase === 'event') {
       const choice = state.rush?.pendingEvent?.choices[0]?.id;
       if (!choice) throw new Error('Event had no choice.');
@@ -87,7 +93,9 @@ function advanceToFirstService(initial: GameState): GameState {
     }
     safety += 1;
   }
-  if (!state.rush?.activeService) throw new Error('No service began.');
+  if (!state.rush || activeServiceJobs(state.rush).length === 0) {
+    throw new Error('No service began.');
+  }
   return state;
 }
 
@@ -167,11 +175,18 @@ describe('staff operations', () => {
     state = hireStaff(state, state.candidateStaff[0]?.id ?? '');
     expect(state.staff).toHaveLength(3);
     const candidateIds = state.staff.map((candidate) => candidate.id);
-    state = prepareDay(state, { scheduledStaffIds: candidateIds.slice(0, 2) });
+    const selectedStaff = state.staff.slice(0, 2);
+    state = prepareDay(state, {
+      scheduledStaffIds: candidateIds.slice(0, 2),
+      stationAssignments: defaultStationAssignments(state.venueId, selectedStaff),
+    });
     expect(state.plan.scheduledStaffIds).toHaveLength(2);
-    expect(() => prepareDay(state, { scheduledStaffIds: candidateIds })).toThrow(
-      'can schedule 2 staff',
-    );
+    expect(() =>
+      prepareDay(state, {
+        scheduledStaffIds: candidateIds,
+        stationAssignments: defaultStationAssignments(state.venueId, state.staff),
+      }),
+    ).toThrow('can schedule 2 staff');
     expect(() => hireStaff(state, candidateIds[0] ?? '')).toThrow('no longer available');
 
     let department: GameState = {
@@ -193,14 +208,29 @@ describe('staff operations', () => {
       rosterCapacity: 12,
       scheduleCapacity: 10,
     });
-    expect(prepareDay(department, { scheduledStaffIds: [] }).plan.scheduledStaffIds).toEqual([]);
+    expect(
+      prepareDay(department, {
+        scheduledStaffIds: [],
+        stationAssignments: defaultStationAssignments(department.venueId, []),
+      }).plan.scheduledStaffIds,
+    ).toEqual([]);
     const scheduledTen = department.staff.slice(0, 10).map(({ id }) => id);
     expect(
-      prepareDay(department, { scheduledStaffIds: scheduledTen }).plan.scheduledStaffIds,
+      prepareDay(department, {
+        scheduledStaffIds: scheduledTen,
+        stationAssignments: defaultStationAssignments(
+          department.venueId,
+          department.staff.slice(0, 10),
+        ),
+      }).plan.scheduledStaffIds,
     ).toEqual(scheduledTen);
     expect(() =>
       prepareDay(department, {
         scheduledStaffIds: department.staff.slice(0, 11).map(({ id }) => id),
+        stationAssignments: defaultStationAssignments(
+          department.venueId,
+          department.staff.slice(0, 11),
+        ),
       }),
     ).toThrow('can schedule 10 staff');
     department = {
@@ -224,10 +254,22 @@ describe('staff operations', () => {
     );
     const scheduled = staff.slice(0, capacity).map(({ id }) => id);
     expect(
-      prepareDay({ ...base, staff }, { scheduledStaffIds: scheduled }).plan.scheduledStaffIds,
+      prepareDay(
+        { ...base, staff },
+        {
+          scheduledStaffIds: scheduled,
+          stationAssignments: defaultStationAssignments(venueId, staff.slice(0, capacity)),
+        },
+      ).plan.scheduledStaffIds,
     ).toEqual(scheduled);
     expect(() =>
-      prepareDay({ ...base, staff }, { scheduledStaffIds: staff.map(({ id }) => id) }),
+      prepareDay(
+        { ...base, staff },
+        {
+          scheduledStaffIds: staff.map(({ id }) => id),
+          stationAssignments: defaultStationAssignments(venueId, staff),
+        },
+      ),
     ).toThrow(`can schedule ${capacity} staff`);
   });
 
@@ -287,17 +329,20 @@ describe('staff operations', () => {
   });
 
   it('applies department work delays once and Runner effects never create stock', () => {
-    const base = { ...createCampaign({ seed: 112 }), venueId: 'departmentStore' as const };
+    const base = withEquipment(
+      { ...createCampaign({ seed: 112 }), venueId: 'departmentStore' as const },
+      'espressoMachine',
+    );
     const team = [
       teamMember('manager', 'manager', 'peoplePerson', 82, 84),
       teamMember('runner', 'runner', 'peoplePerson', 82, 84),
     ];
     const planned = withScheduledStaff(base, team);
     const inventoryBefore = structuredClone(planned.inventory);
-    const effects = operationalEffects(planned);
+    const effects = operationalEffects(planned, 'espressoBar');
     expect(planned.inventory).toEqual(inventoryBefore);
     const serving = advanceToFirstService(planned);
-    const order = serving.rush?.activeService?.customer.order;
+    const order = serving.rush ? activeServiceJobs(serving.rush)[0]?.customer.order : undefined;
     if (!order) throw new Error('Expected a prepared order.');
     const drink = DRINK_MAP.get(order.drinkId);
     const variant = drink?.variants.find(({ size }) => size === order.size);
@@ -315,6 +360,55 @@ describe('staff operations', () => {
       expectedBaseTicks +
         effects.coordinationReliabilityDelayTicks +
         effects.handoffWorkloadDelayTicks,
+    );
+  });
+
+  it('applies a reassigned team member only to the intended department station', () => {
+    const base: GameState = {
+      ...createCampaign({ seed: 119 }),
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    const team = ['espresso-staff', 'brew-staff', 'cold-staff'].map((id) =>
+      teamMember(id, 'barista', 'steady', 82, 84),
+    );
+    const initial = prepareDay(
+      { ...base, staff: team },
+      {
+        scheduledStaffIds: team.map(({ id }) => id),
+        stationAssignments: {
+          espressoBar: ['espresso-staff'],
+          brewBar: ['brew-staff'],
+          coldBar: ['cold-staff'],
+        },
+      },
+    );
+    const before = {
+      espresso: operationalEffects(initial, 'espressoBar'),
+      brew: operationalEffects(initial, 'brewBar'),
+      cold: operationalEffects(initial, 'coldBar'),
+    };
+    const reassigned = prepareDay(initial, {
+      stationAssignments: {
+        espressoBar: [],
+        brewBar: ['brew-staff'],
+        coldBar: ['cold-staff', 'espresso-staff'],
+      },
+    });
+
+    expect(operationalEffects(reassigned, 'brewBar')).toEqual(before.brew);
+    expect(operationalEffects(reassigned, 'espressoBar').preparationMultiplier).toBeGreaterThan(
+      before.espresso.preparationMultiplier,
+    );
+    expect(operationalEffects(reassigned, 'coldBar').preparationMultiplier).toBeLessThan(
+      before.cold.preparationMultiplier,
     );
   });
 
@@ -344,8 +438,9 @@ describe('staff operations', () => {
     expect(report.wageCostCents).toBe(payroll);
     expect(report.closingCashCents).toBe(report.openingCashCents + report.netCashFlowCents);
     expect(report.explanations.join(' ')).toContain('10 scheduled team members');
-    expect(report.explanations.join(' ')).toContain('Manager coverage:');
-    expect(report.explanations.join(' ')).toContain('Runner coverage:');
+    expect(report.explanations.join(' ')).toContain('Espresso bar:');
+    expect(report.explanations.join(' ')).toContain('Manager reduction');
+    expect(report.explanations.join(' ')).toContain('Runner reduction');
   });
 
   it('keeps department outcomes equal at 1×, 2×, and 4× presentation speeds', () => {

@@ -8,6 +8,7 @@ import {
   closeDay,
   continueEndless,
   createCampaign,
+  defaultStationAssignments,
   ingredientQuantity,
   hireStaff,
   prepareDay,
@@ -243,6 +244,10 @@ describe('seeded full-campaign balance', () => {
         },
         dialIn: 'quality',
         scheduledStaffIds: hiredIds,
+        stationAssignments: defaultStationAssignments(
+          state.venueId,
+          state.staff.filter((member) => hiredIds.includes(member.id)),
+        ),
       });
       state = closeDay(runRush(startRush(state)));
       if (state.phase === 'reinvest') state = startNextDay(state);
@@ -260,6 +265,11 @@ function simulateCampaign(
   let state = createCampaign({ seed, difficulty });
   let departmentDay: number | null = null;
   while (state.phase === 'planning') {
+    if (state.venueId === 'departmentStore') state = ensureDepartmentTeam(state);
+    const scheduledStaff =
+      state.venueId === 'departmentStore'
+        ? state.staff.filter((member) => member.role === 'barista' || member.role === 'manager')
+        : [];
     state = prepareDay(state, {
       activeMenu: ['espresso', 'longBlack', 'batchBrew'],
       pricesCents: {
@@ -273,6 +283,8 @@ function simulateCampaign(
       },
       dialIn,
       beanId: 'houseBeans',
+      scheduledStaffIds: scheduledStaff.map(({ id }) => id),
+      stationAssignments: defaultStationAssignments(state.venueId, scheduledStaff),
     });
     state = closeDay(runRush(startRush(state)));
     if (state.phase !== 'reinvest') break;
@@ -310,6 +322,7 @@ function investForGrowth(initial: GameState): GameState {
     buyIfReady('espressoMachine');
     buyIfReady('refrigeration');
     buyIfReady('pos');
+    if (state.equipment.batchBrewer === 0) buyIfReady('batchBrewer');
     if (
       state.equipment.grinder >= 2 &&
       state.equipment.espressoMachine >= 2 &&
@@ -320,8 +333,20 @@ function investForGrowth(initial: GameState): GameState {
     ) {
       state = promoteVenue(state);
     }
-  } else if (state.venueId === 'cafe' && state.reputation >= 70 && state.cashCents >= 23_000) {
-    state = promoteVenue(state);
+  } else if (state.venueId === 'cafe') {
+    if (state.equipment.batchBrewer === 0) buyIfReady('batchBrewer');
+    if (state.reputation >= 70 && state.cashCents >= 23_000) state = promoteVenue(state);
+  }
+  return state;
+}
+
+function ensureDepartmentTeam(initial: GameState): GameState {
+  let state = initial;
+  for (const role of ['barista', 'manager'] as const) {
+    if (state.staff.some((member) => member.role === role)) continue;
+    const candidate = state.candidateStaff.find((member) => member.role === role);
+    if (!candidate) throw new Error(`Expected a ${role} candidate for department service.`);
+    state = hireStaff(state, candidate.id);
   }
   return state;
 }

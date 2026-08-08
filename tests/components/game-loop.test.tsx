@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
+import { TICKS_PER_SECOND } from '../../src/content/gameContent';
 import {
   advanceTick,
   closeDay,
@@ -127,6 +128,19 @@ describe('playable cart UI', () => {
     expect(restoredScene).toHaveAttribute('data-animation', 'still');
     expect(screen.getByText('SALE +$7.25')).toBeVisible();
     expect(screen.getByText('OUT OF STOCK')).toBeVisible();
+    expect(document.querySelector('[data-dashboard-field="queue"]')).toHaveTextContent('Waiting12');
+    expect(document.querySelector('[data-dashboard-field="normalQueue"]')).toHaveTextContent(
+      'Normal12',
+    );
+    expect(document.querySelector('[data-dashboard-field="expressQueue"]')).toHaveTextContent(
+      'Express0',
+    );
+    expect(document.querySelector('[data-dashboard-field="activeJobs"]')).toHaveTextContent(
+      'Making1',
+    );
+    expect(screen.getByRole('list', { name: 'Live station service' })).toHaveTextContent(
+      'Normal job d1-j1',
+    );
   });
 
   it('shows every exact live stock item with active ingredients first', async () => {
@@ -202,7 +216,8 @@ describe('playable cart UI', () => {
   });
 
   it('shows report semantics and allows settlement and reinvestment', async () => {
-    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(stateAtReport()));
+    const reportState = stateAtReport();
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(reportState));
     const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
@@ -216,6 +231,23 @@ describe('playable cart UI', () => {
     await user.click(screen.getByText('View full Day 1 report'));
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
+    const serviceTable = screen.getByRole('table', {
+      name: 'Canonical service settlement by station and lane',
+    });
+    expect(serviceTable).toBeVisible();
+    const servedAggregate = reportState.report?.serviceAggregates.find(
+      (aggregate) => aggregate.served > 0,
+    );
+    if (!servedAggregate) throw new Error('Expected a served report aggregate.');
+    const aggregateRow = serviceTable.querySelector(
+      `[data-station-id="${servedAggregate.stationId}"][data-lane-id="${servedAggregate.laneId}"]`,
+    );
+    const expectedWait =
+      Math.round(
+        (servedAggregate.totalWaitTicks / servedAggregate.served / TICKS_PER_SECOND) * 10,
+      ) / 10;
+    expect(aggregateRow).toHaveTextContent(`${expectedWait}s`);
+    expect(aggregateRow).toHaveTextContent(String(servedAggregate.completedJobIds.length));
     expect(screen.getByRole('list', { name: 'Canonical sale charges' })).toBeVisible();
     expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
     expect(screen.getByRole('table', { name: 'Inventory lifecycle reconciliation' })).toBeVisible();
@@ -343,6 +375,30 @@ describe('playable cart UI', () => {
     expect(screen.getByText(/payroll at close/)).toBeVisible();
   });
 
+  it('states the department staffing requirement truthfully when no one is hired', async () => {
+    const department = {
+      ...createCampaign({ seed: 8_219 }),
+      venueId: 'departmentStore' as const,
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(department, {
+        ...createDefaultPreferences(),
+        onboardingComplete: true,
+      }),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+
+    expect(
+      screen.getByText(
+        'Department stations require hired, scheduled staff with compatible assignments before service can start. Hire below to build station coverage.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/owner is covering every station/i)).not.toBeInTheDocument();
+  });
+
   it('shows ten-person department scheduling, operational value, and accessible overflow', async () => {
     const envelope = departmentWorkforceEnvelope();
     const expectedPayroll = envelope.activeRun?.staff.reduce(
@@ -365,9 +421,40 @@ describe('playable cart UI', () => {
     expect(
       screen.getByRole('list', { name: 'Applied department workforce effects' }),
     ).toHaveTextContent(
-      /Manager.*coordination\/reliability ticks remain.*Runner.*replenishment\/handoff ticks remain/,
+      /Espresso bar:.*Manager.*coordination\/reliability.*Brew bar:.*Runner.*replenishment\/handoff/,
     );
     expect(screen.getAllByText(/without changing stock/).length).toBeGreaterThan(0);
+    const stationSelectors = screen.getAllByRole('combobox', { name: /service station/ });
+    expect(stationSelectors).toHaveLength(10);
+    const manager = envelope.activeRun?.staff.find((member) => member.role === 'manager');
+    if (!manager) throw new Error('Expected department Manager fixture.');
+    const managerStation = screen.getByRole('combobox', {
+      name: `${manager.name} service station`,
+    });
+    expect(within(managerStation).getByRole('option', { name: 'Cold bar' })).toBeDisabled();
+
+    await user.click(screen.getByRole('tab', { name: 'Menu' }));
+    const expressCards = ['Espresso', 'Batch Brew', 'Cold Brew', 'Long Black'].map((drinkName) => {
+      const heading = screen.getByText(drinkName, { selector: '.check-row strong' });
+      const card = heading.closest('.menu-card');
+      if (!card) throw new Error(`Expected ${drinkName} menu card.`);
+      return within(card as HTMLElement);
+    });
+    for (const card of expressCards) {
+      const menuChoice = card.getAllByRole('checkbox')[0];
+      if (!menuChoice) throw new Error('Expected menu choice.');
+      if (!menuChoice.hasAttribute('checked') && !(menuChoice as HTMLInputElement).checked) {
+        await user.click(menuChoice);
+      }
+    }
+    for (const card of expressCards.slice(0, 3)) {
+      await user.click(card.getByRole('checkbox', { name: /Express lane/ }));
+    }
+    expect(expressCards[0]?.getByRole('checkbox', { name: /Express lane/ })).toBeChecked();
+    expect(expressCards[3]?.getByRole('checkbox', { name: /Express lane/ })).toBeDisabled();
+    expect(expressCards[3]?.getByText('Maximum 3 express drinks selected.')).toBeVisible();
+
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
 
     let hireButtons = screen.getAllByRole('button', { name: /^Hire / });
     expect(hireButtons).toHaveLength(2);

@@ -6,10 +6,14 @@ import {
   EQUIPMENT_IDS,
   INGREDIENT_DETAILS,
   INGREDIENT_IDS,
+  INGREDIENT_UNIT_COST_CENTS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
   RUSH_ACTIVITY_LIMIT,
   STAFF_ROLES,
+  TICKS_PER_SECOND,
   VENUE_IDS,
+  emptyIngredientTotals,
+  milkIngredient,
   staffRoleAvailableAtVenue,
   workforceCapacityFor,
 } from '../content/gameContent';
@@ -19,7 +23,25 @@ import {
   MIN_REPORT_CHARGE_PRICE_CENTS,
   candidatePoolForDay,
 } from '../game/engine';
-import { batchExpiryDay } from '../game/inventory';
+import { batchExpiryDay, inventoryTotals } from '../game/inventory';
+import {
+  LANE_IDS,
+  MAX_CONSECUTIVE_EXPRESS_STARTS,
+  MAX_EXPRESS_DRINKS,
+  MAX_SERVICE_JOBS_PER_RUSH,
+  STATION_IDS,
+  defaultStationAssignments,
+  emptyExpressStartCounters,
+  emptyServiceAggregates,
+  emptyServiceJobs,
+  expressDrinkEligible,
+  laneForDrink,
+  serviceAggregatesForPlan,
+  serviceConfigFor,
+  serviceJobId,
+  staffStationCompatible,
+  stationForDrink,
+} from '../game/serviceStations';
 import { candidateStaffSlotFromId } from '../game/staffNames';
 import type {
   AchievementId,
@@ -31,16 +53,25 @@ import type {
   DayPlan,
   DayReport,
   Difficulty,
+  DrinkId,
+  EquipmentState,
   GamePhase,
   GameState,
+  IngredientAmount,
   IngredientId,
+  IngredientInventory,
   IngredientTotals,
+  LaneId,
   MetaProgress,
   Preferences,
+  ReportChargeGroup,
   RushState,
   SaveEnvelope,
   ScenarioId,
+  ServiceAggregate,
+  ServiceJob,
   StaffMember,
+  StationId,
 } from '../game';
 
 export const SAVE_KEY = 'laneway-tycoon.save.v4';
@@ -184,9 +215,9 @@ export class BrowserSaveStore {
   public load(): LoadSaveResult {
     const primaryRaw = this.storage.getItem(SAVE_KEY);
     const primary = primaryRaw ? parseEnvelope(primaryRaw) : null;
-    if (primary) {
+    if (primary && primaryRaw) {
       const noticePending = !primary.preferences.evolutionNoticeSeen;
-      if (noticePending) this.save(primary);
+      if (noticePending || needsCanonicalRewrite(primaryRaw, primary)) this.save(primary);
       else this.quarantineLegacyCandidates();
       return {
         envelope: markEvolutionNoticeSeen(primary),
@@ -198,9 +229,9 @@ export class BrowserSaveStore {
 
     const backupRaw = this.storage.getItem(BACKUP_SAVE_KEY);
     const backup = backupRaw ? parseEnvelope(backupRaw) : null;
-    if (backup) {
+    if (backup && backupRaw) {
       const noticePending = !backup.preferences.evolutionNoticeSeen;
-      if (noticePending) this.save(backup);
+      if (noticePending || needsCanonicalRewrite(backupRaw, backup)) this.save(backup);
       else this.quarantineLegacyCandidates();
       return {
         envelope: markEvolutionNoticeSeen(backup),
@@ -342,8 +373,9 @@ export function importEnvelope(serialized: string): SaveEnvelope {
     validateEnvelope(reset as unknown as Record<string, unknown>);
     return reset;
   }
-  validateEnvelope(value);
-  return value as unknown as SaveEnvelope;
+  const canonical = canonicalizeCurrentV4Envelope(value);
+  validateEnvelope(canonical);
+  return canonical as unknown as SaveEnvelope;
 }
 
 /** Return null for invalid storage payloads; use importEnvelope for actionable errors. */
@@ -415,6 +447,14 @@ function markEvolutionNoticeSeen(envelope: SaveEnvelope): SaveEnvelope {
   };
 }
 
+function needsCanonicalRewrite(serialized: string, envelope: SaveEnvelope): boolean {
+  try {
+    return JSON.stringify(JSON.parse(serialized)) !== JSON.stringify(envelope);
+  } catch {
+    return true;
+  }
+}
+
 function legacyResetWarning(
   source: 'legacy-v3' | 'legacy-v2' | 'legacy-v1',
   fromBackup: boolean,
@@ -422,6 +462,295 @@ function legacyResetWarning(
   const version = source.slice(-1);
   const location = fromBackup ? `version ${version} recovery backup` : `version ${version} save`;
   return `The game has evolved. Your ${location} kept sound, ambience, and reduced-motion settings; campaign progress was reset for the new Standard and Hard modes.`;
+}
+
+/** Canonicalize pre-8.5 v4 shapes before every strict read, recovery, import, and write. */
+function canonicalizeCurrentV4Envelope(value: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(value.activeRun)) return value;
+  const state = { ...value.activeRun };
+  const venueId = VENUE_IDS.includes(state.venueId as GameState['venueId'])
+    ? (state.venueId as GameState['venueId'])
+    : null;
+  const equipment = isRecord(state.equipment) ? state.equipment : null;
+  const plan = isRecord(state.plan) ? { ...state.plan } : null;
+  const staff = Array.isArray(state.staff) ? state.staff : null;
+  const day = typeof state.day === 'number' && Number.isInteger(state.day) ? state.day : null;
+
+  if (plan && venueId) {
+    if (plan.stationAssignments === undefined && Array.isArray(plan.scheduledStaffIds) && staff) {
+      const staffById = new Map(
+        staff
+          .filter(isRecord)
+          .filter((member) => typeof member.id === 'string')
+          .map((member) => [member.id as string, member]),
+      );
+      const scheduled = plan.scheduledStaffIds.flatMap((id) => {
+        const member = typeof id === 'string' ? staffById.get(id) : undefined;
+        return member && STAFF_ROLES.includes(member.role as StaffMember['role'])
+          ? [member as unknown as StaffMember]
+          : [];
+      });
+      if (scheduled.length === plan.scheduledStaffIds.length) {
+        plan.stationAssignments = defaultStationAssignments(venueId, scheduled);
+      }
+    }
+    if (plan.expressDrinkIds === undefined) plan.expressDrinkIds = [];
+    state.plan = plan;
+  }
+
+  if (isRecord(state.rush) && venueId && equipment && plan && day !== null) {
+    state.rush = canonicalizeCurrentV4Rush(state.rush, day, venueId, equipment, plan);
+  }
+  if (isRecord(state.report)) {
+    state.report = canonicalizeCurrentV4Report(state.report);
+  }
+  if (Array.isArray(state.history)) {
+    const history: unknown[] = state.history;
+    state.history = history.map((report) =>
+      isRecord(report) ? canonicalizeCurrentV4Report(report) : report,
+    );
+  }
+  return { ...value, activeRun: state };
+}
+
+function canonicalizeCurrentV4Rush(
+  source: Record<string, unknown>,
+  day: number,
+  venueId: GameState['venueId'],
+  equipment: Record<string, unknown>,
+  plan: Record<string, unknown>,
+): Record<string, unknown> {
+  const rush = { ...source };
+  const hasLegacyAuthority = 'queue' in rush || 'activeService' in rush;
+  if (hasLegacyAuthority) {
+    const normalSource = Array.isArray(rush.normalQueue)
+      ? rush.normalQueue
+      : Array.isArray(rush.queue)
+        ? rush.queue
+        : [];
+    const normalQueue = normalSource.map((customer) =>
+      canonicalizeLegacyCustomer(customer, venueId, equipment, plan),
+    );
+    rush.normalQueue = normalQueue;
+    rush.expressQueue = Array.isArray(rush.expressQueue)
+      ? rush.expressQueue.map((customer) =>
+          canonicalizeLegacyCustomer(customer, venueId, equipment, plan),
+        )
+      : [];
+
+    const jobs = emptyServiceJobs() as unknown as Record<string, unknown>;
+    const legacyService = isRecord(rush.activeService) ? rush.activeService : null;
+    let activeJob: Record<string, unknown> | null = null;
+    if (legacyService && isRecord(legacyService.customer)) {
+      const customer = canonicalizeLegacyCustomer(legacyService.customer, venueId, equipment, plan);
+      if (isRecord(customer) && STATION_IDS.includes(customer.stationId as StationId)) {
+        const stationId = customer.stationId as StationId;
+        activeJob = {
+          ...legacyService,
+          id: serviceJobId(day, 0),
+          stationId,
+          laneId: customer.laneId,
+          customer,
+        };
+        jobs[stationId] = activeJob;
+      }
+    }
+    if (!isRecord(rush.serviceJobsByStation)) rush.serviceJobsByStation = jobs;
+    if (!isRecord(rush.consecutiveExpressStartsByStation)) {
+      rush.consecutiveExpressStartsByStation = emptyExpressStartCounters();
+    }
+    if (rush.nextServiceJobSequence === undefined) {
+      rush.nextServiceJobSequence = activeJob ? 1 : 0;
+    }
+    if (Array.isArray(rush.recentActivity)) {
+      rush.recentActivity = canonicalizeLegacyActivity(
+        rush.recentActivity,
+        day,
+        venueId,
+        activeJob,
+        Array.isArray(rush.normalQueue) ? rush.normalQueue : [],
+        Array.isArray(rush.expressQueue) ? rush.expressQueue : [],
+      );
+    }
+    if (isRecord(rush.stats) && rush.stats.serviceAggregates === undefined) {
+      rush.stats = {
+        ...rush.stats,
+        serviceAggregates: migrateServiceAggregates(
+          rush.stats,
+          day,
+          migratedRushServiceMetadata(venueId, equipment, plan),
+        ),
+      };
+    }
+  }
+  delete rush.queue;
+  delete rush.activeService;
+  return rush;
+}
+
+function canonicalizeLegacyCustomer(
+  value: unknown,
+  venueId: GameState['venueId'],
+  equipment: Record<string, unknown>,
+  plan: Record<string, unknown>,
+): unknown {
+  if (!isRecord(value) || !isRecord(value.order)) return value;
+  const drinkId = value.order.drinkId;
+  if (!ALL_DRINK_IDS.includes(drinkId as DayPlan['activeMenu'][number])) return value;
+  const stationId = stationForDrink(venueId, drinkId as DayPlan['activeMenu'][number]);
+  const typedEquipment = equipment as unknown as EquipmentState;
+  const expressDrinkIds = Array.isArray(plan.expressDrinkIds)
+    ? (plan.expressDrinkIds as DayPlan['expressDrinkIds'])
+    : [];
+  return {
+    ...value,
+    stationId,
+    laneId: laneForDrink(venueId, typedEquipment, { expressDrinkIds }, drinkId as DrinkId),
+  };
+}
+
+function canonicalizeLegacyActivity(
+  events: unknown[],
+  day: number,
+  venueId: GameState['venueId'],
+  activeJob: Record<string, unknown> | null,
+  normalQueue: unknown[],
+  expressQueue: unknown[],
+): unknown[] {
+  const routeByCustomer = new Map<string, { stationId: StationId; laneId: LaneId }>();
+  const jobByCustomer = new Map<string, string>();
+  for (const customer of [...normalQueue, ...expressQueue]) {
+    if (
+      isRecord(customer) &&
+      typeof customer.id === 'string' &&
+      STATION_IDS.includes(customer.stationId as StationId) &&
+      LANE_IDS.includes(customer.laneId as LaneId)
+    ) {
+      routeByCustomer.set(customer.id, {
+        stationId: customer.stationId as StationId,
+        laneId: customer.laneId as LaneId,
+      });
+    }
+  }
+  if (activeJob && isRecord(activeJob.customer) && typeof activeJob.customer.id === 'string') {
+    routeByCustomer.set(activeJob.customer.id, {
+      stationId: activeJob.stationId as StationId,
+      laneId: activeJob.laneId as LaneId,
+    });
+    jobByCustomer.set(activeJob.customer.id, activeJob.id as string);
+  }
+  for (const event of events) {
+    if (!isRecord(event) || typeof event.customerId !== 'string') continue;
+    if (
+      (event.type === 'serviceStarted' || event.type === 'sale') &&
+      ALL_DRINK_IDS.includes(event.drinkId as DrinkId)
+    ) {
+      routeByCustomer.set(event.customerId, {
+        stationId: stationForDrink(venueId, event.drinkId as DrinkId),
+        laneId: 'normal',
+      });
+      if (!jobByCustomer.has(event.customerId)) {
+        jobByCustomer.set(event.customerId, `d${day}-migrated-j${String(event.sequence)}`);
+      }
+    }
+  }
+  return events.map((event) => {
+    if (!isRecord(event) || typeof event.customerId !== 'string') return event;
+    const route = routeByCustomer.get(event.customerId) ?? {
+      stationId: 'espressoBar' as const,
+      laneId: 'normal' as const,
+    };
+    const requiresJob = event.type === 'serviceStarted' || event.type === 'sale';
+    const activeWalkaway =
+      event.type === 'walkaway' &&
+      event.reason === 'rushEnded' &&
+      activeJob !== null &&
+      isRecord(activeJob.customer) &&
+      activeJob.customer.id === event.customerId;
+    return {
+      ...event,
+      ...route,
+      jobId: requiresJob || activeWalkaway ? (jobByCustomer.get(event.customerId) ?? null) : null,
+    };
+  });
+}
+
+function canonicalizeCurrentV4Report(source: Record<string, unknown>): Record<string, unknown> {
+  if (source.serviceAggregates !== undefined || typeof source.day !== 'number') return source;
+  return {
+    ...source,
+    serviceAggregates: migrateServiceAggregates(
+      {
+        served: source.served,
+        revenueCents: source.revenueCents,
+        totalWaitTicks:
+          typeof source.averageWaitSeconds === 'number' && typeof source.served === 'number'
+            ? Math.round(source.averageWaitSeconds * source.served * TICKS_PER_SECOND)
+            : 0,
+        satisfactionTotal:
+          typeof source.satisfactionPercent === 'number' && typeof source.served === 'number'
+            ? source.satisfactionPercent * source.served
+            : 0,
+      },
+      source.day,
+    ),
+  };
+}
+
+function migrateServiceAggregates(
+  totals: Record<string, unknown>,
+  day: number,
+  metadata: ServiceAggregate[] = emptyServiceAggregates(),
+): ServiceAggregate[] {
+  const aggregates: ServiceAggregate[] = metadata.map((aggregate) => ({
+    ...aggregate,
+    assignedStaffIds: [...aggregate.assignedStaffIds],
+    equipmentIds: [...aggregate.equipmentIds],
+    completedJobIds: [] as string[],
+    served: 0,
+    revenueCents: 0,
+    totalWaitTicks: 0,
+    satisfactionTotal: 0,
+  }));
+  const served = typeof totals.served === 'number' ? Math.max(0, Math.trunc(totals.served)) : 0;
+  const revenueCents =
+    typeof totals.revenueCents === 'number' ? Math.max(0, Math.trunc(totals.revenueCents)) : 0;
+  const legacy = aggregates.find(
+    (aggregate) => aggregate.stationId === 'espressoBar' && aggregate.laneId === 'normal',
+  );
+  if (legacy) {
+    const retainedJobCount = Math.min(served, MAX_SERVICE_JOBS_PER_RUSH + 1);
+    legacy.served = served;
+    legacy.revenueCents = revenueCents;
+    legacy.completedJobIds = Array.from(
+      { length: retainedJobCount },
+      (_, index) => `d${day}-migrated-complete-${index}`,
+    );
+    legacy.totalWaitTicks =
+      typeof totals.totalWaitTicks === 'number' ? Math.max(0, totals.totalWaitTicks) : 0;
+    legacy.satisfactionTotal =
+      typeof totals.satisfactionTotal === 'number' ? Math.max(0, totals.satisfactionTotal) : 0;
+  }
+  return aggregates;
+}
+
+function migratedRushServiceMetadata(
+  venueId: GameState['venueId'],
+  equipment: Record<string, unknown>,
+  plan: Record<string, unknown>,
+): ServiceAggregate[] {
+  const assignments = plan.stationAssignments;
+  if (
+    !isRecord(assignments) ||
+    !STATION_IDS.every((stationId) => Array.isArray(assignments[stationId]))
+  ) {
+    return emptyServiceAggregates();
+  }
+  return serviceAggregatesForPlan(
+    venueId,
+    plan as unknown as DayPlan,
+    equipment as unknown as EquipmentState,
+  );
 }
 
 function validateEnvelope(value: Record<string, unknown>): void {
@@ -485,6 +814,9 @@ function validateGameState(value: unknown): asserts value is GameState {
   const venueId = state.venueId;
   assertEnum(state.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], 'activeRun.weather');
   validateInventory(state.inventory, 'activeRun.inventory', state.day);
+  const inventory = state.inventory;
+  validateEquipment(state.equipment);
+  const equipment = state.equipment;
   const workforceCapacity = workforceCapacityFor(venueId);
   const staff = validateStaffArray(
     state.staff,
@@ -497,8 +829,10 @@ function validateGameState(value: unknown): asserts value is GameState {
     staff.every((member) => staffRoleAvailableAtVenue(member.role, venueId)),
     'Every hired role must be eligible for the active venue.',
   );
-  validatePlan(state.plan, venueId, staff);
-  if (state.rush !== null) validateRush(state.rush, state.day);
+  validatePlan(state.plan, venueId, staff, equipment);
+  if (state.rush !== null) {
+    validateRush(state.rush, state.day, venueId, state.plan, equipment, inventory, state.phase);
+  }
   if (state.report !== null) {
     validateReport(state.report, 'activeRun.report');
     assert(
@@ -523,7 +857,6 @@ function validateGameState(value: unknown): asserts value is GameState {
     );
   }
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
-  validateEquipment(state.equipment);
   const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
   improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
   expectArray(state.history, 'activeRun.history', CAMPAIGN_RULES.maximumHistoryDays).forEach(
@@ -542,6 +875,7 @@ function validatePlan(
   value: unknown,
   venueId: GameState['venueId'],
   staff: StaffMember[],
+  equipment: EquipmentState,
 ): asserts value is DayPlan {
   const plan = expectRecord(value, 'activeRun.plan');
   assertEnumArray(plan.activeMenu, ALL_DRINK_IDS, 10, 'activeRun.plan.activeMenu', 1);
@@ -576,22 +910,155 @@ function validatePlan(
     }),
     'Every scheduled role must be eligible for the active venue.',
   );
+  const assignments = expectRecord(plan.stationAssignments, 'activeRun.plan.stationAssignments');
+  assert(
+    Object.keys(assignments).length === STATION_IDS.length &&
+      STATION_IDS.every((stationId) => Object.hasOwn(assignments, stationId)),
+    'Station assignments must contain every canonical station exactly once.',
+  );
+  const activeStations = serviceConfigFor(venueId).stationIds;
+  const assigned: string[] = [];
+  for (const stationId of STATION_IDS) {
+    const ids = expectArray(
+      assignments[stationId],
+      `activeRun.plan.stationAssignments.${stationId}`,
+      scheduleCapacity,
+    );
+    ids.forEach((id, index) =>
+      assertSafeId(id, `activeRun.plan.stationAssignments.${stationId}[${index}]`),
+    );
+    if (!activeStations.includes(stationId)) {
+      assert(ids.length === 0, 'Inactive stations cannot contain staff assignments.');
+    }
+    for (const id of ids as string[]) {
+      const member = staffById.get(id);
+      assert(member !== undefined, 'Station assignments must identify scheduled hired staff.');
+      assert(scheduled.includes(id), 'Unscheduled staff cannot be assigned to a station.');
+      assert(
+        staffStationCompatible(member.role, stationId, venueId),
+        'Station assignments must be role-compatible.',
+      );
+      assigned.push(id);
+    }
+  }
+  assert(new Set(assigned).size === assigned.length, 'Station assignments must not be duplicated.');
+  assert(
+    assigned.length === scheduled.length && scheduled.every((id) => assigned.includes(id)),
+    'Every scheduled staff member must have exactly one station assignment.',
+  );
+  const expressDrinkIds = expectArray(
+    plan.expressDrinkIds,
+    'activeRun.plan.expressDrinkIds',
+    MAX_EXPRESS_DRINKS,
+  );
+  expressDrinkIds.forEach((drinkId, index) =>
+    assertEnum(drinkId, ALL_DRINK_IDS, `activeRun.plan.expressDrinkIds[${index}]`),
+  );
+  assert(
+    new Set(expressDrinkIds).size === expressDrinkIds.length,
+    'Express drink selections must be unique.',
+  );
+  for (const drinkId of expressDrinkIds as DrinkId[]) {
+    assert(
+      (plan.activeMenu as unknown[]).includes(drinkId),
+      'Express drinks must be selected from the active menu.',
+    );
+    assert(
+      expressDrinkEligible(venueId, equipment, drinkId),
+      'Express drinks must be eligible for their recipe, equipment, and station.',
+    );
+  }
 }
 
-function validateRush(value: unknown, day: number): asserts value is RushState {
+function validateRush(
+  value: unknown,
+  day: number,
+  venueId: GameState['venueId'],
+  plan: DayPlan,
+  equipment: EquipmentState,
+  inventory: IngredientInventory,
+  phase: GamePhase,
+): asserts value is RushState {
   const rush = expectRecord(value, 'activeRun.rush');
+  assert(rush.queue === undefined, 'rush.queue is a removed service authority.');
+  assert(rush.activeService === undefined, 'rush.activeService is a removed service authority.');
   assertNumber(rush.tick, 'rush.tick', 0, 2_000, true);
   assertNumber(rush.durationTicks, 'rush.durationTicks', 1, 2_000, true);
   assert(typeof rush.isPaused === 'boolean', 'rush.isPaused must be boolean.');
   assertEnum(rush.speed, [1, 2, 4], 'rush.speed');
-  expectArray(rush.queue, 'rush.queue', 40).forEach((customer, index) =>
-    validateCustomer(customer, `rush.queue[${index}]`),
+  const liveCustomers = new Map<string, Customer>();
+  let maximumCustomerSequence = -1;
+  const normalQueue = expectArray(rush.normalQueue, 'rush.normalQueue', 40);
+  const expressQueue = expectArray(rush.expressQueue, 'rush.expressQueue', 40);
+  assert(normalQueue.length + expressQueue.length <= 40, 'Combined service queues exceed 40.');
+  for (const [laneId, queue] of [
+    ['normal', normalQueue],
+    ['express', expressQueue],
+  ] as const) {
+    queue.forEach((customer, index) => {
+      validateCustomer(customer, `rush.${laneId}Queue[${index}]`, venueId, plan, equipment);
+      assert(customer.laneId === laneId, `rush.${laneId}Queue contains the wrong lane.`);
+      assert(!liveCustomers.has(customer.id), 'Live customer IDs must be unique.');
+      const customerSequence = currentDayEntitySequence(customer.id, day, 'c');
+      assert(customerSequence !== null, `rush.${laneId}Queue customer IDs must match the day.`);
+      maximumCustomerSequence = Math.max(maximumCustomerSequence, customerSequence);
+      liveCustomers.set(customer.id, customer);
+    });
+  }
+  const jobs = expectRecord(rush.serviceJobsByStation, 'rush.serviceJobsByStation');
+  assertCanonicalRecordKeys(jobs, STATION_IDS, 'rush.serviceJobsByStation');
+  const counters = expectRecord(
+    rush.consecutiveExpressStartsByStation,
+    'rush.consecutiveExpressStartsByStation',
   );
-  if (rush.activeService !== null) {
-    const service = expectRecord(rush.activeService, 'rush.activeService');
-    validateCustomer(service.customer, 'rush.activeService.customer');
-    assertNumber(service.remainingTicks, 'service.remainingTicks', 0, 2_000, true);
-    assertNumber(service.totalTicks, 'service.totalTicks', 1, 2_000, true);
+  assertCanonicalRecordKeys(counters, STATION_IDS, 'rush.consecutiveExpressStartsByStation');
+  assertNumber(
+    rush.nextServiceJobSequence,
+    'rush.nextServiceJobSequence',
+    0,
+    MAX_SERVICE_JOBS_PER_RUSH,
+    true,
+  );
+  const activeStations = serviceConfigFor(venueId).stationIds;
+  const activeJobIds = new Set<string>();
+  const activeJobs: ServiceJob[] = [];
+  let maximumServiceJobSequence = -1;
+  for (const stationId of STATION_IDS) {
+    assertNumber(
+      counters[stationId],
+      `rush.consecutiveExpressStartsByStation.${stationId}`,
+      0,
+      MAX_CONSECUTIVE_EXPRESS_STARTS,
+      true,
+    );
+    const value = jobs[stationId];
+    if (!activeStations.includes(stationId)) {
+      assert(value === null, 'Inactive venue stations cannot contain service jobs.');
+      assert(counters[stationId] === 0, 'Inactive venue station fairness counters must be zero.');
+      continue;
+    }
+    if (value === null) continue;
+    const job = validateServiceJob(
+      value,
+      `rush.serviceJobsByStation.${stationId}`,
+      stationId,
+      day,
+      venueId,
+      plan,
+      equipment,
+      rush.nextServiceJobSequence,
+    );
+    assert(!activeJobIds.has(job.id), 'Active service-job IDs must be unique.');
+    assert(!liveCustomers.has(job.customer.id), 'A customer cannot be queued and in service.');
+    const serviceJobSequence = currentDayEntitySequence(job.id, day, 'j');
+    assert(serviceJobSequence !== null, 'Active service-job IDs must match the active day.');
+    maximumServiceJobSequence = Math.max(maximumServiceJobSequence, serviceJobSequence);
+    const customerSequence = currentDayEntitySequence(job.customer.id, day, 'c');
+    assert(customerSequence !== null, 'Active customer IDs must match the active day.');
+    maximumCustomerSequence = Math.max(maximumCustomerSequence, customerSequence);
+    activeJobIds.add(job.id);
+    activeJobs.push(job);
+    liveCustomers.set(job.customer.id, job.customer);
   }
   if (rush.pendingEvent !== null) validateEvent(rush.pendingEvent);
   expectArray(rush.resolvedEvents, 'rush.resolvedEvents', 10).forEach((event, index) => {
@@ -603,8 +1070,8 @@ function validateRush(value: unknown, day: number): asserts value is RushState {
   expectArray(rush.eventTriggerTicks, 'rush.eventTriggerTicks', 2).forEach((tick, index) =>
     assertNumber(tick, `eventTriggerTicks[${index}]`, 0, 2_000, true),
   );
+  assertNumber(rush.nextCustomerId, 'rush.nextCustomerId', 1, 1_000_000_000, true);
   for (const key of [
-    'nextCustomerId',
     'openingCashCents',
     'purchaseCostCents',
     'wageCostCents',
@@ -624,7 +1091,13 @@ function validateRush(value: unknown, day: number): asserts value is RushState {
   const activityIds = new Set<string>();
   expectArray(rush.recentActivity, 'rush.recentActivity', RUSH_ACTIVITY_LIMIT).forEach(
     (activity, index) => {
-      const validated = validateRushActivityEvent(activity, `rush.recentActivity[${index}]`, day);
+      const validated = validateRushActivityEvent(
+        activity,
+        `rush.recentActivity[${index}]`,
+        day,
+        venueId,
+        liveCustomers,
+      );
       assert(
         validated.sequence > previousSequence,
         'rush.recentActivity sequences must be strictly increasing.',
@@ -636,31 +1109,111 @@ function validateRush(value: unknown, day: number): asserts value is RushState {
       );
       previousSequence = validated.sequence;
       activityIds.add(validated.id);
+      if (validated.customerSequence !== null) {
+        maximumCustomerSequence = Math.max(maximumCustomerSequence, validated.customerSequence);
+      }
     },
   );
-  validateRushStats(rush.stats);
-  if (rush.chargeGroups !== undefined) {
-    const stats = rush.stats as Record<string, unknown>;
-    validateChargeGroups(
-      rush.chargeGroups,
-      'rush.chargeGroups',
-      stats.served as number,
-      stats.revenueCents as number,
-    );
+  assert(
+    rush.nextCustomerId > maximumCustomerSequence,
+    'rush.nextCustomerId must follow every retained current-day customer identity.',
+  );
+  const completedJobIds = validateRushStats(rush.stats, plan, equipment, venueId, day);
+  const chargeGroups =
+    rush.chargeGroups === undefined
+      ? null
+      : validateChargeGroups(
+          rush.chargeGroups,
+          'rush.chargeGroups',
+          (rush.stats as RushState['stats']).served,
+          (rush.stats as RushState['stats']).revenueCents,
+        );
+  if (phase === 'rush' || phase === 'event') {
+    const currentInventory = inventoryTotals(inventory);
+    const openingInventory = rush.openingInventory as IngredientTotals;
+    const purchasedInventory = rush.purchasedInventory as IngredientTotals;
+    const stats = rush.stats as RushState['stats'];
+    for (const ingredientId of INGREDIENT_IDS) {
+      assert(
+        currentInventory[ingredientId] ===
+          openingInventory[ingredientId] +
+            purchasedInventory[ingredientId] -
+            (stats.consumed[ingredientId] ?? 0),
+        `activeRun.inventory.${ingredientId} does not conserve active-rush quantity.`,
+      );
+    }
+    if (chargeGroups !== null) {
+      const expected = activeRushConsumptionEvidence(plan, chargeGroups, activeJobs);
+      for (const ingredientId of INGREDIENT_IDS) {
+        assert(
+          (stats.consumed[ingredientId] ?? 0) === expected.consumed[ingredientId],
+          `rush.stats.consumed.${ingredientId} must equal canonical completed and active job consumption.`,
+        );
+      }
+      assert(
+        stats.ingredientCostCents === expected.ingredientCostCents,
+        'rush.stats.ingredientCostCents must equal canonical completed and active job cost.',
+      );
+    }
   }
+  for (const jobId of completedJobIds) {
+    assert(!activeJobIds.has(jobId), 'An active service-job ID cannot already be completed.');
+    const jobSequence = currentDayEntitySequence(jobId, day, 'j');
+    if (jobSequence !== null) {
+      maximumServiceJobSequence = Math.max(maximumServiceJobSequence, jobSequence);
+    }
+  }
+  assert(
+    rush.nextServiceJobSequence > maximumServiceJobSequence,
+    'rush.nextServiceJobSequence must follow every active or completed canonical job identity.',
+  );
+}
+
+function validateServiceJob(
+  value: unknown,
+  path: string,
+  stationId: StationId,
+  day: number,
+  venueId: GameState['venueId'],
+  plan: DayPlan,
+  equipment: EquipmentState,
+  nextServiceJobSequence: number,
+): ServiceJob {
+  const job = expectRecord(value, path);
+  assertSafeId(job.id, `${path}.id`);
+  const identity = new RegExp(`^d${day}-j(\\d+)$`).exec(job.id);
+  assert(identity !== null, `${path}.id must match its active day.`);
+  const sequence = Number(identity[1]);
+  assert(
+    Number.isSafeInteger(sequence) && sequence < nextServiceJobSequence,
+    `${path}.id must precede rush.nextServiceJobSequence.`,
+  );
+  assert(job.stationId === stationId, `${path}.stationId must match its station key.`);
+  assertEnum(job.laneId, LANE_IDS, `${path}.laneId`);
+  validateCustomer(job.customer, `${path}.customer`, venueId, plan, equipment);
+  assert(job.customer.stationId === stationId, `${path}.customer must route to its station.`);
+  assert(job.customer.laneId === job.laneId, `${path}.customer must route to its lane.`);
+  assertNumber(job.remainingTicks, `${path}.remainingTicks`, 1, 2_000, true);
+  assertNumber(job.totalTicks, `${path}.totalTicks`, 1, 2_000, true);
+  assert(job.remainingTicks <= job.totalTicks, `${path}.remainingTicks exceeds totalTicks.`);
+  return job as unknown as ServiceJob;
 }
 
 function validateRushActivityEvent(
   value: unknown,
   path: string,
   day: number,
-): { id: string; sequence: number } {
+  venueId: GameState['venueId'],
+  liveCustomers: ReadonlyMap<string, Customer>,
+): { id: string; sequence: number; customerSequence: number | null } {
   const activity = expectRecord(value, path);
   assertEnum(activity.type, ['arrival', 'serviceStarted', 'sale', 'walkaway'], `${path}.type`);
   assertSafeId(activity.id, `${path}.id`);
   assertNumber(activity.sequence, `${path}.sequence`, 0, 1_000_000_000, true);
   assertNumber(activity.tick, `${path}.tick`, 0, 2_000, true);
   assertSafeId(activity.customerId, `${path}.customerId`);
+  assertEnum(activity.stationId, STATION_IDS, `${path}.stationId`);
+  assertEnum(activity.laneId, LANE_IDS, `${path}.laneId`);
   if (activity.segment === null) {
     assert(
       activity.type === 'sale' &&
@@ -674,11 +1227,22 @@ function validateRushActivityEvent(
       activity.id === `d${day}-e${activity.sequence}`,
       `${path}.id must match its day and sequence.`,
     );
+    assert(
+      currentDayEntitySequence(activity.customerId, day, 'c') !== null,
+      `${path}.customerId must match its active day.`,
+    );
   }
   if (activity.type === 'serviceStarted' || activity.type === 'sale') {
+    assertSafeId(activity.jobId, `${path}.jobId`);
     assertEnum(activity.drinkId, ALL_DRINK_IDS, `${path}.drinkId`);
     assertEnum(activity.size, ['regular', 'large'], `${path}.size`);
     assertEnum(activity.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.milk`);
+    assert(
+      activity.stationId === stationForDrink(venueId, activity.drinkId),
+      `${path}.stationId must match the order recipe route.`,
+    );
+  } else if (activity.type === 'arrival') {
+    assert(activity.jobId === null, `${path}.jobId must be null before service starts.`);
   }
   if (activity.type === 'sale') {
     assertNumber(activity.priceCents, `${path}.priceCents`, 0, 10_000, true);
@@ -689,11 +1253,35 @@ function validateRushActivityEvent(
       ['patience', 'queueFull', 'stockout', 'rushEnded'],
       `${path}.reason`,
     );
+    if (activity.jobId !== null) {
+      assertSafeId(activity.jobId, `${path}.jobId`);
+      assert(
+        activity.reason === 'rushEnded',
+        `${path}.jobId is permitted only for an active rush-end walkaway.`,
+      );
+    }
   }
-  return { id: activity.id, sequence: activity.sequence };
+  const liveCustomer = liveCustomers.get(activity.customerId);
+  if (liveCustomer) {
+    assert(
+      liveCustomer.stationId === activity.stationId && liveCustomer.laneId === activity.laneId,
+      `${path} route must match its retained queued or active customer.`,
+    );
+  }
+  return {
+    id: activity.id,
+    sequence: activity.sequence,
+    customerSequence: currentDayEntitySequence(activity.customerId, day, 'c'),
+  };
 }
 
-function validateRushStats(value: unknown): void {
+function validateRushStats(
+  value: unknown,
+  plan: DayPlan,
+  equipment: EquipmentState,
+  venueId: GameState['venueId'],
+  day: number,
+): ReadonlySet<string> {
   const stats = expectRecord(value, 'rush.stats');
   for (const key of [
     'arrivals',
@@ -706,20 +1294,138 @@ function validateRushStats(value: unknown): void {
     'satisfactionTotal',
     'peakQueue',
   ]) {
-    assertNumber(stats[key], `rush.stats.${key}`, 0, 1_000_000_000);
+    assertNumber(stats[key], `rush.stats.${key}`, 0, 1_000_000_000, true);
   }
   validateBoundedNumberRecord(stats.soldByDrink, ALL_DRINK_IDS, 'rush.stats.soldByDrink');
   validateBoundedNumberRecord(stats.consumed, INGREDIENT_IDS, 'rush.stats.consumed');
   validateBoundedNumberRecord(stats.arrivalsBySegment, SEGMENTS, 'rush.stats.arrivalsBySegment');
   validateBoundedNumberRecord(stats.servedBySegment, SEGMENTS, 'rush.stats.servedBySegment');
+  return validateServiceAggregates(
+    stats.serviceAggregates,
+    'rush.stats.serviceAggregates',
+    {
+      served: stats.served as number,
+      revenueCents: stats.revenueCents as number,
+      totalWaitTicks: stats.totalWaitTicks as number,
+      satisfactionTotal: stats.satisfactionTotal as number,
+    },
+    serviceAggregatesForPlan(venueId, plan, equipment),
+    day,
+  ).completedJobIds;
 }
 
-function validateCustomer(value: unknown, path: string): asserts value is Customer {
+function currentDayEntitySequence(id: string, day: number, marker: 'c' | 'j'): number | null {
+  const match = new RegExp(`^d${day}-${marker}(\\d+)$`).exec(id);
+  if (!match) return null;
+  const sequence = Number(match[1]);
+  return Number.isSafeInteger(sequence) && (marker === 'j' || sequence >= 1) ? sequence : null;
+}
+
+function validateServiceAggregates(
+  value: unknown,
+  path: string,
+  expectedTotals: Partial<
+    Pick<ServiceAggregate, 'served' | 'revenueCents' | 'totalWaitTicks' | 'satisfactionTotal'>
+  >,
+  expectedMetadata: ServiceAggregate[] | null,
+  day: number,
+): Pick<ServiceAggregate, 'served' | 'revenueCents' | 'totalWaitTicks' | 'satisfactionTotal'> & {
+  completedJobIds: ReadonlySet<string>;
+} {
+  const aggregates = expectArray(value, path, STATION_IDS.length * LANE_IDS.length);
+  assert(
+    aggregates.length === STATION_IDS.length * LANE_IDS.length,
+    `${path} must contain every station/lane bucket.`,
+  );
+  const completedJobIds = new Set<string>();
+  const totals = { served: 0, revenueCents: 0, totalWaitTicks: 0, satisfactionTotal: 0 };
+  for (const [index, value] of aggregates.entries()) {
+    const aggregatePath = `${path}[${index}]`;
+    const aggregate = expectRecord(value, aggregatePath);
+    const stationId = STATION_IDS[Math.floor(index / LANE_IDS.length)];
+    const laneId = LANE_IDS[index % LANE_IDS.length];
+    assert(aggregate.stationId === stationId, `${aggregatePath}.stationId is out of order.`);
+    assert(aggregate.laneId === laneId, `${aggregatePath}.laneId is out of order.`);
+    const staffIds = expectArray(
+      aggregate.assignedStaffIds,
+      `${aggregatePath}.assignedStaffIds`,
+      12,
+    );
+    staffIds.forEach((id, staffIndex) =>
+      assertSafeId(id, `${aggregatePath}.assignedStaffIds[${staffIndex}]`),
+    );
+    assert(new Set(staffIds).size === staffIds.length, `${aggregatePath} staff must be unique.`);
+    const equipmentIds = expectArray(
+      aggregate.equipmentIds,
+      `${aggregatePath}.equipmentIds`,
+      EQUIPMENT_IDS.length,
+    );
+    equipmentIds.forEach((id, equipmentIndex) =>
+      assertEnum(id, EQUIPMENT_IDS, `${aggregatePath}.equipmentIds[${equipmentIndex}]`),
+    );
+    assert(
+      new Set(equipmentIds).size === equipmentIds.length,
+      `${aggregatePath} equipment must be unique.`,
+    );
+    const expected = expectedMetadata?.[index];
+    if (expected) {
+      assert(
+        JSON.stringify(staffIds) === JSON.stringify(expected.assignedStaffIds),
+        `${aggregatePath}.assignedStaffIds must match the rush-start plan.`,
+      );
+      assert(
+        JSON.stringify(equipmentIds) === JSON.stringify(expected.equipmentIds),
+        `${aggregatePath}.equipmentIds must match installed station equipment.`,
+      );
+    }
+    const jobs = expectArray(
+      aggregate.completedJobIds,
+      `${aggregatePath}.completedJobIds`,
+      MAX_SERVICE_JOBS_PER_RUSH,
+    );
+    jobs.forEach((jobId, jobIndex) => {
+      assertSafeId(jobId, `${aggregatePath}.completedJobIds[${jobIndex}]`);
+      assert(
+        currentDayEntitySequence(jobId, day, 'j') !== null ||
+          new RegExp(`^d${day}-migrated-complete-\\d+$`).test(jobId),
+        `${aggregatePath}.completedJobIds[${jobIndex}] must match the report day.`,
+      );
+      assert(!completedJobIds.has(jobId), `${path} completed job IDs must be globally unique.`);
+      completedJobIds.add(jobId);
+    });
+    for (const key of ['served', 'revenueCents', 'totalWaitTicks', 'satisfactionTotal'] as const) {
+      assertNumber(aggregate[key], `${aggregatePath}.${key}`, 0, 1_000_000_000, true);
+      totals[key] += aggregate[key];
+    }
+    assert(jobs.length === aggregate.served, `${aggregatePath} job IDs must match served count.`);
+  }
+  assert(completedJobIds.size <= MAX_SERVICE_JOBS_PER_RUSH, `${path} exceeds the job bound.`);
+  for (const key of ['served', 'revenueCents', 'totalWaitTicks', 'satisfactionTotal'] as const) {
+    if (expectedTotals[key] !== undefined) {
+      assert(totals[key] === expectedTotals[key], `${path}.${key} does not reconcile.`);
+    }
+  }
+  return { ...totals, completedJobIds };
+}
+
+function validateCustomer(
+  value: unknown,
+  path: string,
+  venueId: GameState['venueId'],
+  plan: DayPlan,
+  equipment: EquipmentState,
+): asserts value is Customer {
   const customer = expectRecord(value, path);
   assertSafeId(customer.id, `${path}.id`);
   assertEnum(customer.segment, SEGMENTS, `${path}.segment`);
+  assertEnum(customer.stationId, STATION_IDS, `${path}.stationId`);
+  assertEnum(customer.laneId, LANE_IDS, `${path}.laneId`);
   const order = expectRecord(customer.order, `${path}.order`);
   assertEnum(order.drinkId, ALL_DRINK_IDS, `${path}.order.drinkId`);
+  assert(
+    plan.activeMenu.includes(order.drinkId),
+    `${path}.order.drinkId must be selected in the active menu.`,
+  );
   assertEnum(order.size, ['regular', 'large'], `${path}.order.size`);
   assertEnum(order.milk, ['none', 'dairy', 'oat', 'soy'], `${path}.order.milk`);
   assertNumber(order.priceCents, `${path}.order.priceCents`, 0, 10_000, true);
@@ -730,6 +1436,14 @@ function validateCustomer(value: unknown, path: string): asserts value is Custom
     assertNumber(ingredient.amount, `${path}.amount`, 0, 1_000_000);
   });
   assertNumber(order.preparationTicks, `${path}.order.preparationTicks`, 1, 2_000, true);
+  assert(
+    customer.stationId === stationForDrink(venueId, order.drinkId),
+    `${path}.stationId must match its order recipe route.`,
+  );
+  assert(
+    customer.laneId === laneForDrink(venueId, equipment, plan, order.drinkId),
+    `${path}.laneId must match the validated morning express plan.`,
+  );
   for (const key of ['arrivedAtTick', 'patienceTicks', 'waitedTicks']) {
     assertNumber(customer[key], `${path}.${key}`, 0, 2_000, true);
   }
@@ -811,6 +1525,30 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
     }
   }
   validateBoundedNumberRecord(report.servedBySegment, SEGMENTS, `${path}.servedBySegment`);
+  const serviceTotals = validateServiceAggregates(
+    report.serviceAggregates,
+    `${path}.serviceAggregates`,
+    { served: report.served as number, revenueCents: report.revenueCents as number },
+    null,
+    report.day as number,
+  );
+  const expectedAverageWaitSeconds =
+    serviceTotals.served > 0
+      ? Math.round((serviceTotals.totalWaitTicks / serviceTotals.served / TICKS_PER_SECOND) * 10) /
+        10
+      : 0;
+  const expectedSatisfaction =
+    serviceTotals.served > 0
+      ? Math.round(serviceTotals.satisfactionTotal / serviceTotals.served)
+      : 35;
+  assert(
+    report.averageWaitSeconds === expectedAverageWaitSeconds,
+    `${path}.averageWaitSeconds must reconcile with station/lane aggregates.`,
+  );
+  assert(
+    report.satisfactionPercent === expectedSatisfaction,
+    `${path}.satisfactionPercent must reconcile with station/lane aggregates.`,
+  );
   assertString(report.bottleneck, `${path}.bottleneck`, 300);
   expectArray(report.explanations, `${path}.explanations`, 30).forEach((item, index) =>
     assertString(item, `${path}.explanations[${index}]`, 500),
@@ -826,12 +1564,72 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
   assert(typeof report.settled === 'boolean', `${path}.settled must be boolean.`);
 }
 
+function activeRushConsumptionEvidence(
+  plan: DayPlan,
+  chargeGroups: readonly ReportChargeGroup[],
+  activeJobs: readonly ServiceJob[],
+): { consumed: IngredientTotals; ingredientCostCents: number } {
+  const consumed = emptyIngredientTotals();
+  let ingredientCostCents = 0;
+  for (const group of chargeGroups) {
+    const ingredients = chargeGroupIngredientAmounts(plan, group);
+    addConsumedIngredients(consumed, ingredients, group.quantity);
+    ingredientCostCents += ingredientCostForOrder(ingredients) * group.quantity;
+  }
+  for (const job of activeJobs) {
+    addConsumedIngredients(consumed, job.customer.order.ingredientAmounts, 1);
+    ingredientCostCents += ingredientCostForOrder(job.customer.order.ingredientAmounts);
+  }
+  return { consumed, ingredientCostCents };
+}
+
+function chargeGroupIngredientAmounts(plan: DayPlan, group: ReportChargeGroup): IngredientAmount[] {
+  const drink = DRINK_MAP.get(group.drinkId);
+  assert(drink !== undefined, 'Canonical charge drink must be configured.');
+  const variant = drink.variants.find((candidate) => candidate.size === group.size);
+  assert(variant !== undefined, 'Canonical charge size must be configured.');
+  const ingredients = variant.ingredients.map((ingredient): IngredientAmount => {
+    if (ingredient.ingredientId === 'houseBeans') {
+      return { ...ingredient, ingredientId: plan.beanId };
+    }
+    if (ingredient.ingredientId === 'dairyMilk') {
+      return { ...ingredient, ingredientId: milkIngredient(group.milk) ?? 'dairyMilk' };
+    }
+    return { ...ingredient };
+  });
+  const optionalMilk = drink.optionalMilkAmount ? milkIngredient(group.milk) : null;
+  if (optionalMilk) {
+    ingredients.push({ ingredientId: optionalMilk, amount: drink.optionalMilkAmount ?? 0 });
+  }
+  return ingredients;
+}
+
+function addConsumedIngredients(
+  consumed: IngredientTotals,
+  ingredients: readonly IngredientAmount[],
+  quantity: number,
+): void {
+  for (const ingredient of ingredients) {
+    consumed[ingredient.ingredientId] += ingredient.amount * quantity;
+  }
+}
+
+function ingredientCostForOrder(ingredients: readonly IngredientAmount[]): number {
+  return Math.round(
+    ingredients.reduce(
+      (total, ingredient) =>
+        total + ingredient.amount * INGREDIENT_UNIT_COST_CENTS[ingredient.ingredientId],
+      0,
+    ),
+  );
+}
+
 function validateChargeGroups(
   value: unknown,
   path: string,
   expectedQuantity: number,
   expectedRevenueCents: number,
-): void {
+): ReportChargeGroup[] {
   const groups = expectArray(value, path, MAX_REPORT_CHARGE_GROUPS);
   const identities = new Set<string>();
   let quantity = 0;
@@ -873,9 +1671,14 @@ function validateChargeGroups(
   });
   assert(quantity === expectedQuantity, `${path} quantity must match served sales.`);
   assert(revenueCents === expectedRevenueCents, `${path} revenue must match report revenue.`);
+  return groups as unknown as ReportChargeGroup[];
 }
 
-function validateInventory(value: unknown, path: string, currentDay: number): void {
+function validateInventory(
+  value: unknown,
+  path: string,
+  currentDay: number,
+): asserts value is IngredientInventory {
   const inventory = expectRecord(value, path);
   for (const id of INGREDIENT_IDS) {
     const batches = expectArray(
@@ -997,7 +1800,7 @@ function validateDeterministicStaffIdentity(
   return slot;
 }
 
-function validateEquipment(value: unknown): void {
+function validateEquipment(value: unknown): asserts value is EquipmentState {
   const equipment = expectRecord(value, 'activeRun.equipment');
   for (const id of EQUIPMENT_IDS) {
     const maximumLevel = EQUIPMENT[id].tiers.at(-1)?.level ?? 0;
@@ -1023,6 +1826,17 @@ function validateBoundedNumberRecord(
     assert(allowedKeys.includes(key), `${path}.${key} is unknown.`);
     assertNumber(amount, `${path}.${key}`, 0, 1_000_000_000);
   }
+}
+
+function assertCanonicalRecordKeys(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+  path: string,
+): void {
+  assert(
+    Object.keys(record).length === keys.length && keys.every((key) => Object.hasOwn(record, key)),
+    `${path} must contain every canonical key exactly once.`,
+  );
 }
 
 function expectRecord(value: unknown, path: string): Record<string, unknown> {

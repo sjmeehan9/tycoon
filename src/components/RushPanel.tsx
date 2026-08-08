@@ -4,6 +4,10 @@ import {
   describeRushActivity,
   formatMoney,
   rushClock,
+  serviceConfigFor,
+  serviceFlowSummary,
+  STATION_DETAILS,
+  activeServiceJobs,
   type RushSpeed,
 } from '../game';
 import { VENUES } from '../content/gameContent';
@@ -16,6 +20,9 @@ export const SERVICE_DASHBOARD_FIELDS = [
   'served',
   'lost',
   'queue',
+  'normalQueue',
+  'expressQueue',
+  'activeJobs',
   'satisfaction',
   'reputation',
   'event',
@@ -31,6 +38,8 @@ export function RushPanel(): React.JSX.Element {
   if (!game?.rush) return <></>;
   const { rush } = game;
   const progress = Math.round((rush.tick / rush.durationTicks) * 100);
+  const flow = serviceFlowSummary(game);
+  const activeJobs = activeServiceJobs(rush);
   const lastSale = rush.recentActivity.findLast((event) => event.type === 'sale');
   const lastWalkaway = rush.recentActivity.findLast((event) => event.type === 'walkaway');
   const recentActivity = rush.recentActivity.slice(-6);
@@ -81,7 +90,14 @@ export function RushPanel(): React.JSX.Element {
           />
           <DashboardMetric field="served" label="Served" value={String(rush.stats.served)} />
           <DashboardMetric field="lost" label="Lost" value={String(rush.stats.abandoned)} />
-          <DashboardMetric field="queue" label="Queue" value={String(rush.queue.length)} />
+          <DashboardMetric field="queue" label="Waiting" value={String(flow.totalWaiting)} />
+          <DashboardMetric field="normalQueue" label="Normal" value={String(flow.normalWaiting)} />
+          <DashboardMetric
+            field="expressQueue"
+            label="Express"
+            value={String(flow.expressWaiting)}
+          />
+          <DashboardMetric field="activeJobs" label="Making" value={String(flow.activeJobs)} />
           <DashboardMetric field="satisfaction" label="Satisfaction" value={satisfaction} />
           <DashboardMetric
             field="reputation"
@@ -93,6 +109,35 @@ export function RushPanel(): React.JSX.Element {
             <dd>{eventStatus}</dd>
           </div>
         </dl>
+
+        <ul aria-label="Live station service" className="station-service-strip">
+          {serviceConfigFor(game.venueId).stationIds.map((stationId) => {
+            const job = rush.serviceJobsByStation[stationId];
+            const normalWaiting = rush.normalQueue.filter(
+              (customer) => customer.stationId === stationId,
+            ).length;
+            const expressWaiting = rush.expressQueue.filter(
+              (customer) => customer.stationId === stationId,
+            ).length;
+            const assignedStaff =
+              rush.stats.serviceAggregates.find(
+                (aggregate) => aggregate.stationId === stationId && aggregate.laneId === 'normal',
+              )?.assignedStaffIds.length ?? 0;
+            return (
+              <li data-station-id={stationId} key={stationId}>
+                <strong>{STATION_DETAILS[stationId].shortLabel}</strong>
+                <span>
+                  {job
+                    ? `${job.laneId === 'express' ? 'Express' : 'Normal'} job ${job.id}`
+                    : 'Idle'}
+                </span>
+                <small>
+                  {assignedStaff} staff · {normalWaiting} normal · {expressWaiting} express waiting
+                </small>
+              </li>
+            );
+          })}
+        </ul>
 
         <div className="rush-controls" aria-label="Rush controls">
           <button
@@ -134,10 +179,10 @@ export function RushPanel(): React.JSX.Element {
           <h2 id="rush-activity-title">What is happening now</h2>
         </div>
         <p className="service-note">
-          {rush.activeService
-            ? `Making ${rush.activeService.customer.order.drinkId.replace(/([A-Z])/g, ' $1').toLowerCase()} for ${rush.activeService.customer.segment}.`
-            : rush.queue.length > 0
-              ? 'Calling the next order.'
+          {activeJobs.length > 0
+            ? `${activeJobs.length} ${activeJobs.length === 1 ? 'station is' : 'stations are'} making orders in parallel. Stock was consumed once when each listed job started.`
+            : flow.totalWaiting > 0
+              ? 'Customers are waiting for a staffed, equipped station with shared stock available.'
               : 'A rare quiet second in the laneway.'}
         </p>
         {lastSale ? (

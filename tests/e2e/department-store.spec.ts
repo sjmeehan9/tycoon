@@ -47,7 +47,7 @@ test.describe('department-store progression and service shell', () => {
     ).toBeVisible();
     await expect(page.getByText('Menu and prices · choose up to 10')).toBeVisible();
 
-    for (const checkbox of await page.getByRole('checkbox').all()) {
+    for (const checkbox of await page.locator('.check-row input[type="checkbox"]').all()) {
       if (!(await checkbox.isChecked())) await checkbox.check();
     }
     await page.getByRole('button', { name: 'Open the department-store coffee hall' }).click();

@@ -5,6 +5,7 @@ import {
   addPlannedPurchases,
   batchExpiryDay,
   consumeIngredientsLifo,
+  consumeIngredientsAtServiceStart,
   expireInventoryAfterRush,
   extendInventoryRefrigeration,
   hasIngredients,
@@ -47,6 +48,19 @@ describe('dated perishable inventory', () => {
     ]);
     expect(inventory.dairyMilk).toHaveLength(3);
     expect(ingredientQuantity(consumed, 'dairyMilk')).toBe(250);
+  });
+
+  it('makes service-start consumption an explicit irrevocable exact-once transition', () => {
+    const inventory = inventoryWithDairy([{ quantity: 200, acquiredDay: 1, expiresAfterDay: 3 }]);
+    const consumed = consumeIngredientsAtServiceStart(inventory, [
+      { ingredientId: 'dairyMilk', amount: 75 },
+    ]);
+
+    expect(ingredientQuantity(inventory, 'dairyMilk')).toBe(200);
+    expect(ingredientQuantity(consumed, 'dairyMilk')).toBe(125);
+    expect(() =>
+      consumeIngredientsAtServiceStart(consumed, [{ ingredientId: 'dairyMilk', amount: 150 }]),
+    ).toThrow('not available in full');
   });
 
   it('never silently consumes unavailable or expired quantities', () => {

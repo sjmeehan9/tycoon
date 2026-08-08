@@ -8,7 +8,9 @@ import { VENUE_IDS } from '../../src/content/gameContent';
 import {
   advanceTick,
   createCampaign,
+  defaultStationAssignments,
   describeRushActivity,
+  emptyServiceJobs,
   setRushSpeed,
   startRush,
   type Customer,
@@ -96,12 +98,16 @@ describe('snapshot-driven pixel scene', () => {
     const state = startRush({
       ...base,
       staff: hired,
-      plan: { ...base.plan, scheduledStaffIds: hired.map(({ id }) => id) },
+      plan: {
+        ...base.plan,
+        scheduledStaffIds: hired.map(({ id }) => id),
+        stationAssignments: defaultStationAssignments(base.venueId, hired),
+      },
     });
     const snapshot = createSceneSnapshot(state, false, ['neonCup']);
     expect(snapshot.scheduledRoles).toEqual(hired.map(({ role }) => role));
     expect(snapshot.awning).toBe('neonCup');
-    expect(snapshot.queueSegments).not.toBe(state.rush?.queue);
+    expect(snapshot.queueSegments).not.toBe(state.rush?.normalQueue);
   });
 
   it('preserves exact queue truth, active order identity, and immutable activity beyond the sprite cap', () => {
@@ -115,8 +121,19 @@ describe('snapshot-driven pixel scene', () => {
       ...base,
       rush: {
         ...base.rush,
-        queue,
-        activeService: { customer, remainingTicks: 10, totalTicks: 20 },
+        normalQueue: queue,
+        serviceJobsByStation: {
+          ...emptyServiceJobs(),
+          espressoBar: {
+            id: 'd1-j0',
+            stationId: 'espressoBar' as const,
+            laneId: 'normal' as const,
+            customer,
+            remainingTicks: 10,
+            totalTicks: 20,
+          },
+        },
+        nextServiceJobSequence: 1,
         nextActivitySequence: 1,
         recentActivity: [
           {
@@ -125,6 +142,9 @@ describe('snapshot-driven pixel scene', () => {
             tick: 0,
             customerId: customer.id,
             segment: customer.segment,
+            stationId: 'espressoBar' as const,
+            laneId: 'normal' as const,
+            jobId: null,
             type: 'arrival' as const,
           },
         ],
@@ -144,7 +164,9 @@ describe('snapshot-driven pixel scene', () => {
     expect(Object.isFrozen(snapshot.activeCustomer?.order)).toBe(true);
     expect(Object.isFrozen(snapshot.recentActivity[0])).toBe(true);
     expect(describeScene(snapshot)).toContain('12 customers waiting');
-    expect(describeScene(snapshot)).toContain('Commuter customer active-customer arrived.');
+    expect(describeScene(snapshot)).toContain(
+      'Commuter customer active-customer arrived for the Normal lane at the espresso bar.',
+    );
   });
 
   it('describes every activity and walkaway reason without visual-only meaning', () => {
@@ -154,12 +176,16 @@ describe('snapshot-driven pixel scene', () => {
       tick: 12,
       customerId: 'd1-c1',
       segment: 'student' as const,
+      stationId: 'espressoBar' as const,
+      laneId: 'normal' as const,
+      jobId: null,
     };
     const events: RushActivityEvent[] = [
       { ...base, type: 'arrival' },
       {
         ...base,
         type: 'serviceStarted',
+        jobId: 'd1-j0',
         drinkId: 'flatWhite',
         size: 'large',
         milk: 'oat',
@@ -167,6 +193,7 @@ describe('snapshot-driven pixel scene', () => {
       {
         ...base,
         type: 'sale',
+        jobId: 'd1-j0',
         drinkId: 'flatWhite',
         size: 'large',
         milk: 'oat',
@@ -179,13 +206,13 @@ describe('snapshot-driven pixel scene', () => {
       })),
     ];
     expect(events.map(describeRushActivity)).toEqual([
-      'Student customer d1-c1 arrived.',
-      'Student customer d1-c1 started large oat Flat White service.',
-      'Student customer d1-c1 received Large oat Flat White and paid $7.25.',
-      'Student customer d1-c1 left after waiting too long.',
-      'Student customer d1-c1 left because the queue was full.',
-      'Student customer d1-c1 left because their order was out of stock.',
-      'Student customer d1-c1 left when the rush ended.',
+      'Student customer d1-c1 arrived for the Normal lane at the espresso bar.',
+      'Student customer d1-c1 started large oat Flat White as job d1-j0 in the Normal lane at the espresso bar.',
+      'Student customer d1-c1 completed job d1-j0 in the Normal lane at the espresso bar, received Large oat Flat White, and paid $7.25.',
+      'Student customer d1-c1 left after waiting too long from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left because the queue was full from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left because their order was out of stock from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left when the rush ended from the Normal lane at the espresso bar.',
     ]);
     expect(
       (['patience', 'queueFull', 'stockout', 'rushEnded'] as const).map(walkawayVisualLabel),
@@ -217,6 +244,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 49,
         customerId: 'd1-c29',
         segment: 'regular',
+        stationId: 'espressoBar',
+        laneId: 'normal',
+        jobId: null,
         type: 'arrival',
       },
       {
@@ -225,6 +255,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 49,
         customerId: 'd1-c29',
         segment: 'regular',
+        stationId: 'espressoBar',
+        laneId: 'normal',
+        jobId: null,
         type: 'walkaway',
         reason: 'queueFull',
       },
@@ -234,6 +267,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 50,
         customerId: `d1-c${index + 30}`,
         segment: 'student' as const,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: `d1-j${index + 2}`,
         type: 'sale' as const,
         drinkId: 'flatWhite' as const,
         size: 'large' as const,
@@ -302,7 +338,10 @@ describe('snapshot-driven pixel scene', () => {
     if (!game?.rush) throw new Error('Expected living-rush fixture.');
     const initial = createSceneSnapshot(game, false, ['classicAwning']);
     const playback = createScenePlayback(initial);
-    const shiftedGame = { ...game, rush: { ...game.rush, queue: game.rush.queue.slice(1) } };
+    const shiftedGame = {
+      ...game,
+      rush: { ...game.rush, normalQueue: game.rush.normalQueue.slice(1) },
+    };
     const shifted = createSceneSnapshot(shiftedGame, false, ['classicAwning']);
     const moving = syncScenePlayback(playback, shifted);
     const front = moving.queueMotions[0];
@@ -448,7 +487,7 @@ describe('snapshot-only WebGL contract', () => {
     expect(deeplyFrozen(snapshot)).toBe(true);
 
     const capturedCustomer = snapshot.service.queue[0]?.id;
-    game.rush.queue[0]!.id = 'mutated-after-snapshot';
+    game.rush.normalQueue[0]!.id = 'mutated-after-snapshot';
     expect(snapshot.service.queue[0]?.id).toBe(capturedCustomer);
     expect(() => {
       (snapshot.operation.stock[0] as { quantity: number }).quantity = 999_999;
@@ -566,6 +605,8 @@ function sceneCustomer(id: string): Customer {
   return {
     id,
     segment: 'commuter',
+    stationId: 'espressoBar',
+    laneId: 'normal',
     order: {
       drinkId: 'espresso',
       size: 'regular',

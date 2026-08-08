@@ -80,11 +80,41 @@ export type {
 } from './demandInfluences';
 export { formatIngredientQuantity, ingredientCapacities, weightedIngredientUse } from './capacity';
 export type { IngredientCapacity } from './capacity';
+export {
+  activeServiceJobs,
+  assignedStaffIds,
+  defaultStationAssignments,
+  emptyExpressStartCounters,
+  emptyServiceAggregates,
+  emptyServiceJobs,
+  emptyStationAssignments,
+  expressDrinkEligible,
+  expressEligibleDrinkIds,
+  laneForDrink,
+  LANE_IDS,
+  MAX_CONSECUTIVE_EXPRESS_STARTS,
+  MAX_EXPRESS_DRINKS,
+  MAX_SERVICE_JOBS_PER_RUSH,
+  serviceAggregatesForPlan,
+  serviceConfigFor,
+  serviceJobId,
+  STAFF_STATION_COMPATIBILITY,
+  staffStationCompatible,
+  STATION_DETAILS,
+  STATION_EQUIPMENT_IDS,
+  STATION_IDS,
+  stationForDrink,
+  stationReadyForService,
+  VENUE_SERVICE_CONFIG,
+  waitingCustomers,
+} from './serviceStations';
+export type { StationConfig, VenueServiceConfig } from './serviceStations';
 export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
 export {
   addPlannedPurchases,
   batchExpiryDay,
   completeIngredientTotals,
+  consumeIngredientsAtServiceStart,
   consumeIngredientsLifo,
   earliestInventoryExpiry,
   expireInventoryAfterRush,
@@ -106,6 +136,7 @@ export {
   formatMoney,
   rushClock,
   selectedSupplyCost,
+  serviceFlowSummary,
   staffRoleValue,
   stockedInventory,
   venueLabel,

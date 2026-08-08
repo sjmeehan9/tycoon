@@ -14,10 +14,14 @@ import {
 import { useGame } from '../app/GameContext';
 import {
   canOpen,
+  expressDrinkEligible,
   formatIngredientQuantity,
   formatMoney,
   ingredientCapacities,
+  MAX_EXPRESS_DRINKS,
   selectedSupplyCost,
+  STATION_DETAILS,
+  stationForDrink,
   type DialIn,
   type DrinkId,
 } from '../game';
@@ -48,7 +52,17 @@ export function Planner(): React.JSX.Element {
     const activeMenu = active
       ? game.plan.activeMenu.filter((id) => id !== drinkId)
       : [...game.plan.activeMenu, drinkId];
-    command({ type: 'prepareDay', patch: { activeMenu } });
+    const expressDrinkIds = active
+      ? game.plan.expressDrinkIds.filter((id) => id !== drinkId)
+      : game.plan.expressDrinkIds;
+    command({ type: 'prepareDay', patch: { activeMenu, expressDrinkIds } });
+  };
+
+  const toggleExpressDrink = (drinkId: DrinkId): void => {
+    const expressDrinkIds = game.plan.expressDrinkIds.includes(drinkId)
+      ? game.plan.expressDrinkIds.filter((id) => id !== drinkId)
+      : [...game.plan.expressDrinkIds, drinkId];
+    command({ type: 'prepareDay', patch: { expressDrinkIds } });
   };
 
   return (
@@ -103,6 +117,11 @@ export function Planner(): React.JSX.Element {
         <div className="menu-grid">
           {DRINKS.map((drink) => {
             const checked = game.plan.activeMenu.includes(drink.id);
+            const expressSelected = game.plan.expressDrinkIds.includes(drink.id);
+            const expressEligible = expressDrinkEligible(game.venueId, game.equipment, drink.id);
+            const expressFull =
+              game.plan.expressDrinkIds.length >= MAX_EXPRESS_DRINKS && !expressSelected;
+            const expressReasonId = `express-reason-${drink.id}`;
             return (
               <div className={`menu-card ${checked ? 'is-selected' : ''}`} key={drink.id}>
                 <label className="check-row">
@@ -139,6 +158,29 @@ export function Planner(): React.JSX.Element {
                     value={formatMoney(game.plan.pricesCents[drink.id])}
                   />
                 </div>
+                {game.venueId === 'departmentStore' ? (
+                  <label className={`express-option ${expressSelected ? 'is-selected' : ''}`}>
+                    <input
+                      aria-describedby={expressReasonId}
+                      checked={expressSelected}
+                      disabled={!checked || !expressEligible || expressFull}
+                      onChange={() => toggleExpressDrink(drink.id)}
+                      type="checkbox"
+                    />
+                    <span>
+                      <strong>Express lane</strong>
+                      <small id={expressReasonId}>
+                        {!checked
+                          ? 'Add this drink to today’s menu first.'
+                          : !expressEligible
+                            ? 'Recipe speed or installed station equipment does not qualify.'
+                            : expressFull
+                              ? `Maximum ${MAX_EXPRESS_DRINKS} express drinks selected.`
+                              : `${STATION_DETAILS[stationForDrink(game.venueId, drink.id)].label} · eligible for faster routing.`}
+                      </small>
+                    </span>
+                  </label>
+                ) : null}
               </div>
             );
           })}

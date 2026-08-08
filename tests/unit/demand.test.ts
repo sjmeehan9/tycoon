@@ -174,10 +174,24 @@ describe('explainable demand factors', () => {
     const queued = {
       ...stocked,
       rush: stocked.rush
-        ? { ...stocked.rush, queue: Array.from({ length: 6 }, () => dummy) }
+        ? { ...stocked.rush, normalQueue: Array.from({ length: 6 }, () => dummy) }
         : null,
     };
     expect(demandRate(stocked)).toBeGreaterThan(demandRate(queued));
+    const splitAcrossLanes = {
+      ...stocked,
+      rush: stocked.rush
+        ? {
+            ...stocked.rush,
+            normalQueue: Array.from({ length: 2 }, () => dummy),
+            expressQueue: Array.from({ length: 4 }, () => ({
+              ...dummy,
+              laneId: 'express' as const,
+            })),
+          }
+        : null,
+    };
+    expect(demandRate(splitAcrossLanes)).toBe(demandRate(queued));
     const eventLift = {
       ...stocked,
       rush: stocked.rush ? { ...stocked.rush, demandMultiplier: 1.2 } : null,
@@ -273,6 +287,8 @@ function createDummyCustomer(): Customer {
   return {
     id: 'waiting',
     segment: 'commuter',
+    stationId: 'espressoBar',
+    laneId: 'normal',
     arrivedAtTick: 0,
     patienceTicks: 100,
     waitedTicks: 20,

@@ -1,19 +1,30 @@
-import { CAMPAIGN_RULES, emptyPurchases } from '../../src/content/gameContent';
+import {
+  CAMPAIGN_RULES,
+  INGREDIENT_UNIT_COST_CENTS,
+  emptyPurchases,
+} from '../../src/content/gameContent';
 import {
   LEGACY_STAFF_NAMES,
   advanceTick,
   candidatePoolForDay,
+  consumeIngredientsAtServiceStart,
   createCampaign,
+  defaultStationAssignments,
+  emptyServiceAggregates,
+  emptyServiceJobs,
   inventoryTotals,
+  prepareDay,
   reservedStaffName,
   resolveEvent,
   staffRoleAvailableAtVenue,
   startRush,
+  togglePause,
   type Customer,
   type DayReport,
   type Difficulty,
   type EquipmentState,
   type GameState,
+  type RushStats,
   type SaveEnvelope,
   type VenueId,
   type WeatherId,
@@ -99,7 +110,11 @@ export function departmentWorkforceEnvelope(): SaveEnvelope {
     venueId: 'departmentStore',
     staff,
     candidateStaff: dayThreePool.slice(2),
-    plan: { ...base.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    plan: {
+      ...base.plan,
+      scheduledStaffIds: staff.map(({ id }) => id),
+      stationAssignments: defaultStationAssignments('departmentStore', staff),
+    },
     equipment: {
       grinder: 3,
       espressoMachine: 3,
@@ -231,25 +246,72 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
     if (staff.length < scheduledStaffCount) fixtureDay += 1;
   }
   const dayPrefix = `d${fixtureDay}`;
+  const equipment = { ...campaign.equipment, ...options.equipment };
+  const scheduledStaffIds = staff.map(({ id }) => id);
+  const stationAssignments = defaultStationAssignments(venueId, staff);
   const started = startRush({
     ...campaign,
     day: fixtureDay,
     candidateStaff: candidatePoolForDay(campaign.seed, fixtureDay).filter(
       ({ id }) => !staff.some((member) => member.id === id),
     ),
-    equipment: { ...campaign.equipment, ...options.equipment },
-    plan: { ...campaign.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    equipment,
+    plan: {
+      ...campaign.plan,
+      activeMenu: ['flatWhite'],
+      purchases: { ...campaign.plan.purchases, oatMilk: 1 },
+      scheduledStaffIds,
+      stationAssignments,
+    },
     staff,
     venueId,
     weather: options.weather ?? campaign.weather,
   });
   if (!started.rush) throw new Error('Living-rush fixture requires an active rush.');
   const activeCustomer = livingRushCustomer(`${dayPrefix}-c1`, 'enthusiast');
+  const completedCustomer = livingRushCustomer(`${dayPrefix}-c20`, 'student');
+  const startedOrders = [completedCustomer.order, activeCustomer.order];
+  const consumedInventory = startedOrders.reduce(
+    (inventory, order) => consumeIngredientsAtServiceStart(inventory, order.ingredientAmounts),
+    started.inventory,
+  );
+  const consumed = startedOrders
+    .flatMap((order) => order.ingredientAmounts)
+    .reduce<RushStats['consumed']>((totals, ingredient) => {
+      totals[ingredient.ingredientId] = (totals[ingredient.ingredientId] ?? 0) + ingredient.amount;
+      return totals;
+    }, {});
+  const ingredientCostCents = startedOrders.reduce(
+    (total, order) =>
+      total +
+      Math.round(
+        order.ingredientAmounts.reduce(
+          (cost, ingredient) =>
+            cost + ingredient.amount * INGREDIENT_UNIT_COST_CENTS[ingredient.ingredientId],
+          0,
+        ),
+      ),
+    0,
+  );
   const queue = Array.from({ length: options.queueCount ?? 12 }, (_, index) =>
     livingRushCustomer(
       `${dayPrefix}-c${index + 2}`,
       (['commuter', 'student', 'enthusiast', 'regular'] as const)[index % 4] ?? 'regular',
     ),
+  );
+  const completedJobId = `${dayPrefix}-j0`;
+  const activeJobId = `${dayPrefix}-j1`;
+  const serviceAggregates = started.rush.stats.serviceAggregates.map((aggregate) =>
+    aggregate.stationId === 'espressoBar' && aggregate.laneId === 'normal'
+      ? {
+          ...aggregate,
+          completedJobIds: [completedJobId],
+          served: 1,
+          revenueCents: 725,
+          totalWaitTicks: 8,
+          satisfactionTotal: 90,
+        }
+      : aggregate,
   );
   const rush = {
     ...started.rush,
@@ -257,8 +319,21 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
     durationTicks: options.endingSoon ? 49 : started.rush.durationTicks,
     speed: options.endingSoon ? (1 as const) : (4 as const),
     isPaused: options.paused ?? true,
-    queue,
-    activeService: { customer: activeCustomer, remainingTicks: 12, totalTicks: 20 },
+    normalQueue: queue,
+    expressQueue: [],
+    serviceJobsByStation: {
+      ...emptyServiceJobs(),
+      espressoBar: {
+        id: activeJobId,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        customer: activeCustomer,
+        remainingTicks: 12,
+        totalTicks: 20,
+      },
+    },
+    consecutiveExpressStartsByStation: { espressoBar: 0, brewBar: 0, coldBar: 0 },
+    nextServiceJobSequence: 2,
     eventTriggerTicks: [],
     nextCustomerId: 30,
     nextActivitySequence: 7,
@@ -267,16 +342,22 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         id: `${dayPrefix}-e0`,
         sequence: 0,
         tick: 20,
-        customerId: `${dayPrefix}-c20`,
-        segment: 'student' as const,
+        customerId: completedCustomer.id,
+        segment: completedCustomer.segment,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: null,
         type: 'arrival' as const,
       },
       {
         id: `${dayPrefix}-e1`,
         sequence: 1,
         tick: 21,
-        customerId: `${dayPrefix}-c20`,
-        segment: 'student' as const,
+        customerId: completedCustomer.id,
+        segment: completedCustomer.segment,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: completedJobId,
         type: 'serviceStarted' as const,
         drinkId: 'flatWhite' as const,
         size: 'large' as const,
@@ -286,8 +367,11 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         id: `${dayPrefix}-e2`,
         sequence: 2,
         tick: 40,
-        customerId: `${dayPrefix}-c20`,
-        segment: 'student' as const,
+        customerId: completedCustomer.id,
+        segment: completedCustomer.segment,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: completedJobId,
         type: 'sale' as const,
         drinkId: 'flatWhite' as const,
         size: 'large' as const,
@@ -300,6 +384,9 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         tick: 42,
         customerId: `${dayPrefix}-c21`,
         segment: 'commuter' as const,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: null,
         type: 'arrival' as const,
       },
       {
@@ -308,6 +395,9 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         tick: 42,
         customerId: `${dayPrefix}-c21`,
         segment: 'commuter' as const,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: null,
         type: 'walkaway' as const,
         reason: 'stockout' as const,
       },
@@ -317,6 +407,9 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         tick: 45,
         customerId: activeCustomer.id,
         segment: activeCustomer.segment,
+        stationId: activeCustomer.stationId,
+        laneId: activeCustomer.laneId,
+        jobId: null,
         type: 'arrival' as const,
       },
       {
@@ -325,6 +418,9 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         tick: 46,
         customerId: activeCustomer.id,
         segment: activeCustomer.segment,
+        stationId: activeCustomer.stationId,
+        laneId: activeCustomer.laneId,
+        jobId: activeJobId,
         type: 'serviceStarted' as const,
         drinkId: activeCustomer.order.drinkId,
         size: activeCustomer.order.size,
@@ -348,17 +444,65 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
       abandoned: 1,
       stockouts: 1,
       revenueCents: 725,
+      ingredientCostCents,
+      totalWaitTicks: 8,
+      satisfactionTotal: 90,
       soldByDrink: { flatWhite: 1 },
+      consumed,
       arrivalsBySegment: { commuter: 4, student: 4, enthusiast: 4, regular: 3 },
       servedBySegment: { student: 1 },
       peakQueue: 12,
+      serviceAggregates,
     },
   };
   return createSaveEnvelope(
-    { ...started, rush },
+    { ...started, inventory: consumedInventory, rush },
     { ...fixturePreferences(), reducedMotion: options.reducedMotion ?? false },
     createDefaultMeta(),
   );
+}
+
+/** Paused canonical department rush with three active station jobs and one normal waiter. */
+export function parallelServiceEnvelope(): SaveEnvelope {
+  const planning = departmentWorkforceEnvelope().activeRun;
+  if (!planning) throw new Error('Expected department planning fixture.');
+  const configured = prepareDay(planning, {
+    activeMenu: ['espresso', 'flatWhite', 'batchBrew', 'coldBrew'],
+    expressDrinkIds: ['espresso', 'batchBrew', 'coldBrew'],
+    purchases: {
+      ...emptyPurchases(),
+      houseBeans: 2,
+      dairyMilk: 1,
+      coldBrewConcentrate: 1,
+      ice: 1,
+    },
+  });
+  const started = startRush(configured);
+  if (!started.rush) throw new Error('Expected parallel fixture rush.');
+  const customers = [
+    parallelFixtureCustomer(started.day, 1, 'espresso', 'express'),
+    parallelFixtureCustomer(started.day, 2, 'batchBrew', 'express'),
+    parallelFixtureCustomer(started.day, 3, 'coldBrew', 'express'),
+  ];
+  const normal = parallelFixtureCustomer(started.day, 4, 'flatWhite', 'normal');
+  const active = advanceTick({
+    ...started,
+    rngState: 15_365,
+    rush: {
+      ...started.rush,
+      eventTriggerTicks: [],
+      normalQueue: [normal],
+      expressQueue: customers,
+      nextCustomerId: 5,
+      stats: {
+        ...started.rush.stats,
+        arrivals: 4,
+        arrivalsBySegment: { commuter: 4 },
+        peakQueue: 4,
+      },
+    },
+  });
+  return createSaveEnvelope(togglePause(active), fixturePreferences(), createDefaultMeta());
 }
 
 /** Active-rush fixture with both canonical and older read-only history reports. */
@@ -366,7 +510,7 @@ export function reportHistoryEnvelope(): SaveEnvelope {
   const generated = completeFixtureReportState(7_505).report;
   if (!generated) throw new Error('Expected a completed report.');
   if (!generated.chargeGroups) throw new Error('Expected canonical report charges.');
-  const currentReport: DayReport = { ...generated, day: 2, settled: true };
+  const currentReport: DayReport = reportForDay(generated, 2);
   const legacyReport: DayReport = { ...generated, day: 1, settled: true };
   delete legacyReport.chargeGroups;
   const activeRush = livingRushEnvelope({ paused: true });
@@ -415,14 +559,16 @@ function livingRushCustomer(id: string, segment: Customer['segment']): Customer 
   return {
     id,
     segment,
+    stationId: 'espressoBar',
+    laneId: 'normal',
     order: {
       drinkId: 'flatWhite',
       size: 'large',
       milk: 'oat',
       priceCents: 725,
       ingredientAmounts: [
-        { ingredientId: 'houseBeans', amount: 18 },
-        { ingredientId: 'oatMilk', amount: 250 },
+        { ingredientId: 'houseBeans', amount: 22 },
+        { ingredientId: 'oatMilk', amount: 220 },
       ],
       preparationTicks: 20,
     },
@@ -432,7 +578,65 @@ function livingRushCustomer(id: string, segment: Customer['segment']): Customer 
   };
 }
 
+function parallelFixtureCustomer(
+  day: number,
+  sequence: number,
+  drinkId: 'espresso' | 'flatWhite' | 'batchBrew' | 'coldBrew',
+  laneId: Customer['laneId'],
+): Customer {
+  const stationId =
+    drinkId === 'batchBrew' ? 'brewBar' : drinkId === 'coldBrew' ? 'coldBar' : 'espressoBar';
+  const ingredientAmounts =
+    drinkId === 'batchBrew'
+      ? [{ ingredientId: 'houseBeans' as const, amount: 15 }]
+      : drinkId === 'coldBrew'
+        ? [
+            { ingredientId: 'coldBrewConcentrate' as const, amount: 90 },
+            { ingredientId: 'ice' as const, amount: 1 },
+          ]
+        : drinkId === 'flatWhite'
+          ? [
+              { ingredientId: 'houseBeans' as const, amount: 18 },
+              { ingredientId: 'dairyMilk' as const, amount: 150 },
+            ]
+          : [{ ingredientId: 'houseBeans' as const, amount: 18 }];
+  return {
+    id: `d${day}-c${sequence}`,
+    segment: 'commuter',
+    stationId,
+    laneId,
+    order: {
+      drinkId,
+      size: 'regular',
+      milk: drinkId === 'flatWhite' ? 'dairy' : 'none',
+      priceCents:
+        drinkId === 'espresso'
+          ? 400
+          : drinkId === 'flatWhite'
+            ? 550
+            : drinkId === 'batchBrew'
+              ? 500
+              : 620,
+      ingredientAmounts,
+      preparationTicks: 20,
+    },
+    arrivedAtTick: 0,
+    patienceTicks: 1_000,
+    waitedTicks: 0,
+  };
+}
+
 function fixtureReport(base: GameState, day: number, closingCashCents: number): DayReport {
+  const serviceAggregates = emptyServiceAggregates();
+  const legacyAggregate = serviceAggregates[0];
+  if (!legacyAggregate) throw new Error('Expected canonical legacy service aggregate.');
+  legacyAggregate.completedJobIds = Array.from(
+    { length: 18 },
+    (_, index) => `d${day}-migrated-complete-${index}`,
+  );
+  legacyAggregate.served = 18;
+  legacyAggregate.totalWaitTicks = 173;
+  legacyAggregate.satisfactionTotal = 1_584;
   return {
     day,
     difficulty: base.difficulty,
@@ -457,9 +661,24 @@ function fixtureReport(base: GameState, day: number, closingCashCents: number): 
     remainingInventory: inventoryTotals(base.inventory),
     inventoryLifecycle: null,
     servedBySegment: { commuter: 6, student: 4, enthusiast: 4, regular: 4 },
+    serviceAggregates,
     bottleneck: 'No major bottleneck — service flowed well',
     explanations: ['Validated deterministic outcome fixture ready for final settlement.'],
     settled: false,
+  };
+}
+
+function reportForDay(report: DayReport, day: number): DayReport {
+  return {
+    ...report,
+    day,
+    settled: true,
+    serviceAggregates: report.serviceAggregates.map((aggregate) => ({
+      ...aggregate,
+      completedJobIds: aggregate.completedJobIds.map((jobId) =>
+        jobId.replace(/^d\d+-/, `d${day}-`),
+      ),
+    })),
   };
 }
 

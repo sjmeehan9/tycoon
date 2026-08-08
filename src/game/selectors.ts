@@ -9,6 +9,12 @@ import {
 } from '../content/gameContent';
 import { operationalEffects, purchaseCost, staffRoleOperationalEffect } from './engine';
 import { ingredientQuantity } from './inventory';
+import {
+  STATION_DETAILS,
+  STATION_IDS,
+  activeServiceJobs,
+  waitingCustomers,
+} from './serviceStations';
 import type {
   CampaignRecord,
   CompletedSaleActivity,
@@ -74,15 +80,17 @@ export function staffRoleValue(member: StaffMember): string {
 /** Return exact observable department-role effects for the current daily schedule. */
 export function workforceAppliedEffectLabels(state: GameState): string[] {
   if (state.venueId !== 'departmentStore') return [];
-  const effects = operationalEffects(state);
-  const scheduledIds = new Set(state.plan.scheduledStaffIds);
-  const scheduled = state.staff.filter((member) => scheduledIds.has(member.id));
-  const managerCount = scheduled.filter((member) => member.role === 'manager').length;
-  const runnerCount = scheduled.filter((member) => member.role === 'runner').length;
-  return [
-    `${managerCount} Manager${managerCount === 1 ? '' : 's'}: ${effects.managerReductionTicks}-tick reduction; ${effects.coordinationReliabilityDelayTicks} coordination/reliability ticks remain per order.`,
-    `${runnerCount} Runner${runnerCount === 1 ? '' : 's'}: ${effects.runnerReductionTicks}-tick reduction; ${effects.handoffWorkloadDelayTicks} replenishment/handoff ticks remain per order.`,
-  ];
+  const staffById = new Map(state.staff.map((member) => [member.id, member]));
+  return STATION_IDS.map((stationId) => {
+    const assigned = state.plan.stationAssignments[stationId].flatMap((staffId) => {
+      const member = staffById.get(staffId);
+      return member ? [member] : [];
+    });
+    const effects = operationalEffects(state, stationId);
+    const managers = assigned.filter((member) => member.role === 'manager').length;
+    const runners = assigned.filter((member) => member.role === 'runner').length;
+    return `${STATION_DETAILS[stationId].label}: ${assigned.length} assigned; ${managers} Manager and ${runners} Runner coverage leaves ${effects.coordinationReliabilityDelayTicks} coordination/reliability and ${effects.handoffWorkloadDelayTicks} replenishment/handoff ticks.`;
+  });
 }
 
 /** Return the selected morning supply cost. */
@@ -117,12 +125,13 @@ export function completedSaleLabel(
 /** Describe one engine observation without relying on colour, motion, or iconography. */
 export function describeRushActivity(event: RushActivityEvent): string {
   const customer = `${segmentLabel(event.segment)} customer ${event.customerId}`;
-  if (event.type === 'arrival') return `${customer} arrived.`;
+  const route = `${laneLabel(event.laneId)} lane at the ${STATION_DETAILS[event.stationId].label.toLowerCase()}`;
+  if (event.type === 'arrival') return `${customer} arrived for the ${route}.`;
   if (event.type === 'serviceStarted') {
-    return `${customer} started ${orderLabel(event)} service.`;
+    return `${customer} started ${orderLabel(event)} as job ${event.jobId} in the ${route}.`;
   }
   if (event.type === 'sale') {
-    return `${customer} received ${completedSaleLabel(event)} and paid ${formatMoney(event.priceCents)}.`;
+    return `${customer} completed job ${event.jobId} in the ${route}, received ${completedSaleLabel(event)}, and paid ${formatMoney(event.priceCents)}.`;
   }
   const reasons: Record<typeof event.reason, string> = {
     patience: 'left after waiting too long',
@@ -130,7 +139,25 @@ export function describeRushActivity(event: RushActivityEvent): string {
     stockout: 'left because their order was out of stock',
     rushEnded: 'left when the rush ended',
   };
-  return `${customer} ${reasons[event.reason]}.`;
+  const job = event.jobId ? ` during job ${event.jobId}` : '';
+  return `${customer} ${reasons[event.reason]}${job} from the ${route}.`;
+}
+
+/** Return canonical combined waiting and fixed-order active-job counts for service UI. */
+export function serviceFlowSummary(state: GameState): {
+  normalWaiting: number;
+  expressWaiting: number;
+  totalWaiting: number;
+  activeJobs: number;
+} {
+  const rush = state.rush;
+  if (!rush) return { normalWaiting: 0, expressWaiting: 0, totalWaiting: 0, activeJobs: 0 };
+  return {
+    normalWaiting: rush.normalQueue.length,
+    expressWaiting: rush.expressQueue.length,
+    totalWaiting: waitingCustomers(rush).length,
+    activeJobs: activeServiceJobs(rush).length,
+  };
 }
 
 function orderLabel(order: Pick<CompletedSaleActivity, 'drinkId' | 'size' | 'milk'>): string {
@@ -143,6 +170,10 @@ function orderLabel(order: Pick<CompletedSaleActivity, 'drinkId' | 'size' | 'mil
 function segmentLabel(segment: RushActivityEvent['segment']): string {
   if (segment === null) return 'Legacy';
   return segment.charAt(0).toUpperCase() + segment.slice(1);
+}
+
+function laneLabel(lane: RushActivityEvent['laneId']): string {
+  return lane === 'express' ? 'Express' : 'Normal';
 }
 
 /** Return only inventory entries available through the Phase 1 supplier. */

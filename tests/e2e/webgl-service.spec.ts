@@ -387,9 +387,10 @@ async function persistedEconomicTruth(page: Page): Promise<unknown> {
         phase: string;
         reputation: number;
         rush: {
-          activeService: unknown;
-          queue: unknown;
+          expressQueue: unknown[];
+          normalQueue: unknown[];
           recentActivity: unknown;
+          serviceJobsByStation: Record<string, unknown>;
           stats: unknown;
           tick: number;
         } | null;
@@ -397,14 +398,19 @@ async function persistedEconomicTruth(page: Page): Promise<unknown> {
     } | null;
     const run = envelope?.activeRun;
     if (!run) return null;
+    const firstActiveJob = run.rush
+      ? (run.rush.serviceJobsByStation.espressoBar ??
+        run.rush.serviceJobsByStation.brewBar ??
+        run.rush.serviceJobsByStation.coldBar)
+      : undefined;
     return {
-      activeService: run.rush?.activeService,
+      firstActiveJob,
       cashCents: run.cashCents,
       day: run.day,
       equipment: run.equipment,
       inventory: run.inventory,
       phase: run.phase,
-      queue: run.rush?.queue,
+      waitingCustomers: run.rush ? [...run.rush.normalQueue, ...run.rush.expressQueue] : undefined,
       recentActivity: run.rush?.recentActivity,
       reputation: run.reputation,
       stats: run.rush?.stats,

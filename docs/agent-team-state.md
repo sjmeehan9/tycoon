@@ -30,7 +30,14 @@ Component 8.4 is committed at fingerprint
 `64dd0298c9cdcf6973b55fe1882106252e893f065adc5a727c07a5fc8cb4c3e5`.
 It delivers a twelve-person department roster, ten-person daily scheduling,
 Manager/Runner roles with exact operational value, canonical staff identities,
-and strict payroll/persistence proof. Component 8.5 is next and has not started.
+and strict payroll/persistence proof. Component 8.5 has passed its final Tier 2
+gate and coordinator audit at fingerprint
+`c425989a24deb4a783b0cbfd7237356e1f213325e71c1181a05dca02a533ebe9`.
+It delivers complete station assignments, bounded express routing,
+deterministic parallel service, consume-at-start stock truth, exact
+persistence/report reconciliation, and compact responsive service controls.
+Work is paused before Component 8.6 at the repository owner's direction. No
+physical-device test, push, merge, deployment, or publication was performed.
 
 ## Next-Level Evolution Stage Progress
 
@@ -66,7 +73,9 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 - [x] Lead Coordinator audits and commits Component 8.3
 - [x] Component 8.4 delivers department workforce, Manager, and Runner behavior
 - [x] Lead Coordinator audits and commits Component 8.4
-- [ ] Component 8.5 parallel service implementation begins
+- [x] Component 8.5 delivers three stations, express routing, and parallel service truth
+- [x] Lead Coordinator audits and commits Component 8.5
+- [ ] Component 8.6 dense multi-customer hall is paused by the repository owner
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -111,7 +120,7 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.5 next        | Sequential Component 8.5 service implementation after committed 8.4    |
+| next_level_implement      | Implement                  | paused — 8.5 complete   | Component 8.6 has not started; resume only on owner instruction         |
 
 ## Previous release human task gate
 
@@ -190,6 +199,12 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
   final gate passed build/lint, all 180 Vitest cases, and retained smoke. The
   coordinator independently reproduced the fingerprint and 59-test core audit.
   No physical device, push, merge, deployment, or publication occurred.
+- **Component 8.5:** COMMITTED / TIER 2 PASS AFTER COORDINATOR AUDIT —
+  fingerprint `c425989a…3ebe9`; build/lint, all 199 Vitest cases, and 20
+  applicable Chromium cases passed with two intentional routing skips. Exact
+  three-station service, express fairness, inventory consumption, reload, and
+  responsive desktop/touch behavior are covered. No physical device, push,
+  merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -246,6 +261,8 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | 2026-08-08 | Establish one per-venue workforce authority                 | Roster/schedule capacities are 8/2, 8/3, 8/5, and 12/10; engine, persistence, and UI consume that authority while legacy projections are derived                                                          | Component 8.4      |
 | 2026-08-08 | Make Manager/Runner value deterministic and exact-once       | Manager reduces bounded coordination/reliability delay; Runner reduces bounded handoff workload without creating stock; order preparation is the sole application point                                 | Component 8.4      |
 | 2026-08-08 | Bind staff identity and payroll at the v4 boundary           | Seed/day/slot-derived attributes, venue eligibility, complete daily pools, schedule IDs, and rush/report payroll are validated on import                                                                  | Component 8.4      |
+| 2026-08-08 | Establish station/lane/job service truth                     | Fixed station assignments, bounded express priority, parallel jobs, consume-at-start inventory, and derived settlement form one deterministic authority                                                   | Component 8.5      |
+| 2026-08-08 | Pause after Component 8.5                                   | The repository owner requested a resumable stopping point after this isolated component; 8.6 remains unstarted                                                                                           | Phase 8 delivery   |
 
 ## Drift log
 
@@ -267,6 +284,7 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | 2026-08-08 | Phase 8 breakdown still named agent/device evidence                           | Components 8.1, 8.6, 8.8, and 8.9 now separate automated browser/deployment evidence from optional owner-only physical findings; no agent device access remains assigned                                        |
 | 2026-08-08 | Component 8.3's initial ownership omitted inventory/layout proof paths        | Coordinator added only inventory, venue-layout, scene, presentation, and breakdown paths needed for tier-three shelf-life and fourth-venue exhaustiveness; all are in the final scope                           |
 | 2026-08-08 | Component 8.3 audit found stale retained current-v4 browser contracts          | Operations now reaches the department flagship, transfer restores Day 40 department detail, and service layout iterates canonical four-venue content; 18/18 repaired desktop/touch cases pass                  |
+| 2026-08-08 | Component 8.5 evidence changed after an earlier validation fingerprint         | The late in-scope implementation-context write invalidated that evidence; the complete frozen candidate reran Tier 2 and passed at fingerprint `c425989a…3ebe9`                                             |
 
 ## Deferred log
 
@@ -287,3 +305,6 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 - Phase 7 clean automated CI, artifact upload, Pages deployment, and exact
   identity capture are complete. Hosted-browser and physical findings remain
   unclaimed; they are not inferred from workflow success.
+- Component 8.6's dense multi-customer heritage hall remains approved but
+  unstarted. It is intentionally paused until the repository owner resumes this
+  session.

@@ -312,3 +312,69 @@ No schema/key bump, dependency, station, express lane, parallel service,
 physical-device access, Git mutation, merge, deployment, or publication belongs
 to this component. The approved title art remains byte-identical at SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.5 three-station and exact parallel-service boundary
+
+Department-store service now has three stable single-server stations in fixed
+order: espresso, brew, and cold. The morning plan assigns each scheduled person
+to exactly one compatible station and may route zero through three eligible
+existing drinks to an express lane. Eligibility is recipe-, equipment-,
+station-, and venue-derived. Every other order remains normal demand; selecting
+express never creates, removes, or changes demand.
+
+Rush state now owns bounded normal and express queues, one nullable canonical
+job per station, per-station express fairness, and a monotonic job sequence.
+Stations complete and start in fixed order. At most two express starts may pass
+compatible normal work already waiting at the same station. Cart, kiosk, and
+cafe use the same structures with one espresso station and one normal lane, so
+their seeded serial outcomes remain intact.
+
+Shared ingredients are consumed atomically and irrevocably when a job starts.
+Completion does not consume again. Reload therefore resumes the exact remaining
+ticks without duplicating stock, cost, activity, revenue, satisfaction, or
+settlement. An unfinished job at rush end keeps its incurred ingredient cost,
+records a job-linked rush-end walkaway, and creates no sale. Each completed job
+appears once in one of six ordered station/lane aggregate buckets with the
+rush-start staff and installed-equipment context.
+
+During an active rush or event, strict v4 validation reconciles every ingredient
+against opening plus purchased minus consumed stock. When canonical charge
+groups are present, as they are for every newly created rush, it also derives
+exact completed-order consumption and cost from the immutable plan and adds each
+active job's already-consumed order. This rejects even a coherently forged
+inventory/consumed pair. The optional pre-charge-capture v4 shape cannot prove
+completed recipes after its bounded activity tail truncates, so it retains the
+weaker aggregate conservation check rather than inventing historical evidence.
+
+Current v4 saves predating this component are canonicalized idempotently before
+strict load, recovery, import, export, or write. Singular queue/service fields
+are removed, live customer/activity routes are reconstructed from canonical
+content, and historical report totals with no route evidence are represented
+honestly as espresso/normal history with empty coverage metadata. The v1–v3
+preferences-only reset policy is unchanged.
+
+Strict active rush/event import also reconciles every current inventory total
+to opening stock plus purchases minus canonical consumed totals. This check
+runs before post-rush expiry and fails closed if either stock or consumption was
+altered independently. Current-day customer identities start at `c1`; service
+job identities deliberately start at `j0`.
+
+The semantic service hierarchy is scene, dashboard, activity, then stock. The
+dashboard reports combined and per-lane waits, all active jobs, and a
+three-station strip. The representative 360×780 touch layout keeps the scaled
+scene and complete compact dashboard within the initial viewport. Existing 3D
+adapters intentionally project combined waiting and only the first fixed-order
+active job until Component 8.6 delivers the dense multi-customer heritage hall.
+
+Coverage metadata is populated only when both its station and lane are active.
+Legacy venues therefore retain staff/equipment evidence on espresso/normal and
+leave every inactive station or express bucket honestly empty. Accepted
+scheduled-staff and express-selection arrays are cloned at the planning command
+boundary, so caller mutation cannot alter validated state.
+
+Queue/wait demand reads the two canonical waiting queues exactly once; active
+jobs are not counted again. Availability reads the one shared post-consumption
+inventory. Standard/Hard registry authority, presentation speed independence,
+the one-time v4 boundary, and the title art hash remain unchanged. No new
+dependency, physical-device access, hosted release, deployment, or publication
+belongs to this component.

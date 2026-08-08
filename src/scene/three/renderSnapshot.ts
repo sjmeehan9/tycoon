@@ -1,7 +1,9 @@
 import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../../content/gameContent';
 import {
+  activeServiceJobs,
   inventoryTotals,
   serviceQueueCapacity,
+  waitingCustomers,
   type CosmeticId,
   type CustomerSegment,
   type EquipmentState,
@@ -87,15 +89,16 @@ export function createRenderSnapshot(
   const scene = createSceneSnapshot(game, reducedMotion, cosmetics);
   const totals = inventoryTotals(game.inventory);
   const scheduledIds = new Set(game.plan.scheduledStaffIds);
-  const activeService = game.rush?.activeService;
-  const active = activeService
+  const waiting = game.rush ? waitingCustomers(game.rush) : [];
+  const firstActiveJob = game.rush ? activeServiceJobs(game.rush)[0] : undefined;
+  const active = firstActiveJob
     ? {
-        id: activeService.customer.id,
-        segment: activeService.customer.segment,
-        drinkId: activeService.customer.order.drinkId,
-        size: activeService.customer.order.size,
-        milk: activeService.customer.order.milk,
-        progress: boundedProgress(activeService.remainingTicks, activeService.totalTicks),
+        id: firstActiveJob.customer.id,
+        segment: firstActiveJob.customer.segment,
+        drinkId: firstActiveJob.customer.order.drinkId,
+        size: firstActiveJob.customer.order.size,
+        milk: firstActiveJob.customer.order.milk,
+        progress: boundedProgress(firstActiveJob.remainingTicks, firstActiveJob.totalTicks),
       }
     : null;
   const snapshot: RenderSnapshot = {
@@ -110,13 +113,12 @@ export function createRenderSnapshot(
       tick: game.rush?.tick ?? 0,
       speed: game.rush?.speed ?? 1,
       isPaused: game.rush?.isPaused ?? false,
-      queueCount: game.rush?.queue.length ?? 0,
+      queueCount: waiting.length,
       queueCapacity: serviceQueueCapacity(game),
-      queue:
-        game.rush?.queue.slice(0, MAX_RENDER_QUEUE_CUSTOMERS).map(({ id, segment }) => ({
-          id,
-          segment,
-        })) ?? [],
+      queue: waiting.slice(0, MAX_RENDER_QUEUE_CUSTOMERS).map(({ id, segment }) => ({
+        id,
+        segment,
+      })),
       active,
       activity:
         game.rush?.recentActivity
