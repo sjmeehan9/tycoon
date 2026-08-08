@@ -16,7 +16,12 @@ test.describe('autosaved continuation', () => {
 
     await page.getByRole('button', { name: 'Open the cart' }).click();
     await page.getByRole('button', { name: '4×' }).click();
-    await page.waitForTimeout(1_600);
+    const activeProgress = page.getByRole('progressbar');
+    await expect
+      .poll(async () => Number(await activeProgress.getAttribute('aria-valuenow')), {
+        timeout: 8_000,
+      })
+      .toBeGreaterThanOrEqual(20);
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
     await expect(page.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
@@ -31,14 +36,41 @@ test.describe('autosaved continuation', () => {
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    await expect(page.getByRole('table', { name: 'Cash reconciliation' })).toBeHidden();
+    await page.getByText('View full Day 1 report').click();
+    await expect(page.getByRole('list', { name: 'Canonical sale charges' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Settle the day' }).click();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).click();
     const settledCash = await page.locator('.status-strip dd').first().textContent();
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
     await expect(page.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
     await expect(page.locator('.status-strip dd').first()).toHaveText(settledCash ?? '');
-    await expect(page.getByRole('button', { name: 'Settle the day' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Settle & reinvest' })).toHaveCount(0);
+    const settlement = await page.evaluate(() => {
+      const save = JSON.parse(window.localStorage.getItem('laneway-tycoon.save.v3') ?? '{}') as {
+        activeRun?: {
+          history?: Array<{
+            chargeGroups?: Array<{ quantity: number; revenueCents: number }>;
+            revenueCents: number;
+            served: number;
+          }>;
+        };
+      };
+      const history = save.activeRun?.history ?? [];
+      const report = history[0];
+      return {
+        historyLength: history.length,
+        quantity: report?.chargeGroups?.reduce((total, group) => total + group.quantity, 0),
+        revenueCents: report?.chargeGroups?.reduce((total, group) => total + group.revenueCents, 0),
+        reportRevenueCents: report?.revenueCents,
+        served: report?.served,
+      };
+    });
+    expect(settlement.historyLength).toBe(1);
+    expect(settlement.served).toBeGreaterThan(0);
+    expect(settlement.quantity).toBe(settlement.served);
+    expect(settlement.revenueCents).toBe(settlement.reportRevenueCents);
 
     const hasHorizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

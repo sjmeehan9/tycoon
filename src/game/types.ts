@@ -165,6 +165,16 @@ export type RushActivityEvent =
 /** Backward-compatible public name for consumers that operate specifically on sale events. */
 export type CompletedSaleActivity = SaleActivityEvent;
 
+/** Canonical, bounded charge evidence retained independently of the activity feed. */
+export interface ReportChargeGroup {
+  drinkId: DrinkId;
+  size: DrinkSize;
+  milk: MilkChoice;
+  priceCents: number;
+  quantity: number;
+  revenueCents: number;
+}
+
 export interface EventChoiceEffect {
   cashCents?: number;
   demandMultiplier?: number;
@@ -232,6 +242,8 @@ export interface RushState {
   purchasedInventory: IngredientTotals;
   nextActivitySequence: number;
   recentActivity: RushActivityEvent[];
+  /** Absent only when a legacy active rush predates complete charge capture. */
+  chargeGroups?: ReportChargeGroup[];
   stats: RushStats;
 }
 
@@ -318,6 +330,8 @@ export interface DayReport {
   servedBySegment: Partial<Record<CustomerSegment, number>>;
   bottleneck: string;
   explanations: string[];
+  /** Absent means the historical report predates complete charge capture. */
+  chargeGroups?: ReportChargeGroup[];
   settled: boolean;
 }
 

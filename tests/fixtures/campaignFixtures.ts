@@ -1,10 +1,12 @@
 import { CAMPAIGN_RULES, emptyPurchases } from '../../src/content/gameContent';
 import {
   LEGACY_STAFF_NAMES,
+  advanceTick,
   candidatePoolForDay,
   createCampaign,
   inventoryTotals,
   reservedStaffName,
+  resolveEvent,
   startRush,
   type Customer,
   type DayReport,
@@ -271,6 +273,16 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         milk: activeCustomer.order.milk,
       },
     ],
+    chargeGroups: [
+      {
+        drinkId: 'flatWhite' as const,
+        size: 'large' as const,
+        milk: 'oat' as const,
+        priceCents: 725,
+        quantity: 1,
+        revenueCents: 725,
+      },
+    ],
     stats: {
       ...started.rush.stats,
       arrivals: 15,
@@ -287,6 +299,32 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
   return createSaveEnvelope(
     { ...started, rush },
     { ...fixturePreferences(), reducedMotion: options.reducedMotion ?? false },
+    createDefaultMeta(),
+  );
+}
+
+/** Active-rush fixture with both canonical and older read-only history reports. */
+export function reportHistoryEnvelope(): SaveEnvelope {
+  const generated = completeFixtureReportState(7_505).report;
+  if (!generated) throw new Error('Expected a completed report.');
+  if (!generated.chargeGroups) throw new Error('Expected canonical report charges.');
+  const currentReport: DayReport = { ...generated, day: 2, settled: true };
+  const legacyReport: DayReport = { ...generated, day: 1, settled: true };
+  delete legacyReport.chargeGroups;
+  const activeRush = livingRushEnvelope({ paused: true });
+  if (!activeRush.activeRun) throw new Error('Expected an active rush fixture.');
+  return createSaveEnvelope(
+    { ...activeRush.activeRun, history: [legacyReport, currentReport] },
+    activeRush.preferences,
+    activeRush.meta,
+  );
+}
+
+/** Current, unsettled report used to prove compact exact-once day completion. */
+export function currentReportEnvelope(): SaveEnvelope {
+  return createSaveEnvelope(
+    completeFixtureReportState(7_506),
+    fixturePreferences(),
     createDefaultMeta(),
   );
 }
@@ -364,4 +402,21 @@ function fixtureReport(base: GameState, day: number, closingCashCents: number): 
     explanations: ['Validated deterministic outcome fixture ready for final settlement.'],
     settled: false,
   };
+}
+
+function completeFixtureReportState(seed: number): GameState {
+  let state = startRush(createCampaign({ seed }));
+  let safety = 0;
+  while (state.phase !== 'report' && safety < 2_000) {
+    if (state.phase === 'event') {
+      const choiceId = state.rush?.pendingEvent?.choices[0]?.id;
+      if (!choiceId) throw new Error('Fixture event requires a choice.');
+      state = resolveEvent(state, choiceId);
+    } else {
+      state = advanceTick(state);
+    }
+    safety += 1;
+  }
+  if (!state.report) throw new Error('Fixture rush did not reach a report.');
+  return state;
 }

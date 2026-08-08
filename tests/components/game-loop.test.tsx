@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -16,6 +16,7 @@ import {
   SAVE_KEY,
   BrowserSaveStore,
   createSaveEnvelope,
+  parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import {
@@ -23,6 +24,7 @@ import {
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
   livingRushEnvelope,
+  reportHistoryEnvelope,
   stockLifecyclePlanningEnvelope,
 } from '../fixtures/campaignFixtures';
 
@@ -202,17 +204,27 @@ describe('playable cart UI', () => {
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Day 1 result summary')).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Cash reconciliation' })).not.toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Actual charges' })).not.toBeVisible();
+    expect(screen.getAllByRole('button', { name: 'Settle & reinvest' })).toHaveLength(1);
+    await user.click(screen.getByText('View full Day 1 report'));
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
-    expect(screen.getByRole('list', { name: 'Recent actual sale charges' })).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Canonical sale charges' })).toBeVisible();
     expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
     expect(screen.getByRole('table', { name: 'Inventory lifecycle reconciliation' })).toBeVisible();
     expect(screen.getByText('Opening + bought − used − expired = rolled forward.')).toBeVisible();
     expect(screen.getByText('Bottleneck')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Settle the day' }));
+    const settle = screen.getByRole('button', { name: 'Settle & reinvest' });
+    fireEvent.click(settle);
+    fireEvent.click(settle);
     expect(
       await screen.findByRole('heading', { name: 'Reinvest or call it a night' }),
     ).toBeVisible();
+    expect(
+      parseEnvelope(window.localStorage.getItem(SAVE_KEY) ?? '')?.activeRun?.history,
+    ).toHaveLength(1);
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Plan Day 2' })).toBeEnabled();
   });
@@ -222,6 +234,7 @@ describe('playable cart UI', () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByText('View full Day 3 report'));
 
     const dairy = screen.getByRole('row', { name: /^Dairy milk/ });
     expect(dairy).toHaveTextContent('500 ml');
@@ -232,6 +245,32 @@ describe('playable cart UI', () => {
     );
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
     expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
+  });
+
+  it('reopens selected history from report values without exposing settlement', async () => {
+    new BrowserSaveStore(window.localStorage).save(reportHistoryEnvelope());
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Reports' }));
+    const dialog = screen.getByRole('dialog', { name: 'Game menu' });
+    expect(within(dialog).getByRole('heading', { name: 'Day 2 trading report' })).toBeVisible();
+    expect(within(dialog).queryByRole('button', { name: 'Settle & reinvest' })).toBeNull();
+    expect(within(dialog).getByRole('heading', { name: 'Actual charges' })).not.toBeVisible();
+    await user.click(within(dialog).getByText('View full Day 2 report'));
+    expect(within(dialog).getByRole('list', { name: 'Canonical sale charges' })).toBeVisible();
+    expect(within(dialog).getByText(/matching sales revenue/i)).toBeVisible();
+
+    await user.click(within(dialog).getByRole('button', { name: /Day 1/ }));
+    expect(within(dialog).getByRole('heading', { name: 'Day 1 trading report' })).toBeVisible();
+    expect(
+      within(dialog).getByText('Charge breakdown unavailable for this older report.'),
+    ).not.toBeVisible();
+    await user.click(within(dialog).getByText('View full Day 1 report'));
+    expect(
+      within(dialog).getByText('Charge breakdown unavailable for this older report.'),
+    ).toBeVisible();
   });
 
   it('hires both roles and schedules a daily team with visible payroll', async () => {
@@ -324,8 +363,10 @@ describe('playable cart UI', () => {
       }),
     );
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    await user.click(screen.getByText('View full Day 30 report'));
     expect(screen.getByText(/Lifecycle detail is unavailable for this older save/)).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Settle the day' }));
+    expect(screen.getByText('Charge breakdown unavailable for this older report.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Settle & reinvest' }));
     expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();
@@ -346,7 +387,7 @@ describe('playable cart UI', () => {
         type: 'application/json',
       }),
     );
-    await user.click(await screen.findByRole('button', { name: 'Settle the day' }));
+    await user.click(await screen.findByRole('button', { name: 'Settle & reinvest' }));
     expect(await screen.findByRole('heading', { name: /till can’t stretch/ })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Start fresh campaign' })).toBeEnabled();
     expect(

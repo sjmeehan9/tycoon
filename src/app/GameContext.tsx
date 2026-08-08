@@ -131,6 +131,10 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
         if (!current) return current;
         try {
           const next = dispatchGameCommand(current, nextCommand);
+          if (next === current) {
+            setMessage(null);
+            return current;
+          }
           const nextMeta = recordCampaignOutcome(metaRef.current, next);
           if (nextMeta !== metaRef.current) {
             metaRef.current = nextMeta;

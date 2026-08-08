@@ -36,6 +36,9 @@ export function ReinvestPanel(): React.JSX.Element {
         The till holds <strong>{formatMoney(game.cashCents)}</strong>. Stock carries into tomorrow;
         purchases in the next morning plan top it up.
       </p>
+      <p className="field-help">
+        Day {game.day} is settled once and saved under Game menu → Reports for later review.
+      </p>
 
       <h3>Equipment workshop</h3>
       <div className="equipment-grid">

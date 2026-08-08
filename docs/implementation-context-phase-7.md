@@ -94,7 +94,7 @@ version and does not change the approved architecture.
 4. **Post-7.6 human gate:** request explicit approval before merging
    `phase-7`; no hosted publication is part of Phase 7.
 
-## Phase 7 delivery state after Component 7.4
+## Phase 7 delivery state after Component 7.5
 
 - Component 7.1: documentary Tier 1 gate complete and committed on `phase-7`.
 - Component 7.2: Tier 2 PASS at scoped fingerprint
@@ -106,10 +106,15 @@ version and does not change the approved architecture.
   and the temporary service bridge is gone.
 - Component 7.4: Tier 2 PASS at scoped fingerprint
   `8b454480fd409f29f3f56bb20722bd4ea944a39ae946dbc189eb19c5e71db700`;
-  commit is owned by Implement. Planning is scene-free and service now reads
-  scene → dashboard/controls → live activity → stock.
-- Component 7.5: next. It owns compact day completion and reopenable report
-  history. Component 7.6 remains queued behind it.
+  committed on `phase-7` at `59934be`. Planning is scene-free and service now
+  reads scene → dashboard/controls → live activity → stock.
+- Component 7.5: Tier 2 PASS at scoped fingerprint
+  `ea64d40f3f724941cfa9abdea3e24e4f47a619a144c46ab00f2445eb9c835f71`;
+  serialized staging/commit handoff is pending. Day completion is compact,
+  settlement remains exact-once, and bounded campaign reports are reopenable
+  as read-only stored values.
+- Component 7.6: next. It owns the cumulative phase gate, physical-device
+  evidence, full-suite reconciliation, and phase documentation.
 
 ## Component 7.2 — Snapshot-Only WebGL Cart Service
 
@@ -272,3 +277,67 @@ VenueLayout>`. It defines bounded customer/staff/service/activity/stock
 - Full contracts, source/test ownership, exact commands, durations, decisions,
   and acceptance mapping are in
   `docs/components/phase-7-component-7-4-overview.md`.
+
+## Component 7.5 — Compact Completion and Reopenable Reports
+
+### Exact-once compact completion
+
+- The report phase now opens on a compact six-metric result, explicit
+  bottleneck, and exactly one **Settle & reinvest** action. Cash reconciliation,
+  canonical charges, inventory lifecycle, customer mix, and explanations live
+  in a native disclosure that is closed by default.
+- `ReportViewProps` is a discriminated current/historical contract. Current
+  mode requires the one settlement callback; historical mode forbids it. The
+  value renderer has no Game Context access.
+- `closeDay` retains its identity no-op after settlement. Game Context now
+  recognizes all identity no-ops before meta or persistence work. Two
+  synchronous activations, rerender, reload, and later menu updates retain one
+  settlement and one history entry.
+
+### Complete stored charges and honest legacy absence
+
+- New rushes maintain a cumulative, engine-owned charge aggregate at the
+  canonical sale transition. Its maximum group count is derived from the finite
+  configured drink/size/milk variants, and its price bounds are derived from
+  the planner and modifier bounds.
+- Report finalization copies the aggregate only after exact served/revenue
+  reconciliation. A 45-sale regression exceeds and truncates the 80-item mixed
+  activity feed while the stored report still contains every served unit and
+  revenue cent.
+- Schema/state version remains 3. Existing report history and older active
+  rushes receive no synthesized field or migration. Missing historical charge
+  data renders the exact accessible message “Charge breakdown unavailable for
+  this older report.”
+- Save validation rejects unconfigured variants, out-of-bound prices, duplicate
+  variants, invalid group arithmetic, excessive groups, and aggregate/report
+  parity failures. Present active-rush aggregates must also match current
+  canonical rush statistics.
+
+### Bounded read-only history and responsive access
+
+- Game menu now includes Reports and reads only the current campaign's bounded
+  `GameState.history`. Selecting a day passes that stored report directly to a
+  keyed historical `ReportView`, whose disclosure starts closed and exposes no
+  settlement command.
+- Desktop keyboard and 360×780 touch activation, reduced-motion reload,
+  44px targets, modal focus restoration, and no horizontal dialog overflow are
+  browser-proven. A poisoned `$99.99` live activity remains visible in the
+  service world but absent from the selected historical report, proving the
+  value boundary.
+- Mixed old/new history survives schema-v3 export, clean reset, import, and
+  reload without synthesis. Victory, bankruptcy, endless continuation, and
+  current autosave remain intact.
+
+### Production and validation evidence
+
+- Scoped fingerprint:
+  `ea64d40f3f724941cfa9abdea3e24e4f47a619a144c46ab00f2445eb9c835f71`.
+- Tier 2 PASS: build in 3.294412 seconds, lint in 7.063231 seconds, 146/146
+  Vitest assertions in 5.926605 seconds, and 14/14 exact report-history,
+  persistence, and save-transfer Playwright journeys in 25.791309 seconds
+  across desktop Chromium and exact 360×780 touch mobile.
+- Production retains 19 Workbox entries / 1,724.22 KiB; every emitted file is
+  below 1,000,000 bytes. Approved title SHA-256 remains unchanged.
+- Full interfaces, ownership, commands, decisions, gotchas, spec mapping, and
+  validation evidence are in
+  `docs/components/phase-7-component-7-5-overview.md`.

@@ -285,12 +285,12 @@
             "tests/e2e/save-transfer.spec.ts",
             "tests/fixtures/campaignFixtures.ts"
           ],
-          "evidenceFingerprint": null,
-          "validationEvidence": null,
+          "evidenceFingerprint": "ea64d40f3f724941cfa9abdea3e24e4f47a619a144c46ab00f2445eb9c835f71",
+          "validationEvidence": "docs/components/phase-7-component-7-5-overview.md",
           "authorRepairUsed": false,
           "remediationCycles": 0,
-          "disposition": null,
-          "status": "spec-validated"
+          "disposition": "tier-2-pass",
+          "status": "committed"
         },
         {
           "id": "7.6",
