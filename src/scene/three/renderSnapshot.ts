@@ -1,9 +1,7 @@
 import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../../content/gameContent';
 import {
-  activeServiceJobs,
   inventoryTotals,
   serviceQueueCapacity,
-  waitingCustomers,
   type CosmeticId,
   type CustomerSegment,
   type EquipmentState,
@@ -16,9 +14,16 @@ import {
   type VenueId,
   type WeatherId,
 } from '../../game';
-import { createSceneSnapshot, describeScene } from '../sceneModel';
+import {
+  MAX_SCENE_QUEUED_CUSTOMERS,
+  createSceneSnapshot,
+  describeScene,
+  type SceneCustomerEntitySnapshot,
+  type SceneQueueSummary,
+  type SceneStaffEntitySnapshot,
+} from '../sceneModel';
 
-export const MAX_RENDER_QUEUE_CUSTOMERS = 12;
+export const MAX_RENDER_QUEUE_CUSTOMERS = MAX_SCENE_QUEUED_CUSTOMERS;
 export const MAX_RENDER_ACTIVITY_EVENTS = 12;
 export const MAX_RENDER_STAFF = 10;
 
@@ -44,6 +49,7 @@ export interface RenderStockSnapshot {
 }
 
 export interface RenderSnapshot {
+  readonly snapshotId: string;
   readonly description: string;
   readonly identity: Readonly<{
     day: number;
@@ -57,7 +63,11 @@ export interface RenderSnapshot {
     isPaused: boolean;
     queueCount: number;
     queueCapacity: number;
+    queueSummary: SceneQueueSummary;
     queue: readonly RenderCustomerSnapshot[];
+    customers: readonly SceneCustomerEntitySnapshot[];
+    staff: readonly SceneStaffEntitySnapshot[];
+    activeJobs: readonly SceneCustomerEntitySnapshot[];
     active: RenderActiveServiceSnapshot | null;
     activity: readonly RushActivityEvent[];
     served: number;
@@ -88,20 +98,23 @@ export function createRenderSnapshot(
 ): RenderSnapshot {
   const scene = createSceneSnapshot(game, reducedMotion, cosmetics);
   const totals = inventoryTotals(game.inventory);
-  const scheduledIds = new Set(game.plan.scheduledStaffIds);
-  const waiting = game.rush ? waitingCustomers(game.rush) : [];
-  const firstActiveJob = game.rush ? activeServiceJobs(game.rush)[0] : undefined;
-  const active = firstActiveJob
+  const queued = scene.customerEntities.filter(
+    ({ status }) => status === 'approach' || status === 'queued',
+  );
+  const activeJobs = scene.customerEntities.filter(({ status }) => status === 'service');
+  const firstActiveJob = activeJobs[0];
+  const active = firstActiveJob?.order
     ? {
-        id: firstActiveJob.customer.id,
-        segment: firstActiveJob.customer.segment,
-        drinkId: firstActiveJob.customer.order.drinkId,
-        size: firstActiveJob.customer.order.size,
-        milk: firstActiveJob.customer.order.milk,
-        progress: boundedProgress(firstActiveJob.remainingTicks, firstActiveJob.totalTicks),
+        id: firstActiveJob.id,
+        segment: firstActiveJob.segment,
+        drinkId: firstActiveJob.order.drinkId,
+        size: firstActiveJob.order.size,
+        milk: firstActiveJob.order.milk,
+        progress: firstActiveJob.progress,
       }
     : null;
   const snapshot: RenderSnapshot = {
+    snapshotId: scene.snapshotId,
     description: describeScene(scene),
     identity: {
       day: game.day,
@@ -113,12 +126,16 @@ export function createRenderSnapshot(
       tick: game.rush?.tick ?? 0,
       speed: game.rush?.speed ?? 1,
       isPaused: game.rush?.isPaused ?? false,
-      queueCount: waiting.length,
+      queueCount: scene.queueSummary.total,
       queueCapacity: serviceQueueCapacity(game),
-      queue: waiting.slice(0, MAX_RENDER_QUEUE_CUSTOMERS).map(({ id, segment }) => ({
+      queueSummary: scene.queueSummary,
+      queue: queued.map(({ id, segment }) => ({
         id,
         segment,
       })),
+      customers: scene.customerEntities,
+      staff: scene.staffEntities,
+      activeJobs,
       active,
       activity:
         game.rush?.recentActivity
@@ -129,10 +146,7 @@ export function createRenderSnapshot(
       revenueCents: game.rush?.stats.revenueCents ?? 0,
     },
     operation: {
-      scheduledRoles: game.staff
-        .filter(({ id }) => scheduledIds.has(id))
-        .slice(0, MAX_RENDER_STAFF)
-        .map(({ role }) => role),
+      scheduledRoles: scene.staffEntities.slice(0, MAX_RENDER_STAFF).map(({ role }) => role),
       equipment: { ...game.equipment },
       stock: INGREDIENT_IDS.map((ingredientId) => ({
         ingredientId,
@@ -156,11 +170,6 @@ export function deepFreeze<T>(value: T): T {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
   for (const nested of Object.values(value)) deepFreeze(nested);
   return Object.freeze(value);
-}
-
-function boundedProgress(remainingTicks: number, totalTicks: number): number {
-  if (totalTicks <= 0) return 1;
-  return Math.min(1, Math.max(0, 1 - remainingTicks / totalTicks));
 }
 
 function stockLevel(quantity: number): RenderStockLevel {

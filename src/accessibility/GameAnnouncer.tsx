@@ -20,7 +20,7 @@ export function GameAnnouncer(): React.JSX.Element {
     } else {
       const serviceTopology =
         game.venueId === 'departmentStore'
-          ? 'Parallel espresso, brew, and cold stations plus normal and express lanes are available in the semantic dashboard.'
+          ? 'Parallel espresso, brew, and cold stations plus normal and express lanes are available. The heritage hall mirrors canonical customers, staff, jobs, and departures in the semantic dashboard and activity log.'
           : 'One espresso station and its normal lane are available in the semantic dashboard.';
       announcement = `Service rush active at the ${VENUES[game.venueId].shortName}. ${serviceTopology} Scene, dashboard and controls, live activity, then stock.`;
     }

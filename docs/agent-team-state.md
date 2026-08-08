@@ -34,7 +34,12 @@ and strict payroll/persistence proof. Component 8.5 is committed at fingerprint
 `af1212722978e7c4991e0f65d28bcc7eca7ea831f842a6b9740163df4acb1c6f`.
 It delivers three deterministic parallel stations, normal/express lanes,
 exact-once service settlement, strict v4 persistence, semantic reports, and the
-compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
+compact scene/dashboard/activity/stock hierarchy. Component 8.6 is committed at
+fingerprint
+`ea3595b9dbc5c3f9527286085e280a62e42b2458684175cf6162b82f32c766d9`.
+It delivers bounded multi-customer/staff snapshot truth, the procedural heritage
+hall, measured full/compact WebGL budgets, lifecycle visuals, context recovery,
+and the complete 360×780 service composition. Component 8.7 is next.
 
 ## Next-Level Evolution Stage Progress
 
@@ -72,7 +77,9 @@ compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
 - [x] Lead Coordinator audits and commits Component 8.4
 - [x] Component 8.5 delivers canonical parallel stations and express service
 - [x] Lead Coordinator audits and commits the sealed Component 8.5 candidate
-- [ ] Component 8.6 dense heritage-hall implementation begins
+- [x] Component 8.6 delivers the dense multi-customer heritage hall
+- [x] Lead Coordinator audits and commits the repaired Component 8.6 candidate
+- [ ] Component 8.7 forty-day content, balance, and history implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -117,7 +124,7 @@ compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.6 next         | Sequential Component 8.6 dense heritage-hall implementation            |
+| next_level_implement      | Implement                  | ready — 8.7 next         | Sequential Component 8.7 content, balance, and history implementation  |
 
 ## Previous release human task gate
 
@@ -201,6 +208,12 @@ compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
   the immutable sealed gate passed build, lint, all 199 Vitest cases, and 20
   applicable desktop/touch Chromium cases with two intentional routing skips.
   No physical device, push, merge, deployment, or publication occurred.
+- **Component 8.6:** COMMITTED / TIER 2 PASS AFTER ONE TEST-HARNESS REPAIR —
+  fingerprint `ea3595b9…32c766d9`; the final gate passed build, lint, all 204
+  Vitest cases, and 29 applicable desktop/touch browser cases with three
+  intentional project skips. Measured dense rendering stayed within 72/52 draw
+  calls and 60k/30k triangles, and the 360×780 dashboard ended at 512.625px.
+  No physical device, push, merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -258,6 +271,7 @@ compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
 | 2026-08-08 | Make Manager/Runner value deterministic and exact-once       | Manager reduces bounded coordination/reliability delay; Runner reduces bounded handoff workload without creating stock; order preparation is the sole application point                                 | Component 8.4      |
 | 2026-08-08 | Bind staff identity and payroll at the v4 boundary           | Seed/day/slot-derived attributes, venue eligibility, complete daily pools, schedule IDs, and rush/report payroll are validated on import                                                                  | Component 8.4      |
 | 2026-08-08 | Make station/lane/job identity canonical                     | Fixed station ordering, bounded express fairness, service-start inventory consumption, and exact-once aggregates keep engine, persistence, UI, scene, and reports on one authority                         | Component 8.5      |
+| 2026-08-08 | Keep dense 3D presentation snapshot-only                     | Bounded frozen entities, fixed lifecycle destinations, instancing, measured renderer budgets, and reduced-motion parity add story depth without moving gameplay authority into WebGL                     | Component 8.6      |
 
 ## Drift log
 
@@ -280,6 +294,7 @@ compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
 | 2026-08-08 | Component 8.3's initial ownership omitted inventory/layout proof paths        | Coordinator added only inventory, venue-layout, scene, presentation, and breakdown paths needed for tier-three shelf-life and fourth-venue exhaustiveness; all are in the final scope                           |
 | 2026-08-08 | Component 8.3 audit found stale retained current-v4 browser contracts          | Operations now reaches the department flagship, transfer restores Day 40 department detail, and service layout iterates canonical four-venue content; 18/18 repaired desktop/touch cases pass                  |
 | 2026-08-08 | Another Codex process repeatedly changed the shared 8.5 checkout after freezes | Every in-scope delta was preserved and audited, then the complete candidate was snapshot-copied to ignored worktree `phase-8-sealed`; its stable fingerprint alone supplied completion evidence                |
+| 2026-08-08 | Component 8.6 final browser gate exposed modal/background notice ordering      | The owned import helper now leaves the expected pending-event modal in control; the unchanged event test passed desktop/touch and the repaired complete Tier 2 gate passed                                     |
 
 ## Deferred log
 

@@ -505,6 +505,230 @@ export function parallelServiceEnvelope(): SaveEnvelope {
   return createSaveEnvelope(togglePause(active), fixturePreferences(), createDefaultMeta());
 }
 
+/** Paused maximum-density department rush spanning every station and both queue lanes. */
+export function denseDepartmentRushEnvelope(reducedMotion = false): SaveEnvelope {
+  const parallel = parallelServiceEnvelope().activeRun;
+  if (!parallel?.rush) throw new Error('Expected a parallel department rush fixture.');
+  const drinksByLane = {
+    normal: {
+      espressoBar: 'flatWhite',
+      brewBar: null,
+      coldBar: 'icedLatte',
+    },
+    express: {
+      espressoBar: 'espresso',
+      brewBar: 'batchBrew',
+      coldBar: 'coldBrew',
+    },
+  } as const;
+  const segments = ['commuter', 'student', 'enthusiast', 'regular'] as const;
+  let sequence = 10;
+  const queueFor = (laneId: Customer['laneId']): Customer[] =>
+    (['espressoBar', 'brewBar', 'coldBar'] as const).flatMap((stationId, stationIndex) => {
+      const drinkId = drinksByLane[laneId][stationId];
+      return drinkId === null
+        ? []
+        : Array.from({ length: 6 }, (_, index) =>
+            parallelFixtureCustomer(
+              parallel.day,
+              sequence++,
+              drinkId,
+              laneId,
+              segments[(stationIndex + index) % segments.length],
+            ),
+          );
+    });
+  const normalQueue = queueFor('normal');
+  const expressQueue = queueFor('express');
+  const activeJobs = Object.values(parallel.rush.serviceJobsByStation).filter(
+    (job): job is NonNullable<typeof job> => job !== null,
+  );
+  const terminalEvents = [
+    {
+      id: `d${parallel.day}-e6`,
+      sequence: 6,
+      tick: 64,
+      customerId: `d${parallel.day}-c40`,
+      segment: 'student' as const,
+      stationId: 'espressoBar' as const,
+      laneId: 'normal' as const,
+      jobId: `d${parallel.day}-j40`,
+      type: 'sale' as const,
+      drinkId: 'flatWhite' as const,
+      size: 'large' as const,
+      milk: 'dairy' as const,
+      priceCents: 725,
+    },
+    {
+      id: `d${parallel.day}-e7`,
+      sequence: 7,
+      tick: 63,
+      customerId: `d${parallel.day}-c41`,
+      segment: 'regular' as const,
+      stationId: 'brewBar' as const,
+      laneId: 'express' as const,
+      jobId: `d${parallel.day}-j41`,
+      type: 'sale' as const,
+      drinkId: 'batchBrew' as const,
+      size: 'regular' as const,
+      milk: 'none' as const,
+      priceCents: 500,
+    },
+    {
+      id: `d${parallel.day}-e8`,
+      sequence: 8,
+      tick: 64,
+      customerId: `d${parallel.day}-c42`,
+      segment: 'commuter' as const,
+      stationId: 'coldBar' as const,
+      laneId: 'express' as const,
+      jobId: null,
+      type: 'walkaway' as const,
+      reason: 'stockout' as const,
+    },
+  ];
+  const activeEvents = activeJobs.flatMap((job, index) => [
+    {
+      id: `d${parallel.day}-e${index * 2}`,
+      sequence: index * 2,
+      tick: 60,
+      customerId: job.customer.id,
+      segment: job.customer.segment,
+      stationId: job.stationId,
+      laneId: job.laneId,
+      jobId: null,
+      type: 'arrival' as const,
+    },
+    {
+      id: `d${parallel.day}-e${index * 2 + 1}`,
+      sequence: index * 2 + 1,
+      tick: 61,
+      customerId: job.customer.id,
+      segment: job.customer.segment,
+      stationId: job.stationId,
+      laneId: job.laneId,
+      jobId: job.id,
+      type: 'serviceStarted' as const,
+      drinkId: job.customer.order.drinkId,
+      size: job.customer.order.size,
+      milk: job.customer.order.milk,
+    },
+  ]);
+  const serviceAggregates = parallel.rush.stats.serviceAggregates.map((aggregate) => {
+    if (aggregate.stationId === 'espressoBar' && aggregate.laneId === 'normal') {
+      return {
+        ...aggregate,
+        completedJobIds: [`d${parallel.day}-j40`],
+        served: 1,
+        revenueCents: 725,
+        satisfactionTotal: 88,
+      };
+    }
+    if (aggregate.stationId === 'brewBar' && aggregate.laneId === 'express') {
+      return {
+        ...aggregate,
+        completedJobIds: [`d${parallel.day}-j41`],
+        served: 1,
+        revenueCents: 500,
+        satisfactionTotal: 86,
+      };
+    }
+    return aggregate;
+  });
+  const completedIngredientAmounts = [
+    [
+      { ingredientId: 'houseBeans' as const, amount: 22 },
+      { ingredientId: 'dairyMilk' as const, amount: 220 },
+    ],
+    [{ ingredientId: 'houseBeans' as const, amount: 15 }],
+  ] as const;
+  const inventory = completedIngredientAmounts.reduce(
+    (current, ingredients) => consumeIngredientsAtServiceStart(current, [...ingredients]),
+    parallel.inventory,
+  );
+  const consumed = { ...parallel.rush.stats.consumed };
+  for (const ingredients of completedIngredientAmounts) {
+    for (const ingredient of ingredients) {
+      consumed[ingredient.ingredientId] =
+        (consumed[ingredient.ingredientId] ?? 0) + ingredient.amount;
+    }
+  }
+  const completedIngredientCostCents = completedIngredientAmounts.reduce(
+    (total, ingredients) =>
+      total +
+      Math.round(
+        ingredients.reduce(
+          (cost, ingredient) =>
+            cost + ingredient.amount * INGREDIENT_UNIT_COST_CENTS[ingredient.ingredientId],
+          0,
+        ),
+      ),
+    0,
+  );
+  const rush = {
+    ...parallel.rush,
+    tick: 64,
+    durationTicks: Math.max(parallel.rush.durationTicks, 180),
+    isPaused: true,
+    speed: 4 as const,
+    normalQueue,
+    expressQueue,
+    serviceJobsByStation: {
+      espressoBar: activeJobs.find(({ stationId }) => stationId === 'espressoBar') ?? null,
+      brewBar: activeJobs.find(({ stationId }) => stationId === 'brewBar') ?? null,
+      coldBar: activeJobs.find(({ stationId }) => stationId === 'coldBar') ?? null,
+    },
+    nextCustomerId: 43,
+    nextServiceJobSequence: 42,
+    nextActivitySequence: 9,
+    recentActivity: [...activeEvents, ...terminalEvents],
+    chargeGroups: [
+      {
+        drinkId: 'flatWhite' as const,
+        size: 'large' as const,
+        milk: 'dairy' as const,
+        priceCents: 725,
+        quantity: 1,
+        revenueCents: 725,
+      },
+      {
+        drinkId: 'batchBrew' as const,
+        size: 'regular' as const,
+        milk: 'none' as const,
+        priceCents: 500,
+        quantity: 1,
+        revenueCents: 500,
+      },
+    ],
+    stats: {
+      ...parallel.rush.stats,
+      arrivals: 36,
+      served: 2,
+      abandoned: 1,
+      stockouts: 1,
+      revenueCents: 1_225,
+      ingredientCostCents: parallel.rush.stats.ingredientCostCents + completedIngredientCostCents,
+      satisfactionTotal: 174,
+      soldByDrink: { flatWhite: 1, batchBrew: 1 },
+      consumed,
+      arrivalsBySegment: { commuter: 10, student: 9, enthusiast: 8, regular: 9 },
+      servedBySegment: { student: 1, regular: 1 },
+      peakQueue: 30,
+      serviceAggregates,
+    },
+  };
+  return createSaveEnvelope(
+    {
+      ...parallel,
+      inventory,
+      plan: { ...parallel.plan, activeMenu: [...parallel.plan.activeMenu, 'icedLatte'] },
+      rush,
+    },
+    { ...fixturePreferences(), reducedMotion },
+    createDefaultMeta(),
+  );
+}
+
 /** Active-rush fixture with both canonical and older read-only history reports. */
 export function reportHistoryEnvelope(): SaveEnvelope {
   const generated = completeFixtureReportState(7_505).report;
@@ -581,11 +805,16 @@ function livingRushCustomer(id: string, segment: Customer['segment']): Customer 
 function parallelFixtureCustomer(
   day: number,
   sequence: number,
-  drinkId: 'espresso' | 'flatWhite' | 'batchBrew' | 'coldBrew',
+  drinkId: 'espresso' | 'flatWhite' | 'batchBrew' | 'icedLatte' | 'coldBrew',
   laneId: Customer['laneId'],
+  segment: Customer['segment'] = 'commuter',
 ): Customer {
   const stationId =
-    drinkId === 'batchBrew' ? 'brewBar' : drinkId === 'coldBrew' ? 'coldBar' : 'espressoBar';
+    drinkId === 'batchBrew'
+      ? 'brewBar'
+      : drinkId === 'coldBrew' || drinkId === 'icedLatte'
+        ? 'coldBar'
+        : 'espressoBar';
   const ingredientAmounts =
     drinkId === 'batchBrew'
       ? [{ ingredientId: 'houseBeans' as const, amount: 15 }]
@@ -594,21 +823,27 @@ function parallelFixtureCustomer(
             { ingredientId: 'coldBrewConcentrate' as const, amount: 90 },
             { ingredientId: 'ice' as const, amount: 1 },
           ]
-        : drinkId === 'flatWhite'
+        : drinkId === 'icedLatte'
           ? [
               { ingredientId: 'houseBeans' as const, amount: 18 },
-              { ingredientId: 'dairyMilk' as const, amount: 150 },
+              { ingredientId: 'dairyMilk' as const, amount: 180 },
+              { ingredientId: 'ice' as const, amount: 1 },
             ]
-          : [{ ingredientId: 'houseBeans' as const, amount: 18 }];
+          : drinkId === 'flatWhite'
+            ? [
+                { ingredientId: 'houseBeans' as const, amount: 18 },
+                { ingredientId: 'dairyMilk' as const, amount: 150 },
+              ]
+            : [{ ingredientId: 'houseBeans' as const, amount: 18 }];
   return {
     id: `d${day}-c${sequence}`,
-    segment: 'commuter',
+    segment,
     stationId,
     laneId,
     order: {
       drinkId,
       size: 'regular',
-      milk: drinkId === 'flatWhite' ? 'dairy' : 'none',
+      milk: drinkId === 'flatWhite' || drinkId === 'icedLatte' ? 'dairy' : 'none',
       priceCents:
         drinkId === 'espresso'
           ? 400
@@ -616,7 +851,9 @@ function parallelFixtureCustomer(
             ? 550
             : drinkId === 'batchBrew'
               ? 500
-              : 620,
+              : drinkId === 'icedLatte'
+                ? 650
+                : 620,
       ingredientAmounts,
       preparationTicks: 20,
     },

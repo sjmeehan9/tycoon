@@ -1,47 +1,63 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Object3D } from 'three';
+import { Color, Object3D } from 'three';
 import type { InstancedMesh } from 'three';
 
+import type { EquipmentState, StationId } from '../../../game';
+import { ActivityEffects } from '../entities/ActivityEffects';
 import { People } from '../entities/People';
-import { CART_PALETTE } from '../materials';
+import { CART_PALETTE, DEPARTMENT_PALETTE } from '../materials';
 import type { RenderSnapshot, RenderStockLevel } from '../renderSnapshot';
-import { venueLayoutFor } from './venueLayout';
+import {
+  DEPARTMENT_EQUIPMENT_REGISTRY,
+  DEPARTMENT_LAYOUT,
+  DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY,
+  departmentCustomerPoint,
+  type DepartmentLod,
+} from './departmentLayout';
 
 interface DepartmentStoreWorldProps {
+  readonly lod?: DepartmentLod;
   readonly snapshot: RenderSnapshot;
 }
 
-const LAYOUT = venueLayoutFor('departmentStore');
+interface InstanceTransform {
+  readonly position: readonly [number, number, number];
+  readonly rotation?: readonly [number, number, number];
+  readonly scale?: readonly [number, number, number];
+  readonly colour?: string;
+}
 
-/** Heritage department-store hall driven by the existing single-queue engine snapshot. */
-export function DepartmentStoreWorld({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  const latest = snapshot.service.activity.at(-1);
+const STATION_IDS = ['espressoBar', 'brewBar', 'coldBar'] as const;
+const BAY_COLOURS: Readonly<Record<StationId, string>> = Object.freeze({
+  espressoBar: DEPARTMENT_PALETTE.espresso,
+  brewBar: DEPARTMENT_PALETTE.brew,
+  coldBar: DEPARTMENT_PALETTE.cold,
+});
+
+/** Dense three-bay heritage hall driven exclusively by the immutable render snapshot. */
+export function DepartmentStoreWorld({
+  lod = 'full',
+  snapshot,
+}: DepartmentStoreWorldProps): React.JSX.Element {
   return (
     <group name="department-store-world">
-      <HeritageHall snapshot={snapshot} />
-      <GrandCoffeeCounter snapshot={snapshot} />
-      <CommercialEquipment snapshot={snapshot} />
+      <HeritageShell lod={lod} snapshot={snapshot} />
+      <TimberPanelling lod={lod} />
+      <BrassDetails lod={lod} />
+      <VisibleEscalators lod={lod} />
+      <ServiceBays snapshot={snapshot} />
+      <CommercialEquipment equipment={snapshot.operation.equipment} lod={lod} />
       <DepartmentStockWall snapshot={snapshot} />
-      <HallFurniture />
-      <QueueMarkers count={snapshot.service.queue.length} />
+      <HallFurniture lod={lod} />
+      <QueueMarkers snapshot={snapshot} />
+      <ServiceProgress snapshot={snapshot} />
       <People snapshot={snapshot} />
-      <ServiceCue snapshot={snapshot} />
-      <ActivityCue
-        hasSale={snapshot.service.activity.some((event) => event.type === 'sale')}
-        hasWalkaway={snapshot.service.activity.some((event) => event.type === 'walkaway')}
-        latestType={latest?.type ?? 'arrival'}
-      />
+      <ActivityEffects snapshot={snapshot} />
     </group>
   );
 }
 
-function HeritageHall({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  const accent =
-    snapshot.operation.awning === 'neonCup'
-      ? '#73547f'
-      : snapshot.operation.awning === 'wattleAwning'
-        ? '#4f735d'
-        : '#9b493d';
+function HeritageShell({ lod, snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
   const daylight =
     snapshot.identity.weather === 'sunny'
       ? '#f4d88f'
@@ -50,325 +66,349 @@ function HeritageHall({ snapshot }: DepartmentStoreWorldProps): React.JSX.Elemen
         : snapshot.identity.weather === 'rainy'
           ? '#78989d'
           : '#d5d4bd';
+  const tileCount = lod === 'compact' ? 40 : 64;
+  const tiles = useMemo(
+    () =>
+      Array.from({ length: tileCount }, (_, index) => {
+        const columns = lod === 'compact' ? 8 : 16;
+        const row = Math.floor(index / columns);
+        const column = index % columns;
+        return {
+          position: [column * (20 / columns) - 8.75, 0.025, row * 1.36 + 0.25] as const,
+          rotation: [-Math.PI / 2, 0, 0] as const,
+          scale: [1, 1, 1] as const,
+          colour:
+            (row + column) % 3 === 0
+              ? DEPARTMENT_PALETTE.tileBurgundy
+              : (row + column) % 3 === 1
+                ? DEPARTMENT_PALETTE.tileCream
+                : DEPARTMENT_PALETTE.tileSage,
+        };
+      }),
+    [lod, tileCount],
+  );
+  const columns = [-8.6, -5.9, 5.9, 8.6].map((x) => ({
+    position: [x, 2.45, -3.25] as const,
+  }));
+  const windows = [-7.25, -2.45, 2.45, 7.25].map((x) => ({
+    position: [x, 2.6, -3.63] as const,
+    colour: daylight,
+  }));
   return (
-    <group name="heritage-department-hall">
+    <group name="motif-patterned-heritage-tiles">
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[LAYOUT.floor.width, LAYOUT.floor.depth]} />
-        <meshStandardMaterial color="#514943" roughness={0.98} />
+        <planeGeometry args={[DEPARTMENT_LAYOUT.floor.width, DEPARTMENT_LAYOUT.floor.depth]} />
+        <meshStandardMaterial color="#4d453f" roughness={0.98} />
       </mesh>
-      <TerrazzoFloor />
-      <mesh receiveShadow position={[0, 3.1, -3.8]}>
-        <boxGeometry args={[14.8, 6.2, 0.4]} />
-        <meshStandardMaterial color="#a96f55" roughness={0.94} />
+      <Instances transforms={tiles} type="tile" />
+      <mesh receiveShadow position={[0, 3.15, -3.85]}>
+        <boxGeometry args={[21.6, 6.3, 0.42]} />
+        <meshStandardMaterial color="#9f725e" roughness={0.94} />
       </mesh>
-      <mesh receiveShadow position={[-7.2, 2.7, -0.6]}>
-        <boxGeometry args={[0.38, 5.4, 6.8]} />
-        <meshStandardMaterial color="#7e503f" roughness={0.95} />
+      <mesh receiveShadow position={[-10.75, 2.2, -0.5]}>
+        <boxGeometry args={[0.38, 4.4, 7.1]} />
+        <meshStandardMaterial color="#79503f" roughness={0.94} />
       </mesh>
-      <mesh castShadow position={[0, 5.78, -1.0]} scale={[1.85, 0.58, 1.05]}>
-        <sphereGeometry args={[3.35, 18, 10]} />
+      <Instances colour={DEPARTMENT_PALETTE.stone} transforms={columns} type="column" />
+      <Instances transforms={windows} type="window" />
+      <mesh castShadow position={[0, 5.75, -1.65]} scale={[2.4, 0.54, 1]}>
+        <sphereGeometry args={[3.25, lod === 'compact' ? 12 : 18, 8]} />
         <meshStandardMaterial
           color={daylight}
           emissive={daylight}
-          emissiveIntensity={0.12}
+          emissiveIntensity={0.1}
           metalness={0.08}
-          opacity={0.82}
+          opacity={0.8}
           roughness={0.36}
           transparent
         />
       </mesh>
-      <HeritageColumns />
-      <group name="department-sign" position={[0, 3.3, -3.48]}>
-        <mesh castShadow>
-          <boxGeometry args={[7.4, 0.92, 0.16]} />
-          <meshStandardMaterial
-            color={accent}
-            emissive={accent}
-            emissiveIntensity={0.12}
-            roughness={0.74}
-          />
-        </mesh>
-        <mesh position={[0, 0, 0.11]}>
-          <boxGeometry args={[4.9, 0.13, 0.05]} />
-          <meshStandardMaterial color="#f1dbb1" emissive="#d8aa62" emissiveIntensity={0.22} />
-        </mesh>
-      </group>
-      <HallWindows colour={daylight} />
     </group>
   );
 }
 
-function TerrazzoFloor(): React.JSX.Element {
+function TimberPanelling({ lod }: { readonly lod: DepartmentLod }): React.JSX.Element {
+  const panels = Array.from({ length: lod === 'compact' ? 12 : 18 }, (_, index) => ({
+    position: [-9.7 + index * (19.4 / (lod === 'compact' ? 11 : 17)), 1.15, -3.59] as const,
+    scale: [1, 1, 1] as const,
+  }));
+  return (
+    <group name="motif-timber-panelling-counters">
+      <Instances colour={DEPARTMENT_PALETTE.timber} transforms={panels} type="panel" />
+    </group>
+  );
+}
+
+function BrassDetails({ lod }: { readonly lod: DepartmentLod }): React.JSX.Element {
+  const posts = Array.from({ length: lod === 'compact' ? 8 : 14 }, (_, index) => ({
+    position: [-7.1 + index * (14.2 / (lod === 'compact' ? 7 : 13)), 0.52, 4.55] as const,
+  }));
+  const rails = [-4.1, 0, 4.1].map((x) => ({
+    position: [x, 0.72, 2.7] as const,
+    rotation: [0, 0, Math.PI / 2] as const,
+  }));
+  return (
+    <group name="motif-brass-rails-details">
+      <Instances colour={DEPARTMENT_PALETTE.brass} transforms={posts} type="brass-post" />
+      <Instances colour={DEPARTMENT_PALETTE.brassBright} transforms={rails} type="brass-rail" />
+    </group>
+  );
+}
+
+function VisibleEscalators({ lod }: { readonly lod: DepartmentLod }): React.JSX.Element {
+  const steps = Array.from({ length: lod === 'compact' ? 8 : 14 }, (_, index) => ({
+    position: [7.35 + index * 0.13, 0.22 + index * 0.17, -0.8 - index * 0.13] as const,
+  }));
+  return (
+    <group name="motif-visible-escalators">
+      <Instances colour="#5f6768" transforms={steps} type="escalator-step" />
+      <mesh castShadow position={[8.55, 1.55, -2]} rotation={[0.75, 0, -0.75]}>
+        <boxGeometry args={[0.12, 4.5, 0.12]} />
+        <meshStandardMaterial color={DEPARTMENT_PALETTE.brass} metalness={0.58} roughness={0.34} />
+      </mesh>
+      <mesh castShadow position={[7.55, 1.55, -2.8]} rotation={[0.75, 0, -0.75]}>
+        <boxGeometry args={[0.12, 4.5, 0.12]} />
+        <meshStandardMaterial color={DEPARTMENT_PALETTE.brass} metalness={0.58} roughness={0.34} />
+      </mesh>
+    </group>
+  );
+}
+
+function ServiceBays({ snapshot }: { readonly snapshot: RenderSnapshot }): React.JSX.Element {
+  const counterBodies = STATION_IDS.map((stationId) => ({
+    position: DEPARTMENT_LAYOUT.stations[stationId].counter,
+    colour: BAY_COLOURS[stationId],
+  }));
+  const counterTops = STATION_IDS.map((stationId) => {
+    const [x, , z] = DEPARTMENT_LAYOUT.stations[stationId].counter;
+    return { position: [x, 1.5, z] as const };
+  });
+  const plaques = DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY.map((anchorId) => ({
+    position: DEPARTMENT_LAYOUT.physicalUpgradeAnchors[anchorId],
+    colour:
+      anchorId === 'hallEntry'
+        ? DEPARTMENT_PALETTE.brass
+        : BAY_COLOURS[
+            anchorId === 'espressoBay'
+              ? 'espressoBar'
+              : anchorId === 'brewBay'
+                ? 'brewBar'
+                : 'coldBar'
+          ],
+  }));
+  return (
+    <group name="motif-three-distinct-service-bays">
+      <Instances transforms={counterBodies} type="counter" />
+      <Instances colour={DEPARTMENT_PALETTE.stone} transforms={counterTops} type="counter-top" />
+      <group name="physical-upgrade-anchor-registry">
+        <Instances transforms={plaques} type="bay-plaque" />
+      </group>
+      {snapshot.operation.hasStreetSign ? (
+        <mesh castShadow name="physical-upgrade-street-sign" position={[-8.4, 2.1, 2.2]}>
+          <boxGeometry args={[1.55, 1, 0.14]} />
+          <meshStandardMaterial color={CART_PALETTE.wattle} roughness={0.68} />
+        </mesh>
+      ) : null}
+    </group>
+  );
+}
+
+function CommercialEquipment({
+  equipment,
+  lod,
+}: {
+  readonly equipment: Readonly<EquipmentState>;
+  readonly lod: DepartmentLod;
+}): React.JSX.Element {
+  return (
+    <group name="tier-three-commercial-equipment">
+      {DEPARTMENT_EQUIPMENT_REGISTRY.map((equipmentId) => {
+        const level = equipment[equipmentId];
+        if (level <= 0) return null;
+        return (
+          <EquipmentMesh
+            equipmentId={equipmentId}
+            key={equipmentId}
+            level={level}
+            lod={lod}
+            position={DEPARTMENT_LAYOUT.equipment[equipmentId]}
+          />
+        );
+      })}
+    </group>
+  );
+}
+
+function EquipmentMesh({
+  equipmentId,
+  level,
+  lod,
+  position,
+}: {
+  readonly equipmentId: keyof EquipmentState;
+  readonly level: number;
+  readonly lod: DepartmentLod;
+  readonly position: readonly [number, number, number];
+}): React.JSX.Element {
+  const width = 0.62 + level * 0.18;
+  if (equipmentId === 'grinder' || equipmentId === 'batchBrewer') {
+    return (
+      <mesh castShadow={lod === 'full'} name={`equipment-${equipmentId}`} position={position}>
+        <cylinderGeometry args={[width * 0.32, width * 0.42, 0.86, 8]} />
+        <meshStandardMaterial color="#465354" metalness={0.28} roughness={0.44} />
+      </mesh>
+    );
+  }
+  return (
+    <mesh castShadow={lod === 'full'} name={`equipment-${equipmentId}`} position={position}>
+      <boxGeometry args={[width, equipmentId === 'refrigeration' ? 1.45 : 0.72, 0.72]} />
+      <meshStandardMaterial
+        color={equipmentId === 'pos' ? '#233738' : '#93a2a1'}
+        metalness={0.32}
+        roughness={0.42}
+      />
+    </mesh>
+  );
+}
+
+function DepartmentStockWall({
+  snapshot,
+}: {
+  readonly snapshot: RenderSnapshot;
+}): React.JSX.Element {
+  const stock = snapshot.operation.stock.map((item, index) => ({
+    position: [-6.95 + (index % 3) * 0.72, 0.65 + Math.floor(index / 3) * 0.68, -1.73] as const,
+    colour: stockColour(item.level),
+  }));
+  return (
+    <group name="department-stock-cues">
+      <mesh castShadow position={[-6.25, 1.45, -2.05]}>
+        <boxGeometry args={[2.8, 2.9, 0.36]} />
+        <meshStandardMaterial color={DEPARTMENT_PALETTE.timberDark} roughness={0.92} />
+      </mesh>
+      <Instances transforms={stock} type="stock" />
+    </group>
+  );
+}
+
+function HallFurniture({ lod }: { readonly lod: DepartmentLod }): React.JSX.Element {
+  const count = lod === 'compact' ? 10 : 18;
+  const tables = Array.from({ length: count }, (_, index) => ({
+    position: [-7.4 + (index % 6) * 1.35, 0.48, 5.35 + Math.floor(index / 6) * 0.82] as const,
+  }));
+  return (
+    <group name="instanced-department-furnishings">
+      <Instances colour={DEPARTMENT_PALETTE.timber} transforms={tables} type="table" />
+    </group>
+  );
+}
+
+function QueueMarkers({ snapshot }: { readonly snapshot: RenderSnapshot }): React.JSX.Element {
+  const markers = snapshot.service.customers
+    .filter(({ status }) => status === 'approach' || status === 'queued')
+    .map((customer) => {
+      const [x, , z] = departmentCustomerPoint(customer);
+      return {
+        position: [x, 0.035, z] as const,
+        rotation: [-Math.PI / 2, 0, 0] as const,
+        colour: customer.laneId === 'express' ? CART_PALETTE.wattle : '#ead7b1',
+      };
+    });
+  return <Instances transforms={markers} type="queue-marker" />;
+}
+
+function ServiceProgress({ snapshot }: { readonly snapshot: RenderSnapshot }): React.JSX.Element {
+  const jobs = snapshot.service.activeJobs.map((customer) => {
+    const [x, , z] = departmentCustomerPoint(customer);
+    return {
+      position: [x - 0.45 + customer.progress * 0.9, 2.02, z - 0.62] as const,
+      colour: BAY_COLOURS[customer.stationId],
+    };
+  });
+  return <Instances transforms={jobs} type="service-progress" />;
+}
+
+function Instances({
+  colour,
+  transforms,
+  type,
+}: {
+  readonly colour?: string;
+  readonly transforms: readonly InstanceTransform[];
+  readonly type:
+    | 'bay-plaque'
+    | 'brass-post'
+    | 'brass-rail'
+    | 'column'
+    | 'counter'
+    | 'counter-top'
+    | 'escalator-step'
+    | 'panel'
+    | 'queue-marker'
+    | 'service-progress'
+    | 'stock'
+    | 'table'
+    | 'tile'
+    | 'window';
+}): React.JSX.Element | null {
   const ref = useRef<InstancedMesh>(null);
   const dummy = useMemo(() => new Object3D(), []);
-  const tiles = useMemo(
-    () =>
-      Array.from({ length: 36 }, (_, index) => ({
-        x: (index % 9) * 1.25 - 5,
-        z: 0.7 + Math.floor(index / 9) * 1.22,
-      })),
-    [],
-  );
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    tiles.forEach((tile, index) => {
-      dummy.position.set(tile.x, 0.018, tile.z);
-      dummy.rotation.set(-Math.PI / 2, 0, 0);
-      dummy.scale.set(1, 1, 1);
+    transforms.forEach((transform, index) => {
+      dummy.position.set(...transform.position);
+      dummy.rotation.set(...(transform.rotation ?? [0, 0, 0]));
+      dummy.scale.set(...(transform.scale ?? [1, 1, 1]));
       dummy.updateMatrix();
       mesh.setMatrixAt(index, dummy.matrix);
+      if (transform.colour) mesh.setColorAt(index, new Color(transform.colour));
     });
     mesh.instanceMatrix.needsUpdate = true;
-  }, [dummy, tiles]);
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [dummy, transforms]);
+  if (transforms.length === 0) return null;
+  const material = (
+    <meshStandardMaterial
+      color={colour}
+      metalness={type.startsWith('brass') ? 0.55 : 0.04}
+      opacity={type === 'window' ? 0.78 : 1}
+      roughness={type.startsWith('brass') ? 0.34 : 0.82}
+      transparent={type === 'window'}
+      vertexColors={colour === undefined}
+    />
+  );
   return (
-    <instancedMesh args={[undefined, undefined, tiles.length]} count={tiles.length} ref={ref}>
-      <planeGeometry args={[1.16, 1.13]} />
-      <meshStandardMaterial color="#81756b" roughness={0.96} />
+    <instancedMesh
+      args={[undefined, undefined, Math.max(1, transforms.length)]}
+      castShadow={type !== 'tile' && type !== 'queue-marker'}
+      count={transforms.length}
+      frustumCulled={false}
+      name={`instanced-${type}`}
+      receiveShadow={type === 'tile' || type === 'counter' || type === 'panel'}
+      ref={ref}
+    >
+      {instanceGeometry(type)}
+      {material}
     </instancedMesh>
   );
 }
 
-function HeritageColumns(): React.JSX.Element {
-  return (
-    <group name="heritage-columns">
-      {[-6, -3.9, 3.9, 6].map((x) => (
-        <group key={x} position={[x, 2.3, -2.95]}>
-          <mesh castShadow receiveShadow>
-            <cylinderGeometry args={[0.34, 0.44, 4.6, 12]} />
-            <meshStandardMaterial color="#d7c4a0" roughness={0.88} />
-          </mesh>
-          <mesh castShadow position={[0, 2.18, 0]}>
-            <boxGeometry args={[0.82, 0.22, 0.82]} />
-            <meshStandardMaterial color="#e3d1ac" roughness={0.86} />
-          </mesh>
-          <mesh receiveShadow position={[0, -2.18, 0]}>
-            <boxGeometry args={[0.76, 0.24, 0.76]} />
-            <meshStandardMaterial color="#b99f78" roughness={0.92} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function HallWindows({ colour }: { readonly colour: string }): React.JSX.Element {
-  return (
-    <group name="heritage-windows" position={[0, 2.05, -3.53]}>
-      {[-5, -2.55, 2.55, 5].map((x) => (
-        <group key={x} position={[x, 0, 0]}>
-          <mesh>
-            <boxGeometry args={[1.35, 2.15, 0.08]} />
-            <meshStandardMaterial
-              color={colour}
-              emissive={colour}
-              emissiveIntensity={0.1}
-              opacity={0.78}
-              roughness={0.3}
-              transparent
-            />
-          </mesh>
-          <mesh position={[0, 0, 0.06]}>
-            <boxGeometry args={[0.08, 2.2, 0.04]} />
-            <meshStandardMaterial color="#58463a" roughness={0.85} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function GrandCoffeeCounter({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  const accent = snapshot.operation.awning === 'neonCup' ? '#72517f' : CART_PALETTE.service;
-  return (
-    <group name="single-grand-service-counter" position={[-0.75, 0, -0.85]}>
-      <mesh castShadow receiveShadow position={[0, 0.72, 0]}>
-        <boxGeometry args={[9.3, 1.44, 1.42]} />
-        <meshStandardMaterial color="#734938" roughness={0.84} />
-      </mesh>
-      <mesh castShadow position={[0, 1.51, 0]}>
-        <boxGeometry args={[9.65, 0.16, 1.7]} />
-        <meshStandardMaterial color="#d9c7aa" metalness={0.04} roughness={0.58} />
-      </mesh>
-      <mesh castShadow position={[4.05, 1.66, 0.42]}>
-        <boxGeometry args={[1.25, 0.18, 0.72]} />
-        <meshStandardMaterial color={accent} roughness={0.66} />
-      </mesh>
-    </group>
-  );
-}
-
-function CommercialEquipment({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  const equipment = snapshot.operation.equipment;
-  return (
-    <group name="commercial-equipment" position={[-0.9, 1.58, -1.12]}>
-      {equipment.espressoMachine > 0 ? (
-        <mesh castShadow position={[0.4, 0.38, 0]}>
-          <boxGeometry args={[1.7 + equipment.espressoMachine * 0.42, 0.78, 0.74]} />
-          <meshStandardMaterial color="#8d9b9d" metalness={0.4} roughness={0.4} />
-        </mesh>
-      ) : null}
-      {equipment.grinder > 0 ? (
-        <group position={[-2.05, 0.36, 0]}>
-          {Array.from({ length: equipment.grinder }, (_, index) => (
-            <mesh castShadow key={index} position={[index * 0.5, 0, 0]}>
-              <cylinderGeometry args={[0.22, 0.3, 0.74, 8]} />
-              <meshStandardMaterial color="#303938" metalness={0.15} roughness={0.54} />
-            </mesh>
-          ))}
-        </group>
-      ) : null}
-      {equipment.batchBrewer > 0 ? (
-        <group position={[2.45, 0.34, 0]}>
-          {Array.from({ length: equipment.batchBrewer }, (_, index) => (
-            <mesh castShadow key={index} position={[index * 0.58, 0, 0]}>
-              <cylinderGeometry args={[0.3, 0.37, 0.7, 8]} />
-              <meshStandardMaterial color="#536f72" metalness={0.24} roughness={0.46} />
-            </mesh>
-          ))}
-        </group>
-      ) : null}
-      {equipment.pos > 0 ? (
-        <mesh castShadow position={[3.8, 0.25, 0.22]} rotation={[0, -0.28, 0]}>
-          <boxGeometry args={[0.5 + equipment.pos * 0.14, 0.55, 0.26]} />
-          <meshStandardMaterial color="#203638" roughness={0.38} />
-        </mesh>
-      ) : null}
-      {equipment.refrigeration > 0 ? (
-        <mesh castShadow position={[-4.2, -0.55, -0.18]}>
-          <boxGeometry args={[1.15 + equipment.refrigeration * 0.34, 1.5, 1]} />
-          <meshStandardMaterial color="#b4c5c5" metalness={0.18} roughness={0.5} />
-        </mesh>
-      ) : null}
-      {equipment.serviceCounter > 0 ? (
-        <mesh castShadow position={[4.7, -0.02, 0.78]}>
-          <boxGeometry args={[0.8 + equipment.serviceCounter * 0.46, 0.28, 0.82]} />
-          <meshStandardMaterial color={CART_PALETTE.service} roughness={0.64} />
-        </mesh>
-      ) : null}
-    </group>
-  );
-}
-
-function DepartmentStockWall({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  return (
-    <group name="department-stock-cues" position={LAYOUT.stockAnchor}>
-      <mesh castShadow position={[0, 1.48, 0]}>
-        <boxGeometry args={[3.25, 3, 0.4]} />
-        <meshStandardMaterial color="#5b4034" roughness={0.94} />
-      </mesh>
-      {snapshot.operation.stock.map((stock, index) => (
-        <mesh
-          castShadow
-          key={stock.ingredientId}
-          position={[-1.05 + (index % 3) * 1.05, 0.5 + Math.floor(index / 3) * 0.94, 0.3]}
-        >
-          <boxGeometry args={[0.78, 0.42, 0.46]} />
-          <meshStandardMaterial
-            color={stockColour(stock.level)}
-            emissive={stock.level === 'available' ? '#000000' : stockColour(stock.level)}
-            emissiveIntensity={stock.level === 'available' ? 0 : 0.18}
-            roughness={0.84}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function HallFurniture(): React.JSX.Element {
-  return (
-    <group name="department-hall-furnishings">
-      {[-4.8, -2.8].map((x) => (
-        <group key={x} position={[x, 0.56, 3.75]}>
-          <mesh castShadow receiveShadow>
-            <boxGeometry args={[1.5, 0.18, 0.55]} />
-            <meshStandardMaterial color="#75503d" roughness={0.88} />
-          </mesh>
-          <mesh castShadow position={[-0.55, -0.34, 0]}>
-            <boxGeometry args={[0.12, 0.68, 0.44]} />
-            <meshStandardMaterial color="#40342d" roughness={0.9} />
-          </mesh>
-          <mesh castShadow position={[0.55, -0.34, 0]}>
-            <boxGeometry args={[0.12, 0.68, 0.44]} />
-            <meshStandardMaterial color="#40342d" roughness={0.9} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function QueueMarkers({ count }: { readonly count: number }): React.JSX.Element {
-  return (
-    <group name="department-single-queue-markers">
-      {LAYOUT.queueAnchors.slice(0, count).map((anchor, index) => (
-        <mesh key={index} position={[anchor[0], 0.026, anchor[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.31, 8]} />
-          <meshStandardMaterial
-            color={index === 0 ? CART_PALETTE.service : '#ead7b1'}
-            roughness={1}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function ServiceCue({ snapshot }: DepartmentStoreWorldProps): React.JSX.Element | null {
-  const active = snapshot.service.active;
-  if (!active) return null;
-  return (
-    <group name="department-single-service-cue" position={LAYOUT.serviceAnchor}>
-      <mesh castShadow>
-        <cylinderGeometry args={[0.15, 0.12, 0.3, 8]} />
-        <meshStandardMaterial color={CART_PALETTE.cream} roughness={0.7} />
-      </mesh>
-      <mesh position={[-0.5 + active.progress, 0.38, 0]}>
-        <sphereGeometry args={[0.1, 8, 6]} />
-        <meshStandardMaterial
-          color={CART_PALETTE.service}
-          emissive={CART_PALETTE.service}
-          emissiveIntensity={0.52}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-function ActivityCue({
-  hasSale,
-  hasWalkaway,
-  latestType,
-}: {
-  readonly hasSale: boolean;
-  readonly hasWalkaway: boolean;
-  readonly latestType: string;
-}): React.JSX.Element {
-  return (
-    <group name="department-activity-cues" position={LAYOUT.activityAnchor}>
-      {hasSale ? (
-        <mesh castShadow position={[0, 0.56, 0]}>
-          <octahedronGeometry args={[0.32, 0]} />
-          <meshStandardMaterial
-            color={CART_PALETTE.sale}
-            emissive={CART_PALETTE.sale}
-            emissiveIntensity={latestType === 'sale' ? 0.65 : 0.2}
-          />
-        </mesh>
-      ) : null}
-      {hasWalkaway ? (
-        <mesh castShadow position={[0.7, 0.5, 0]} rotation={[0, 0, -0.6]}>
-          <coneGeometry args={[0.26, 0.7, 5]} />
-          <meshStandardMaterial
-            color={CART_PALETTE.walkaway}
-            emissive={CART_PALETTE.walkaway}
-            emissiveIntensity={latestType === 'walkaway' ? 0.55 : 0.12}
-          />
-        </mesh>
-      ) : null}
-    </group>
-  );
+function instanceGeometry(type: Parameters<typeof Instances>[0]['type']): React.JSX.Element {
+  if (type === 'tile') return <planeGeometry args={[1.14, 1.25]} />;
+  if (type === 'column') return <cylinderGeometry args={[0.32, 0.43, 4.9, 10]} />;
+  if (type === 'window') return <boxGeometry args={[2.1, 2.3, 0.08]} />;
+  if (type === 'panel') return <boxGeometry args={[0.86, 1.8, 0.1]} />;
+  if (type === 'brass-post') return <cylinderGeometry args={[0.055, 0.07, 1.04, 7]} />;
+  if (type === 'brass-rail') return <cylinderGeometry args={[0.05, 0.05, 3.2, 7]} />;
+  if (type === 'escalator-step') return <boxGeometry args={[1.65, 0.14, 0.52]} />;
+  if (type === 'counter') return <boxGeometry args={[3.5, 1.44, 1.38]} />;
+  if (type === 'counter-top') return <boxGeometry args={[3.72, 0.16, 1.58]} />;
+  if (type === 'bay-plaque') return <boxGeometry args={[2.65, 0.58, 0.12]} />;
+  if (type === 'stock') return <boxGeometry args={[0.5, 0.38, 0.4]} />;
+  if (type === 'table') return <boxGeometry args={[1.08, 0.16, 0.55]} />;
+  if (type === 'queue-marker') return <circleGeometry args={[0.27, 8]} />;
+  return <sphereGeometry args={[0.11, 7, 5]} />;
 }
 
 function stockColour(level: RenderStockLevel): string {

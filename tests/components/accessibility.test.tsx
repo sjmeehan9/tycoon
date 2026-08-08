@@ -6,6 +6,7 @@ import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
 import { BrowserSaveStore, SAVE_KEY, parseEnvelope } from '../../src/persistence/saveStore';
 import {
+  denseDepartmentRushEnvelope,
   livingRushEnvelope,
   parallelServiceEnvelope,
   reportHistoryEnvelope,
@@ -161,11 +162,36 @@ describe('onboarding and accessible interaction', () => {
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     const announcement = screen.getByText(
-      'Service rush active at the Department Store Coffee Hall. Parallel espresso, brew, and cold stations plus normal and express lanes are available in the semantic dashboard. Scene, dashboard and controls, live activity, then stock.',
+      'Service rush active at the Department Store Coffee Hall. Parallel espresso, brew, and cold stations plus normal and express lanes are available. The heritage hall mirrors canonical customers, staff, jobs, and departures in the semantic dashboard and activity log. Scene, dashboard and controls, live activity, then stock.',
     );
     const stableText = announcement.textContent;
     await user.click(screen.getByRole('button', { name: 'Resume' }));
     expect(announcement).toHaveTextContent(stableText ?? '');
+  });
+
+  it('provides semantic parity for every dense hall station, active job, lane, and departure', async () => {
+    new BrowserSaveStore(window.localStorage).save(denseDepartmentRushEnvelope(true));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+
+    const scene = screen.getByRole('img', { name: /30 customers waiting/ });
+    expect(scene).toHaveAccessibleName(/10 staff scheduled/);
+    expect(scene).toHaveAccessibleName(/job d3-j0 at the espresso bar express lane/);
+    expect(scene).toHaveAccessibleName(/job d3-j1 at the brew bar express lane/);
+    expect(scene).toHaveAccessibleName(/job d3-j2 at the cold bar express lane/);
+    expect(scene).toHaveAccessibleName(/Latest activity: Commuter customer d3-c42/);
+    const activity = screen.getByRole('list', { name: 'Recent rush activity' });
+    expect(activity).toHaveTextContent('Student customer d3-c40 completed job d3-j40');
+    expect(activity).toHaveTextContent(
+      'Commuter customer d3-c42 left because their order was out of stock',
+    );
+    const stationStrip = screen.getByRole('list', { name: 'Live station service' });
+    expect(stationStrip.querySelectorAll('li')).toHaveLength(3);
+    expect(stationStrip).toHaveTextContent('6 normal · 6 express waiting');
+    expect(stationStrip).toHaveTextContent('0 normal · 6 express waiting');
+    expect(screen.getByText(/Parallel espresso, brew, and cold stations/)).toBeInTheDocument();
+    expect(scene.closest('figure')).toHaveAttribute('data-reduced-motion', 'true');
   });
 });
 

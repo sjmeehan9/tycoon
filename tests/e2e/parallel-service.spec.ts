@@ -97,16 +97,19 @@ test.describe('parallel department service', () => {
     await expect(activity).toContainText('job d3-j2');
 
     if (testInfo.project.name === 'touch-mobile') {
-      const viewportHeight = await page.evaluate(() => window.innerHeight);
       const sceneBounds = await page.locator('[data-service-section="scene"]').boundingBox();
       const dashboardBounds = await page
         .locator('[data-service-section="dashboard"]')
         .boundingBox();
       expect(sceneBounds).not.toBeNull();
       expect(dashboardBounds).not.toBeNull();
-      expect(
-        (dashboardBounds?.y ?? 0) + (dashboardBounds?.height ?? viewportHeight + 1),
-      ).toBeLessThanOrEqual(viewportHeight);
+      expect(sceneBounds?.height ?? 181).toBeGreaterThanOrEqual(150);
+      expect(sceneBounds?.height ?? 181).toBeLessThanOrEqual(180);
+      expect((dashboardBounds?.y ?? 0) + (dashboardBounds?.height ?? 761)).toBeLessThanOrEqual(760);
+      await expect(page.locator('[data-service-section="scene"]')).toHaveAttribute(
+        'data-lod',
+        'compact',
+      );
     }
 
     const beforeReload = await savedServiceTruth(page);

@@ -369,3 +369,43 @@ inventory. Standard/Hard registry authority, presentation speed independence,
 the one-time v4 boundary, and the title art hash remain unchanged. No new
 dependency, physical-device access, hosted release, deployment, or publication
 belongs to this component.
+
+## Component 8.6 dense multi-customer heritage hall boundary
+
+The department-store service world now reconciles one immutable presentation
+snapshot to up to three active jobs, a fair twelve-customer sample of every
+non-empty station/lane queue, the newest three terminal customers, and all ten
+scheduled staff. Stable `customer:<id>` and `staff:<id>` identities carry
+canonical route, job, activity, status, pose, destination, and progress data.
+Exact normal, express, omitted, and per-station/lane counts remain independent
+of the visual cap and are exposed through accessible text and the semantic
+dashboard.
+
+Lifecycle is simulation-tick-derived. Arrivals approach only on their canonical
+arrival tick; sales move through handoff, payment, then exit; stockouts and
+other abandonments remain explicit before exit. Frame time adds only bounded
+pose movement, never advances status, applies speed, mutates queues, consumes
+stock, settles accounts, or persists state. Pause and reduced motion freeze
+local movement while preserving the full hall and textual parity.
+
+The new warm low-poly hall visibly implements patterned heritage tiles, timber
+panelling and counters, brass rails and details, escalators, and three distinct
+service bays. It renders every installed commercial equipment category and
+four physical-upgrade anchor plaques. People, repeated furnishings, and effects
+are instanced. Full and compact detail tiers retain the same entity/equipment
+truth under explicit call, triangle, DPR, shadow, light, and furnishing caps.
+Actual settled renderer call and triangle counts are browser-inspectable without
+per-frame React state writes.
+
+At the exact 360×780 touch target, the scaled scene and all dashboard fields
+fit in the initial viewport; activity and stock follow in the approved semantic
+order. Existing cart, kiosk, and cafe worlds retain their established camera and
+compatibility projections. Context retry and reload preserve snapshot identity,
+customer/staff identities, and the accessible scene description.
+
+No engine, demand, routing, inventory, accounting, persistence schema,
+dependency, external asset, physical-device, hosted release, deployment, or
+publication change belongs to this component. Automated Chromium/touch-mobile
+results remain browser evidence only. The title art remains byte-identical at
+SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
