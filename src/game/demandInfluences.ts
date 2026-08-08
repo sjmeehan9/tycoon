@@ -39,7 +39,7 @@ export interface DemandInfluenceDefinition {
 /** Standard changes price response only; Hard amplifies every supported baseline deviation. */
 export const DIFFICULTY_DEVIATION_MULTIPLIERS = {
   standard: { price: 1.225, nonPrice: 1 },
-  hard: { price: 1.675, nonPrice: 1.675 },
+  hard: { price: 1.7, nonPrice: 1.7 },
 } as const satisfies Record<Difficulty, { price: number; nonPrice: number }>;
 
 /** Complete registry of factors that shape arrivals or order choice. */
@@ -124,8 +124,8 @@ export const DEMAND_INFLUENCES = {
     'positive-only',
     'factor',
     1,
-    2.05,
-    'The department-store baseline is 1.62 and its Hard deviation reaches 2.0385 without clipping.',
+    2.06,
+    'The department-store baseline is 1.62 and its Hard deviation reaches 2.054 without clipping.',
     'engine.demandRate.VENUE_DEMAND_FACTOR[state.venueId]',
   ),
   arrivalScenario: definition(
@@ -149,7 +149,7 @@ export const DEMAND_INFLUENCES = {
     'factor',
     1,
     2.3,
-    'Ten scheduled people-person staff plus commercial POS produce a 1.7429 Standard baseline and a 2.2444 direct Hard deviation inside the clamp.',
+    'Ten scheduled people-person staff plus commercial POS produce a 1.7429 Standard baseline and a 2.2630 direct Hard deviation inside the clamp.',
     'engine.demandRate.operationalEffects(state).demandMultiplier',
   ),
   arrivalQueueWait: definition(

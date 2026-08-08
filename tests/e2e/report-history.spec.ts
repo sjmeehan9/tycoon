@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { DRINK_MAP } from '../../src/content/gameContent';
 import { formatMoney, type SaveEnvelope } from '../../src/game';
 import { SAVE_KEY, serializeEnvelope } from '../../src/persistence/saveStore';
 import { currentReportEnvelope, reportHistoryEnvelope } from '../fixtures/campaignFixtures';
@@ -62,10 +63,23 @@ test.describe('compact completion and report history', () => {
       (event) => event.type === 'sale',
     );
     if (activeSale?.type === 'sale') activeSale.priceCents = 9_999;
+    if (source.activeRun) {
+      source.activeRun.plan = {
+        ...source.activeRun.plan,
+        dialIn: 'speed',
+        pricesCents: {
+          ...source.activeRun.plan.pricesCents,
+          ...Object.fromEntries(
+            source.activeRun.plan.activeMenu.map((drinkId) => [drinkId, 1_200]),
+          ),
+        },
+      };
+    }
     const oldReport = source.activeRun?.history[0];
     const canonicalReport = source.activeRun?.history[1];
-    if (!oldReport || !canonicalReport?.chargeGroups) {
-      throw new Error('History fixture requires old and canonical reports.');
+    const canonicalCauses = canonicalReport?.causeSnapshot;
+    if (!oldReport || !canonicalReport?.chargeGroups || !canonicalCauses) {
+      throw new Error('History fixture requires old and canonical reports with causes.');
     }
     expect(oldReport.chargeGroups).toBeUndefined();
     await installSave(page, source);
@@ -92,6 +106,27 @@ test.describe('compact completion and report history', () => {
       formatMoney(canonicalReport.revenueCents),
     );
     await expect(dialog.locator('[data-report-mode="historical"]')).not.toContainText('$99.99');
+    const capturedMenu = dialog.getByRole('list', { name: 'Captured menu prices' });
+    await expect(capturedMenu).not.toContainText('$12.00');
+    for (const { drinkId, priceCents } of canonicalCauses.plan.menu) {
+      const drinkName = DRINK_MAP.get(drinkId)?.name;
+      if (!drinkName) throw new Error(`Missing configured drink ${drinkId}.`);
+      await expect(capturedMenu.getByText(drinkName).locator('..')).toContainText(
+        formatMoney(priceCents),
+      );
+    }
+    for (const event of canonicalCauses.events) {
+      const effects = dialog.getByLabel(`${event.title} resolved effect values`);
+      await expect(effects).toContainText(`Cash${signedMoney(event.effect.cashCents ?? 0)}`);
+      await expect(effects).toContainText(
+        `Arrivals${signedNumber(event.effect.addCustomers ?? 0)}`,
+      );
+      await expect(effects).toContainText(`Demand×${String(event.effect.demandMultiplier ?? 1)}`);
+      await expect(effects).toContainText(`Quality${signedNumber(event.effect.qualityBonus ?? 0)}`);
+      await expect(effects).toContainText(
+        `Reputation${signedNumber(event.effect.reputation ?? 0)}`,
+      );
+    }
 
     await activate(
       dialog.getByRole('button', { name: new RegExp(`Day ${oldReport.day}`) }),
@@ -174,6 +209,15 @@ async function activate(locator: Locator, projectName: string): Promise<void> {
     await locator.focus();
     await locator.press('Enter');
   }
+}
+
+function signedMoney(cents: number): string {
+  return `${cents >= 0 ? '+' : '−'}${formatMoney(Math.abs(cents))}`;
+}
+
+function signedNumber(value: number): string {
+  if (value === 0) return '0';
+  return `${value > 0 ? '+' : '−'}${Math.abs(value)}`;
 }
 
 async function persistedSettlement(page: Page): Promise<{

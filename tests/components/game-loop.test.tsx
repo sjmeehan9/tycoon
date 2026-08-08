@@ -4,13 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
-import { TICKS_PER_SECOND } from '../../src/content/gameContent';
+import { DRINK_MAP, TICKS_PER_SECOND } from '../../src/content/gameContent';
 import {
   advanceTick,
   closeDay,
   createCampaign,
   formatMoney,
+  prepareDay,
   resolveEvent,
+  startNextDay,
   startRush,
   type GameState,
 } from '../../src/game';
@@ -45,6 +47,15 @@ function stateAtEvent(): GameState {
   let state = startRush(createCampaign({ seed: 222 }));
   while (state.phase === 'rush') state = advanceTick(state);
   return state;
+}
+
+function signedMoney(cents: number): string {
+  return `${cents >= 0 ? '+' : '−'}${formatMoney(Math.abs(cents))}`;
+}
+
+function signedNumber(value: number): string {
+  if (value === 0) return '0';
+  return `${value > 0 ? '+' : '−'}${Math.abs(value)}`;
 }
 
 function stateAtReport(): GameState {
@@ -308,6 +319,47 @@ describe('playable cart UI', () => {
     expect(
       within(dialog).getByText('Charge breakdown unavailable for this older report.'),
     ).toBeVisible();
+  });
+
+  it('renders immutable historical menu prices and resolved effects instead of the next-day plan', async () => {
+    const reportState = stateAtReport();
+    const historicalReport = reportState.report;
+    const causes = historicalReport?.causeSnapshot;
+    if (!historicalReport || !causes || causes.events.length === 0) {
+      throw new Error('Expected a report with immutable menu and event causes.');
+    }
+    const nextDay = prepareDay(startNextDay(closeDay(reportState)), {
+      pricesCents: { espresso: 1_200, longBlack: 1_200 },
+      dialIn: 'speed',
+    });
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(nextDay));
+
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Reports' }));
+    const dialog = screen.getByRole('dialog', { name: 'Game menu' });
+    await user.click(within(dialog).getByText('View full Day 1 report'));
+
+    const capturedMenu = within(dialog).getByRole('list', { name: 'Captured menu prices' });
+    for (const { drinkId, priceCents } of causes.plan.menu) {
+      const drinkName = DRINK_MAP.get(drinkId)?.name;
+      if (!drinkName) throw new Error(`Expected configured drink ${drinkId}.`);
+      const row = within(capturedMenu).getByText(drinkName).closest('li');
+      expect(row).toHaveTextContent(formatMoney(priceCents));
+    }
+    expect(capturedMenu).not.toHaveTextContent('$12.00');
+    expect(within(dialog).getByText(`${causes.plan.dialIn} · ${causes.plan.beanId}`)).toBeVisible();
+
+    for (const event of causes.events) {
+      const effects = within(dialog).getByLabelText(`${event.title} resolved effect values`);
+      expect(effects).toHaveTextContent(`Cash${signedMoney(event.effect.cashCents ?? 0)}`);
+      expect(effects).toHaveTextContent(`Arrivals${signedNumber(event.effect.addCustomers ?? 0)}`);
+      expect(effects).toHaveTextContent(`Demand×${String(event.effect.demandMultiplier ?? 1)}`);
+      expect(effects).toHaveTextContent(`Quality${signedNumber(event.effect.qualityBonus ?? 0)}`);
+      expect(effects).toHaveTextContent(`Reputation${signedNumber(event.effect.reputation ?? 0)}`);
+    }
   });
 
   it('renders separate Standard and Hard records with shared neutral unlocks', async () => {

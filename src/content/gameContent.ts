@@ -1,5 +1,6 @@
 import type {
   BeanId,
+  CosmeticId,
   CustomerSegment,
   DayPlan,
   DrinkConfig,
@@ -12,9 +13,12 @@ import type {
   IngredientInventory,
   IngredientPurchases,
   IngredientTotals,
+  ImprovementId,
   MilkChoice,
   PurchasePackage,
   ScenarioId,
+  SimulationEvent,
+  StationId,
   StaffRole,
   StaffRoleConfig,
   StaffTrait,
@@ -23,6 +27,11 @@ import type {
   VenuePromotion,
   WeatherId,
   WorkforceCapacity,
+  AchievementId,
+  DepartmentEventTemplateId,
+  EquipmentState,
+  EventChoiceEffect,
+  EventTemplateId,
 } from '../game/types';
 
 /** Fixed number of deterministic engine ticks in one simulated second. */
@@ -31,6 +40,397 @@ export const TICKS_PER_SECOND = 4;
 export const RUSH_DURATION_TICKS = 75 * TICKS_PER_SECOND;
 /** Recent engine observations retained for player feedback and reload continuity. */
 export const RUSH_ACTIVITY_LIMIT = 80;
+
+/** Production tuning envelopes. Final values must remain inside these audited bounds. */
+export const BALANCE_RANGES = {
+  arrivalBaseRate: { minimum: 0.065, maximum: 0.085 },
+  arrivalFinalRate: { minimum: 0.005, maximum: 0.3 },
+  standardPriceMultiplier: { minimum: 1.2, maximum: 1.25 },
+  hardDemandMultiplier: { minimum: 1.6, maximum: 1.75 },
+  initialCashCents: { minimum: 16_000, maximum: 20_000 },
+  initialReputation: { minimum: 30, maximum: 40 },
+  generatedWageCents: { minimum: 2_000, maximum: 4_000 },
+  equipmentPurchaseCents: { minimum: 1_600, maximum: 11_500 },
+  equipmentOperatingCents: { minimum: 45, maximum: 460 },
+  eventWeight: { minimum: 1, maximum: 5 },
+  overdraftFloorCents: { minimum: -12_000, maximum: -8_000 },
+  victoryCashCents: { minimum: 25_000, maximum: 40_000 },
+  victoryReputation: { minimum: 60, maximum: 75 },
+  reputationSoftCeiling: { minimum: 90, maximum: 95 },
+} as const;
+
+/** Frozen base probability of one arrival per deterministic engine tick. */
+export const ARRIVAL_BASE_RATE = 0.075;
+
+export const BASE_EVENT_TEMPLATE_IDS = [
+  'office-coffee-run',
+  'sudden-downpour',
+] as const satisfies readonly EventTemplateId[];
+export const DEPARTMENT_EVENT_TEMPLATE_IDS = [
+  'department-lunch-wave',
+  'tram-service-disruption',
+  'escalator-service-pause',
+  'window-display-launch',
+  'heritage-gala-interval',
+  'late-trading-coach-load',
+] as const satisfies readonly DepartmentEventTemplateId[];
+export const EVENT_TEMPLATE_IDS = [
+  ...BASE_EVENT_TEMPLATE_IDS,
+  ...DEPARTMENT_EVENT_TEMPLATE_IDS,
+] as const satisfies readonly EventTemplateId[];
+
+export interface SimulationEventTemplate extends SimulationEvent {
+  eligibleVenues: VenueId[];
+  firstDay: number;
+  lastDay: number;
+  weight: number;
+}
+
+/** Two unchanged base events plus six original department-scale decisions. */
+export const EVENT_TEMPLATES: SimulationEventTemplate[] = [
+  {
+    id: 'office-coffee-run',
+    title: 'The office coffee run arrives',
+    description: 'A nearby studio wants a tray immediately. The queue is already eyeing the clock.',
+    eligibleVenues: ['cart', 'kiosk', 'cafe', 'departmentStore'],
+    firstDay: 1,
+    lastDay: 40,
+    weight: 3,
+    choices: [
+      {
+        id: 'take-order',
+        label: 'Take the order',
+        description: 'Add three impatient customers and gain a little afternoon buzz.',
+        effect: { addCustomers: 3, demandMultiplier: 1.08, qualityBonus: -3 },
+      },
+      {
+        id: 'protect-queue',
+        label: 'Protect the queue',
+        description: 'Politely decline. The regulars appreciate the calm service.',
+        effect: { reputation: 1, qualityBonus: 2 },
+      },
+    ],
+  },
+  {
+    id: 'sudden-downpour',
+    title: 'The heavens open',
+    description: 'A sharp Melbourne downpour sends pedestrians under every nearby awning.',
+    eligibleVenues: ['cart', 'kiosk', 'cafe', 'departmentStore'],
+    firstDay: 1,
+    lastDay: 40,
+    weight: 2,
+    choices: [
+      {
+        id: 'shelter-crowd',
+        label: 'Shelter the crowd',
+        description: 'Welcome them in. Demand rises, but the queue gets lively.',
+        effect: { addCustomers: 2, demandMultiplier: 1.12, reputation: 1 },
+      },
+      {
+        id: 'close-awning',
+        label: 'Protect the machine',
+        description: 'Keep the awning tight and service controlled.',
+        effect: { demandMultiplier: 0.94, qualityBonus: 3 },
+      },
+    ],
+  },
+  departmentEvent(
+    'department-lunch-wave',
+    'The department lunch wave lands',
+    'Office floors release together while all three coffee bays are already serving.',
+    15,
+    4,
+    [
+      eventChoice(
+        'open-concourse-pickup',
+        'Open concourse pickup',
+        'Spend $6.00 on wayfinding; add five arrivals and lift demand 10%, while cup quality falls by 2 for this rush.',
+        { cashCents: -600, addCustomers: 5, demandMultiplier: 1.1, qualityBonus: -2 },
+      ),
+      eventChoice(
+        'stagger-department-orders',
+        'Stagger department orders',
+        'Reduce demand 4%, add 4 cup-quality points, and gain 2 reputation at close.',
+        { demandMultiplier: 0.96, qualityBonus: 4, reputation: 2 },
+      ),
+    ],
+  ),
+  departmentEvent(
+    'tram-service-disruption',
+    'A tram disruption fills the concourse',
+    'Delayed commuters arrive together and need a clear promise about speed and capacity.',
+    16,
+    3,
+    [
+      eventChoice(
+        'open-commuter-relief',
+        'Open commuter relief',
+        'Spend $5.00; add four arrivals, lift demand 10%, lower cup quality by 2, and gain 1 reputation.',
+        {
+          cashCents: -500,
+          addCustomers: 4,
+          demandMultiplier: 1.1,
+          qualityBonus: -2,
+          reputation: 1,
+        },
+      ),
+      eventChoice(
+        'hold-the-express-line',
+        'Hold the express line',
+        'Reduce demand 5%, add 3 cup-quality points, and gain 1 reputation at close.',
+        { demandMultiplier: 0.95, qualityBonus: 3, reputation: 1 },
+      ),
+    ],
+  ),
+  departmentEvent(
+    'escalator-service-pause',
+    'The central escalator pauses',
+    'Floor traffic bunches beside the hall and guests need an explicit route around the closure.',
+    18,
+    2,
+    [
+      eventChoice(
+        'deploy-wayfinding',
+        'Deploy wayfinding staff',
+        'Spend $4.00; add two arrivals, lift demand 6%, and gain 1 reputation at close.',
+        { cashCents: -400, addCustomers: 2, demandMultiplier: 1.06, reputation: 1 },
+      ),
+      eventChoice(
+        'protect-three-bays',
+        'Protect the three bays',
+        'Reduce demand 7% and add 3 cup-quality points for this rush.',
+        { demandMultiplier: 0.93, qualityBonus: 3 },
+      ),
+    ],
+  ),
+  departmentEvent(
+    'window-display-launch',
+    'The window display launches',
+    'A new heritage-window reveal turns the coffee hall into the department store meeting point.',
+    22,
+    2,
+    [
+      eventChoice(
+        'run-tasting-bench',
+        'Run a tasting bench',
+        'Spend $8.00; add four arrivals, lift demand 12%, lower cup quality by 2, and gain 1 reputation.',
+        {
+          cashCents: -800,
+          addCustomers: 4,
+          demandMultiplier: 1.12,
+          qualityBonus: -2,
+          reputation: 1,
+        },
+      ),
+      eventChoice(
+        'keep-curated-service',
+        'Keep service curated',
+        'Reduce demand 3%, add 4 cup-quality points, and gain 1 reputation at close.',
+        { demandMultiplier: 0.97, qualityBonus: 4, reputation: 1 },
+      ),
+    ],
+  ),
+  departmentEvent(
+    'heritage-gala-interval',
+    'The heritage gala reaches interval',
+    'The restored upper floor empties into the hall for one concentrated service interval.',
+    25,
+    2,
+    [
+      eventChoice(
+        'serve-the-interval',
+        'Serve the interval',
+        'Spend $10.00; add five arrivals, lift demand 12%, lower cup quality by 3, and gain 2 reputation.',
+        {
+          cashCents: -1_000,
+          addCustomers: 5,
+          demandMultiplier: 1.12,
+          qualityBonus: -3,
+          reputation: 2,
+        },
+      ),
+      eventChoice(
+        'reservation-pickup-only',
+        'Reservation pickup only',
+        'Reduce demand 4%, add 4 cup-quality points, and gain 1 reputation at close.',
+        { demandMultiplier: 0.96, qualityBonus: 4, reputation: 1 },
+      ),
+    ],
+  ),
+  departmentEvent(
+    'late-trading-coach-load',
+    'A late-trading coach arrives',
+    'A tour group reaches the coffee hall before departure and asks whether every bay can reopen.',
+    28,
+    3,
+    [
+      eventChoice(
+        'open-all-bays',
+        'Open all bays',
+        'Spend $12.00; add five arrivals, lift demand 9%, and lower cup quality by 3 for this rush.',
+        { cashCents: -1_200, addCustomers: 5, demandMultiplier: 1.09, qualityBonus: -3 },
+      ),
+      eventChoice(
+        'focused-last-orders',
+        'Take focused last orders',
+        'Reduce demand 5%, add 3 cup-quality points, and gain 2 reputation at close.',
+        { demandMultiplier: 0.95, qualityBonus: 3, reputation: 2 },
+      ),
+    ],
+  ),
+];
+
+export type PhysicalUpgradeAnchorId = 'hallEntry' | 'espressoBay' | 'brewBay' | 'coldBay';
+
+export interface ImprovementEffects {
+  demandMultiplier?: number;
+  preparationMultiplier?: number;
+  patienceMultiplier?: number;
+  satisfactionBonus?: number;
+  queueCapacityBonus?: number;
+  stationId?: StationId;
+}
+
+export interface ImprovementConfig {
+  id: ImprovementId;
+  name: string;
+  description: string;
+  costCents: number;
+  requiresVenue: VenueId;
+  requiredEquipment: Partial<EquipmentState>;
+  anchorId: PhysicalUpgradeAnchorId | null;
+  effects: Readonly<ImprovementEffects>;
+}
+
+export const IMPROVEMENT_IDS = [
+  'street-sign',
+  'heritage-welcome-marquee',
+  'espresso-order-pass',
+  'brew-gallery',
+  'cold-collection-rail',
+] as const satisfies readonly ImprovementId[];
+export const DEPARTMENT_IMPROVEMENT_IDS = IMPROVEMENT_IDS.slice(1) as readonly ImprovementId[];
+
+/** Purchasable physical changes; only the four department upgrades use hall anchors. */
+export const IMPROVEMENTS: Readonly<Record<ImprovementId, ImprovementConfig>> = {
+  'street-sign': {
+    id: 'street-sign',
+    name: 'Hand-painted street sign',
+    description: 'Adds passing trade and smooths the compact service path.',
+    costCents: 2_500,
+    requiresVenue: 'cart',
+    requiredEquipment: {},
+    anchorId: null,
+    effects: { demandMultiplier: 1.08, preparationMultiplier: 0.96 },
+  },
+  'heritage-welcome-marquee': {
+    id: 'heritage-welcome-marquee',
+    name: 'Heritage welcome marquee',
+    description: 'Clarifies the hall entrance, adding two queue spaces and 5% patience.',
+    costCents: 7_500,
+    requiresVenue: 'departmentStore',
+    requiredEquipment: { pos: 3, serviceCounter: 3 },
+    anchorId: 'hallEntry',
+    effects: { queueCapacityBonus: 2, patienceMultiplier: 1.05 },
+  },
+  'espresso-order-pass': {
+    id: 'espresso-order-pass',
+    name: 'Espresso order pass',
+    description: 'A brass order pass makes espresso-station preparation 6% faster.',
+    costCents: 9_000,
+    requiresVenue: 'departmentStore',
+    requiredEquipment: { espressoMachine: 3, pos: 3 },
+    anchorId: 'espressoBay',
+    effects: { stationId: 'espressoBar', preparationMultiplier: 0.94 },
+  },
+  'brew-gallery': {
+    id: 'brew-gallery',
+    name: 'Brew gallery',
+    description: 'A dedicated filter display makes brew-station preparation 10% faster.',
+    costCents: 8_000,
+    requiresVenue: 'departmentStore',
+    requiredEquipment: { batchBrewer: 3, serviceCounter: 3 },
+    anchorId: 'brewBay',
+    effects: { stationId: 'brewBar', preparationMultiplier: 0.9 },
+  },
+  'cold-collection-rail': {
+    id: 'cold-collection-rail',
+    name: 'Cold collection rail',
+    description: 'Speeds cold preparation 8%, adds 8% patience, and adds 2 satisfaction.',
+    costCents: 8_500,
+    requiresVenue: 'departmentStore',
+    requiredEquipment: { refrigeration: 3, serviceCounter: 3 },
+    anchorId: 'coldBay',
+    effects: {
+      stationId: 'coldBar',
+      preparationMultiplier: 0.92,
+      patienceMultiplier: 1.08,
+      satisfactionBonus: 2,
+    },
+  },
+};
+
+export const NEW_COSMETIC_IDS = [
+  'mosaicFloor',
+  'brassBayPlaques',
+  'afterHoursGlow',
+] as const satisfies readonly CosmeticId[];
+export const COSMETIC_DETAILS: Readonly<
+  Record<CosmeticId, { name: string; description: string; kind: 'presentation' }>
+> = {
+  classicAwning: {
+    name: 'Classic Awning',
+    description: 'The original canvas awning.',
+    kind: 'presentation',
+  },
+  wattleAwning: {
+    name: 'Wattle Awning',
+    description: 'A golden wattle awning palette.',
+    kind: 'presentation',
+  },
+  neonCup: {
+    name: 'Neon Cup',
+    description: 'A neon-inspired awning palette.',
+    kind: 'presentation',
+  },
+  mosaicFloor: {
+    name: 'Mosaic Floor',
+    description: 'An alternate heritage floor mosaic.',
+    kind: 'presentation',
+  },
+  brassBayPlaques: {
+    name: 'Brass Bay Plaques',
+    description: 'Polished brass service-bay plaques.',
+    kind: 'presentation',
+  },
+  afterHoursGlow: {
+    name: 'After-hours Glow',
+    description: 'Warm window and plaque materials after close.',
+    kind: 'presentation',
+  },
+};
+
+export interface UnlockMilestoneConfig {
+  id: Extract<AchievementId, 'departmentInstitution' | 'threeBayConductor'>;
+  cosmetics: readonly CosmeticId[];
+  difficulties: readonly ['standard', 'hard'];
+  effectKind: 'presentation';
+}
+
+export const UNLOCK_MILESTONES: readonly UnlockMilestoneConfig[] = [
+  {
+    id: 'departmentInstitution',
+    cosmetics: ['mosaicFloor', 'brassBayPlaques'],
+    difficulties: ['standard', 'hard'],
+    effectKind: 'presentation',
+  },
+  {
+    id: 'threeBayConductor',
+    cosmetics: ['afterHoursGlow'],
+    difficulties: ['standard', 'hard'],
+    effectKind: 'presentation',
+  },
+];
 
 export const INGREDIENT_IDS: IngredientId[] = [
   'houseBeans',
@@ -365,7 +765,7 @@ export const STAFF_ROLE_DETAILS: Readonly<Record<StaffRole, StaffRoleConfig>> = 
     description: 'Keeps guests patient and lifts service satisfaction.',
     operation: 'guestFlow',
     requiresVenue: 'cart',
-    wagePremiumCents: 0,
+    wagePremiumCents: 800,
     workloadReduction: null,
   },
   manager: {
@@ -389,7 +789,7 @@ export const STAFF_ROLE_DETAILS: Readonly<Record<StaffRole, StaffRoleConfig>> = 
     description: 'Reduces department replenishment and handoff workload delay.',
     operation: 'handoffWorkload',
     requiresVenue: 'departmentStore',
-    wagePremiumCents: 350,
+    wagePremiumCents: 800,
     workloadReduction: {
       attribute: 'speed',
       baseTicks: 2,
@@ -507,15 +907,24 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
     ],
   ),
   batchBrewer: equipment('batchBrewer', 'Batch brewer', 'Keeps filter coffee ready at peak time.', [
-    tier(1, 'Bench batch brewer', 2_200, 85, 94, 'kiosk', '25% faster batch brew', {
+    tier(1, 'Bench batch brewer', 5_500, 300, 94, 'kiosk', '25% faster batch brew', {
       batchBrewPreparationMultiplier: 0.75,
     }),
-    tier(2, 'Twin thermal brewer', 4_800, 150, 97, 'cafe', '45% faster batch brew', {
+    tier(2, 'Twin thermal brewer', 8_000, 400, 97, 'cafe', '45% faster batch brew', {
       batchBrewPreparationMultiplier: 0.55,
     }),
-    tier(3, 'High-volume urn battery', 8_500, 280, 99, 'departmentStore', '60% faster batch brew', {
-      batchBrewPreparationMultiplier: 0.4,
-    }),
+    tier(
+      3,
+      'High-volume urn battery',
+      11_500,
+      460,
+      99,
+      'departmentStore',
+      '60% faster batch brew',
+      {
+        batchBrewPreparationMultiplier: 0.4,
+      },
+    ),
   ]),
   refrigeration: equipment(
     'refrigeration',
@@ -525,14 +934,14 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
       tier(1, 'Under-counter fridge', 2_500, 110, 95, 'kiosk', '+1 chilled-stock day', {
         chilledShelfLifeDays: 1,
       }),
-      tier(2, 'Cold-room system', 5_200, 210, 98, 'cafe', '+2 chilled-stock days total', {
+      tier(2, 'Cold-room system', 8_000, 400, 98, 'cafe', '+2 chilled-stock days total', {
         chilledShelfLifeDays: 2,
       }),
       tier(
         3,
         'Commercial chilled store',
-        9_000,
-        360,
+        11_500,
+        460,
         99,
         'departmentStore',
         '+4 chilled-stock days total',
@@ -579,8 +988,8 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
       tier(
         1,
         'Marked collection rail',
-        1_600,
-        45,
+        4_000,
+        250,
         100,
         'cart',
         '+2 queue spaces, 3% faster service',
@@ -592,8 +1001,8 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
       tier(
         2,
         'Dedicated service counter',
-        3_800,
-        90,
+        7_000,
+        350,
         100,
         'kiosk',
         '+4 queue spaces, 7% faster service',
@@ -602,8 +1011,8 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
       tier(
         3,
         'Marble collection island',
-        7_500,
-        170,
+        11_500,
+        460,
         100,
         'departmentStore',
         '+8 queue spaces, 14% faster service',
@@ -667,14 +1076,15 @@ export const DAY_PLAN_LIMITS = {
 
 export const INITIAL_CASH_CENTS = 18_000;
 export const INITIAL_REPUTATION = 35;
-export const CART_IMPROVEMENT_COST_CENTS = 2_500;
+export const CART_IMPROVEMENT_COST_CENTS = IMPROVEMENTS['street-sign'].costCents;
 export const MAX_QUEUE_LENGTH = 8;
 
 /** Typed, centrally tuned campaign outcome and portability bounds. */
 export const CAMPAIGN_RULES = {
   durationDays: 40,
-  victoryCashCents: 30_000,
+  victoryCashCents: 35_000,
   victoryReputation: 65,
+  reputationSoftCeiling: 95,
   overdraftFloorCents: -10_000,
   maximumHistoryDays: 500,
   maximumSaveBytes: 750_000,
@@ -882,3 +1292,250 @@ function venueRecord<T>(select: (venue: VenueConfig) => T): Record<VenueId, T> {
     VENUE_IDS.map((venueId) => [venueId, select(VENUES[venueId])]),
   ) as Record<VenueId, T>;
 }
+
+function departmentEvent(
+  id: DepartmentEventTemplateId,
+  title: string,
+  description: string,
+  firstDay: number,
+  weight: number,
+  choices: SimulationEvent['choices'],
+): SimulationEventTemplate {
+  return {
+    id,
+    title,
+    description,
+    eligibleVenues: ['departmentStore'],
+    firstDay,
+    lastDay: 40,
+    weight,
+    choices,
+  };
+}
+
+function eventChoice(
+  id: SimulationEvent['choices'][number]['id'],
+  label: string,
+  description: string,
+  effect: EventChoiceEffect,
+): SimulationEvent['choices'][number] {
+  return { id, label, description, effect };
+}
+
+export interface CampaignContentValidationInput {
+  events?: readonly SimulationEventTemplate[];
+  improvements?: Readonly<Record<string, ImprovementConfig | undefined>>;
+  newCosmeticIds?: readonly CosmeticId[];
+  milestones?: readonly UnlockMilestoneConfig[];
+  drinkIds?: readonly DrinkId[];
+  ingredientIds?: readonly IngredientId[];
+  purchasePackages?: readonly PurchasePackage[];
+}
+
+/** Validate all bounded campaign content and non-power unlock references. */
+export function validateCampaignContent(input: CampaignContentValidationInput = {}): void {
+  const eventTemplates = input.events ?? EVENT_TEMPLATES;
+  const improvementCatalogue = input.improvements ?? IMPROVEMENTS;
+  const configuredImprovementIds = Object.keys(improvementCatalogue);
+  const newCosmeticIds = input.newCosmeticIds ?? NEW_COSMETIC_IDS;
+  const milestones = input.milestones ?? UNLOCK_MILESTONES;
+  const drinkIds = input.drinkIds ?? ALL_DRINK_IDS;
+  const ingredientIds = input.ingredientIds ?? INGREDIENT_IDS;
+  const purchasePackages = input.purchasePackages ?? PURCHASE_PACKAGES;
+  const assert: (condition: unknown, message: string) => asserts condition = (
+    condition,
+    message,
+  ) => {
+    if (!condition) throw new Error(message);
+  };
+  const textIsAccessible = (value: string, maximum: number): boolean =>
+    value.trim() === value && value.length > 0 && value.length <= maximum;
+  assert(eventTemplates.length === 8, 'Campaign content must define exactly eight events.');
+  assert(
+    new Set(eventTemplates.map(({ id }) => id)).size === eventTemplates.length,
+    'Event IDs must be unique.',
+  );
+  assert(
+    EVENT_TEMPLATE_IDS.every((id) => eventTemplates.some((event) => event.id === id)),
+    'Every canonical event ID must be configured.',
+  );
+  const configuredDepartmentEvents = eventTemplates.filter((event) =>
+    DEPARTMENT_EVENT_TEMPLATE_IDS.includes(event.id as DepartmentEventTemplateId),
+  );
+  assert(
+    configuredDepartmentEvents.length === 6,
+    'Campaign content must define exactly six new department events.',
+  );
+  const globalChoiceIds = new Set<string>();
+  const effectBounds: Record<keyof EventChoiceEffect, readonly [number, number]> = {
+    cashCents: [-1_200, 1_200],
+    demandMultiplier: [0.88, 1.12],
+    qualityBonus: [-4, 4],
+    reputation: [-2, 2],
+    addCustomers: [0, 5],
+  };
+  for (const event of eventTemplates) {
+    assert(textIsAccessible(event.title, 160), `${event.id} needs a bounded title.`);
+    assert(textIsAccessible(event.description, 500), `${event.id} needs accessible cause text.`);
+    assert(event.choices.length === 2, `${event.id} must expose exactly two choices.`);
+    assert(
+      Number.isInteger(event.firstDay) &&
+        event.firstDay >= 1 &&
+        event.firstDay <= event.lastDay &&
+        event.lastDay === CAMPAIGN_RULES.durationDays,
+      `${event.id} has an invalid campaign window.`,
+    );
+    assert(
+      Number.isInteger(event.weight) &&
+        event.weight >= BALANCE_RANGES.eventWeight.minimum &&
+        event.weight <= BALANCE_RANGES.eventWeight.maximum,
+      `${event.id} has an invalid weight.`,
+    );
+    assert(event.eligibleVenues.includes('departmentStore'), `${event.id} must scale to the hall.`);
+    if (DEPARTMENT_EVENT_TEMPLATE_IDS.includes(event.id as DepartmentEventTemplateId)) {
+      assert(
+        event.eligibleVenues.length === 1 && event.eligibleVenues[0] === 'departmentStore',
+        `${event.id} must be department-only.`,
+      );
+    }
+    for (const choice of event.choices) {
+      assert(!globalChoiceIds.has(choice.id), `Choice ID ${choice.id} must be unique.`);
+      globalChoiceIds.add(choice.id);
+      assert(textIsAccessible(choice.label, 120), `${choice.id} needs a bounded label.`);
+      assert(
+        textIsAccessible(choice.description, 500),
+        `${choice.id} needs accessible causal text.`,
+      );
+      const effects = Object.entries(choice.effect) as Array<[keyof EventChoiceEffect, number]>;
+      assert(effects.length > 0, `${choice.id} needs an observable effect.`);
+      for (const [effectId, value] of effects) {
+        const bounds = effectBounds[effectId];
+        assert(
+          bounds !== undefined &&
+            Number.isFinite(value) &&
+            value >= bounds[0] &&
+            value <= bounds[1],
+          `${choice.id} has an invalid ${effectId}.`,
+        );
+        if (effectId !== 'demandMultiplier') {
+          assert(Number.isInteger(value), `${choice.id}.${effectId} must be an integer.`);
+        }
+      }
+    }
+  }
+
+  assert(configuredImprovementIds.length === 5, 'Campaign content must define five improvements.');
+  assert(new Set(configuredImprovementIds).size === 5, 'Improvement IDs must be unique.');
+  assert(
+    IMPROVEMENT_IDS.every((id) => configuredImprovementIds.includes(id)),
+    'Every canonical improvement ID must be configured.',
+  );
+  assert(
+    DEPARTMENT_IMPROVEMENT_IDS.length === 4,
+    'Campaign content must define four new department improvements.',
+  );
+  const expectedAnchors: PhysicalUpgradeAnchorId[] = [
+    'hallEntry',
+    'espressoBay',
+    'brewBay',
+    'coldBay',
+  ];
+  const actualAnchors = DEPARTMENT_IMPROVEMENT_IDS.map((id) => improvementCatalogue[id]?.anchorId);
+  assert(
+    JSON.stringify(actualAnchors) === JSON.stringify(expectedAnchors),
+    'Department improvements must map one-to-one to the four hall anchors.',
+  );
+  const improvementEffectBounds = {
+    demandMultiplier: [1, 1.08],
+    preparationMultiplier: [0.9, 1],
+    patienceMultiplier: [1, 1.08],
+    satisfactionBonus: [0, 2],
+    queueCapacityBonus: [0, 2],
+  } as const;
+  for (const improvementId of IMPROVEMENT_IDS) {
+    const improvement = improvementCatalogue[improvementId];
+    assert(improvement !== undefined, `${improvementId} must be configured.`);
+    assert(improvement.id === improvementId, `${improvementId} identity must be stable.`);
+    assert(textIsAccessible(improvement.name, 120), `${improvementId} needs a name.`);
+    assert(textIsAccessible(improvement.description, 300), `${improvementId} needs effect copy.`);
+    assert(
+      Number.isInteger(improvement.costCents) &&
+        improvement.costCents >= 2_500 &&
+        improvement.costCents <= 9_000,
+      `${improvementId} has an invalid cost.`,
+    );
+    assert(VENUE_IDS.includes(improvement.requiresVenue), `${improvementId} has an invalid venue.`);
+    const effectEntries = Object.entries(improvement.effects);
+    assert(effectEntries.length > 0, `${improvementId} needs an operational effect.`);
+    for (const [effectId, value] of effectEntries) {
+      if (effectId === 'stationId') {
+        assert(
+          (['espressoBar', 'brewBar', 'coldBar'] as StationId[]).includes(value as StationId),
+          `${improvementId} has an invalid station.`,
+        );
+        continue;
+      }
+      const bounds = improvementEffectBounds[effectId as keyof typeof improvementEffectBounds];
+      assert(
+        bounds !== undefined &&
+          typeof value === 'number' &&
+          Number.isFinite(value) &&
+          value >= bounds[0] &&
+          value <= bounds[1],
+        `${improvementId} has an invalid ${effectId}.`,
+      );
+    }
+    for (const equipmentId of Object.keys(improvement.requiredEquipment) as EquipmentId[]) {
+      const level = improvement.requiredEquipment[equipmentId];
+      assert(EQUIPMENT_IDS.includes(equipmentId), `${improvementId} has unknown equipment.`);
+      assert(
+        Number.isInteger(level) && level! >= 1 && level! <= 3,
+        `${improvementId} has an invalid prerequisite.`,
+      );
+    }
+  }
+
+  assert(newCosmeticIds.length === 3, 'Exactly three new cosmetics must be configured.');
+  assert(new Set(newCosmeticIds).size === 3, 'New cosmetic IDs must be unique.');
+  for (const cosmeticId of newCosmeticIds) {
+    assert(
+      COSMETIC_DETAILS[cosmeticId].kind === 'presentation',
+      `${cosmeticId} must be non-power.`,
+    );
+  }
+  assert(milestones.length === 2, 'Exactly two new milestones must be configured.');
+  assert(new Set(milestones.map(({ id }) => id)).size === 2, 'Milestone IDs must be unique.');
+  const unlockedCosmetics = milestones.flatMap(({ cosmetics }) => cosmetics);
+  assert(
+    JSON.stringify([...new Set(unlockedCosmetics)].sort()) ===
+      JSON.stringify([...newCosmeticIds].sort()),
+    'New milestones must cover exactly the three new cosmetics.',
+  );
+  for (const milestone of milestones) {
+    assert(milestone.effectKind === 'presentation', `${milestone.id} cannot grant power.`);
+    assert(
+      JSON.stringify(milestone.difficulties) === JSON.stringify(['standard', 'hard']),
+      `${milestone.id} must be shared across difficulties.`,
+    );
+    assert(
+      milestone.cosmetics.every((id) => newCosmeticIds.includes(id)),
+      `${milestone.id} references an unknown cosmetic.`,
+    );
+  }
+
+  assert(
+    drinkIds.length === 10 && new Set(drinkIds).size === 10,
+    'The menu must remain exactly ten drinks.',
+  );
+  assert(
+    ingredientIds.length === 9 && new Set(ingredientIds).size === 9,
+    'The inventory must remain exactly nine ingredients.',
+  );
+  assert(
+    purchasePackages.length === 9 &&
+      ingredientIds.every((id) => purchasePackages.some((item) => item.ingredientId === id)),
+    'Every unchanged ingredient needs exactly one supplier path.',
+  );
+}
+
+validateCampaignContent();

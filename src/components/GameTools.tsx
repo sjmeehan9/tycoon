@@ -2,7 +2,7 @@ import { useCallback, useState, type ChangeEvent } from 'react';
 
 import { handleTabListKeyDown } from '../accessibility/keyboard';
 import { useModalFocus } from '../accessibility/useModalFocus';
-import { CAMPAIGN_RULES } from '../content/gameContent';
+import { CAMPAIGN_RULES, COSMETIC_DETAILS } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import {
   ACHIEVEMENT_DETAILS,
@@ -211,6 +211,15 @@ export function GameTools(): React.JSX.Element {
                     </p>
                   )}
                 </div>
+                <h4>Cosmetics</h4>
+                <div className="achievement-list cosmetic-list">
+                  {meta.cosmetics.map((cosmetic) => (
+                    <article key={cosmetic}>
+                      <strong>{COSMETIC_DETAILS[cosmetic].name}</strong>
+                      <small>{COSMETIC_DETAILS[cosmetic].description} Presentation only.</small>
+                    </article>
+                  ))}
+                </div>
                 {(['standard', 'hard'] as const).map((difficulty) => (
                   <section
                     aria-labelledby={`records-${difficulty}-title`}
@@ -235,11 +244,12 @@ export function GameTools(): React.JSX.Element {
                   <li>Plan a focused menu, prices, beans, stock, dial-in, and scheduled team.</li>
                   <li>Open for 75 seconds; pause or accelerate while staff serve automatically.</li>
                   <li>
-                    Resolve rush choices, then use the report to find demand and service causes.
+                    Resolve up to two seeded rush choices, then use the report to find the exact
+                    demand and service causes captured at settlement.
                   </li>
                   <li>
                     Invest in three equipment tiers and promote cart → kiosk → cafe → department
-                    store.
+                    store, where four physical hall upgrades become available.
                   </li>
                   <li>
                     On Day {CAMPAIGN_RULES.durationDays}, finish with the department-store coffee

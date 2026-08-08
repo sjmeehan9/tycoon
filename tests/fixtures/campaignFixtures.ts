@@ -85,7 +85,7 @@ export function growthReadyEnvelope(): SaveEnvelope {
     ...base,
     day: 18,
     phase: 'reinvest',
-    cashCents: 200_000,
+    cashCents: 250_000,
     reputation: 80,
     lastSettledDay: 18,
     candidateStaff: candidatePoolForDay(base.seed, 18),
@@ -901,6 +901,7 @@ function fixtureReport(base: GameState, day: number, closingCashCents: number): 
     serviceAggregates,
     bottleneck: 'No major bottleneck — service flowed well',
     explanations: ['Validated deterministic outcome fixture ready for final settlement.'],
+    causeSnapshot: null,
     settled: false,
   };
 }

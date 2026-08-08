@@ -4,6 +4,7 @@ import {
   ALL_DRINK_IDS,
   BEAN_DETAILS,
   DRINK_MAP,
+  DEPARTMENT_EVENT_TEMPLATE_IDS,
   EQUIPMENT,
   EQUIPMENT_IDS,
   STAFF_ROLES,
@@ -13,6 +14,7 @@ import {
   advanceTick,
   activeServiceJobs,
   buyEquipment,
+  buyImprovement,
   batchExpiryDay,
   candidatePoolForDay,
   closeDay,
@@ -120,28 +122,28 @@ describe('staff operations', () => {
         role: 'barista',
         speed: 58,
         skill: 51,
-        wageCents: 2_150,
+        wageCents: 2_550,
         trait: 'perfectionist',
       },
       {
         role: 'frontOfHouse',
         speed: 55,
         skill: 51,
-        wageCents: 2_150,
+        wageCents: 3_350,
         trait: 'quickHands',
       },
       {
         role: 'manager',
         speed: 62,
         skill: 81,
-        wageCents: 3_300,
+        wageCents: 3_700,
         trait: 'quickHands',
       },
       {
         role: 'runner',
         speed: 54,
         skill: 69,
-        wageCents: 2_650,
+        wageCents: 3_500,
         trait: 'perfectionist',
       },
     ]);
@@ -473,8 +475,139 @@ describe('staff operations', () => {
   });
 });
 
+describe('bounded department events', () => {
+  it('selects every department template by weight while keeping cart events to the base pair', () => {
+    const departmentIds = new Set<string>();
+    const cartIds = new Set<string>();
+    for (let seed = 1; seed <= 600; seed += 1) {
+      const department = firstEvent({
+        ...createCampaign({ seed }),
+        day: 30,
+        venueId: 'departmentStore',
+      });
+      if (department) departmentIds.add(department);
+      const cart = firstEvent({ ...createCampaign({ seed }), day: 30 });
+      if (cart) cartIds.add(cart);
+    }
+    expect(DEPARTMENT_EVENT_TEMPLATE_IDS.every((id) => departmentIds.has(id))).toBe(true);
+    expect(cartIds).toEqual(new Set(['office-coffee-run', 'sudden-downpour']));
+  });
+
+  it('offers zero to two deterministic decisions without repeating one template in a day', () => {
+    const state = { ...createCampaign({ seed: 2 }), day: 30, venueId: 'departmentStore' as const };
+    let running = startRush(state);
+    const ids: string[] = [];
+    while (running.phase !== 'report') {
+      if (running.phase === 'event') {
+        const event = running.rush?.pendingEvent;
+        if (!event) throw new Error('Expected pending department event.');
+        ids.push(event.id);
+        running = resolveEvent(running, event.choices[0]!.id);
+      } else {
+        running = advanceTick(running);
+      }
+    }
+    expect(ids).toHaveLength((state.seed + state.day) % 3);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      runToReport(startRush(state)).rush?.resolvedEvents.map(({ eventId }) => eventId),
+    ).toEqual(ids);
+  });
+});
+
 describe('equipment and venue growth', () => {
+  it('purchases four visible department upgrades with exact prerequisites and bounded effects', () => {
+    const settled = closeDay(runToReport(startRush(createCampaign({ seed: 2 }))));
+    const department: GameState = {
+      ...settled,
+      cashCents: 200_000,
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    expect(() =>
+      buyImprovement(
+        { ...department, equipment: { ...department.equipment, pos: 2 } },
+        'heritage-welcome-marquee',
+      ),
+    ).toThrow('Point of sale level 3');
+
+    const openingInventory = structuredClone(department.inventory);
+    const baseline = {
+      queue: serviceQueueCapacity(department),
+      espresso: operationalEffects(department, 'espressoBar'),
+      brew: operationalEffects(department, 'brewBar'),
+      cold: operationalEffects(department, 'coldBar'),
+    };
+    let improved = buyImprovement(department, 'heritage-welcome-marquee');
+    expect(serviceQueueCapacity(improved)).toBe(baseline.queue + 2);
+    expect(operationalEffects(improved, 'espressoBar').patienceMultiplier).toBeCloseTo(1.05);
+    improved = buyImprovement(improved, 'espresso-order-pass');
+    expect(operationalEffects(improved, 'espressoBar').preparationMultiplier).toBeCloseTo(
+      baseline.espresso.preparationMultiplier * 0.94,
+    );
+    improved = buyImprovement(improved, 'brew-gallery');
+    expect(operationalEffects(improved, 'brewBar').preparationMultiplier).toBeCloseTo(
+      baseline.brew.preparationMultiplier * 0.9,
+    );
+    improved = buyImprovement(improved, 'cold-collection-rail');
+    expect(operationalEffects(improved, 'coldBar')).toMatchObject({ satisfactionBonus: 2 });
+    expect(operationalEffects(improved, 'coldBar').preparationMultiplier).toBeCloseTo(
+      baseline.cold.preparationMultiplier * 0.92,
+    );
+    expect(operationalEffects(improved, 'coldBar').patienceMultiplier).toBeCloseTo(1.05 * 1.08);
+    expect(improved.inventory).toEqual(openingInventory);
+    expect(improved.improvements).toEqual([
+      'heritage-welcome-marquee',
+      'espresso-order-pass',
+      'brew-gallery',
+      'cold-collection-rail',
+    ]);
+    const snapshot = createRenderSnapshot(improved, false, [
+      'mosaicFloor',
+      'brassBayPlaques',
+      'afterHoursGlow',
+    ]);
+    expect(snapshot.operation.improvements).toEqual(improved.improvements);
+    expect(snapshot.operation.cosmetics).toEqual([
+      'mosaicFloor',
+      'brassBayPlaques',
+      'afterHoursGlow',
+    ]);
+    expect(buyImprovement(improved, 'cold-collection-rail')).toBe(improved);
+  });
+
   it('applies every commercial tier through data-driven service calculations', () => {
+    expect(
+      (['batchBrewer', 'refrigeration', 'serviceCounter'] as const).map((equipmentId) =>
+        EQUIPMENT[equipmentId].tiers.map(({ costCents, operatingCostCents }) => [
+          costCents,
+          operatingCostCents,
+        ]),
+      ),
+    ).toEqual([
+      [
+        [5_500, 300],
+        [8_000, 400],
+        [11_500, 460],
+      ],
+      [
+        [2_500, 110],
+        [8_000, 400],
+        [11_500, 460],
+      ],
+      [
+        [4_000, 250],
+        [7_000, 350],
+        [11_500, 460],
+      ],
+    ]);
     const base = createCampaign({ seed: 71 });
     expect(operationalEffects(withEquipment(base, 'grinder')).qualityBonus).toBeGreaterThan(0);
     expect(
@@ -515,7 +648,7 @@ describe('equipment and venue growth', () => {
     expect(equipmentPreparationMultiplier(commercial, 'batchBrew')).toBe(0.4);
     expect(batchExpiryDay('dairyMilk', 1, 3)).toBe(7);
     expect(serviceQueueCapacity(commercial)).toBe(32);
-    expect(commercialEffects.operatingCostCents).toBe(3_610);
+    expect(commercialEffects.operatingCostCents).toBe(4_180);
   });
 
   it.each(EQUIPMENT_IDS)('%s is wired into a complete day and settlement', (equipmentId) => {
@@ -578,3 +711,9 @@ describe('equipment and venue growth', () => {
     expect(serviceQueueCapacity(department)).toBe(24);
   });
 });
+
+function firstEvent(state: GameState): string | null {
+  let running = startRush(state);
+  while (running.phase === 'rush') running = advanceTick(running);
+  return running.phase === 'event' ? (running.rush?.pendingEvent?.id ?? null) : null;
+}

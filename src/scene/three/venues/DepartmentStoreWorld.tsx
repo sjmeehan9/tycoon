@@ -46,6 +46,7 @@ export function DepartmentStoreWorld({
       <BrassDetails lod={lod} />
       <VisibleEscalators lod={lod} />
       <ServiceBays snapshot={snapshot} />
+      <PhysicalUpgrades snapshot={snapshot} />
       <CommercialEquipment equipment={snapshot.operation.equipment} lod={lod} />
       <DepartmentStockWall snapshot={snapshot} />
       <HallFurniture lod={lod} />
@@ -58,8 +59,11 @@ export function DepartmentStoreWorld({
 }
 
 function HeritageShell({ lod, snapshot }: DepartmentStoreWorldProps): React.JSX.Element {
-  const daylight =
-    snapshot.identity.weather === 'sunny'
+  const afterHoursGlow = snapshot.operation.cosmetics.includes('afterHoursGlow');
+  const mosaicFloor = snapshot.operation.cosmetics.includes('mosaicFloor');
+  const daylight = afterHoursGlow
+    ? '#ffc06b'
+    : snapshot.identity.weather === 'sunny'
       ? '#f4d88f'
       : snapshot.identity.weather === 'coldSnap'
         ? '#c6dce0'
@@ -78,14 +82,16 @@ function HeritageShell({ lod, snapshot }: DepartmentStoreWorldProps): React.JSX.
           rotation: [-Math.PI / 2, 0, 0] as const,
           scale: [1, 1, 1] as const,
           colour:
-            (row + column) % 3 === 0
-              ? DEPARTMENT_PALETTE.tileBurgundy
-              : (row + column) % 3 === 1
-                ? DEPARTMENT_PALETTE.tileCream
-                : DEPARTMENT_PALETTE.tileSage,
+            mosaicFloor && (row * 2 + column) % 4 === 0
+              ? DEPARTMENT_PALETTE.brass
+              : (row + column) % 3 === 0
+                ? DEPARTMENT_PALETTE.tileBurgundy
+                : (row + column) % 3 === 1
+                  ? DEPARTMENT_PALETTE.tileCream
+                  : DEPARTMENT_PALETTE.tileSage,
         };
       }),
-    [lod, tileCount],
+    [lod, mosaicFloor, tileCount],
   );
   const columns = [-8.6, -5.9, 5.9, 8.6].map((x) => ({
     position: [x, 2.45, -3.25] as const,
@@ -116,7 +122,7 @@ function HeritageShell({ lod, snapshot }: DepartmentStoreWorldProps): React.JSX.
         <meshStandardMaterial
           color={daylight}
           emissive={daylight}
-          emissiveIntensity={0.1}
+          emissiveIntensity={afterHoursGlow ? 0.24 : 0.1}
           metalness={0.08}
           opacity={0.8}
           roughness={0.36}
@@ -175,6 +181,8 @@ function VisibleEscalators({ lod }: { readonly lod: DepartmentLod }): React.JSX.
 }
 
 function ServiceBays({ snapshot }: { readonly snapshot: RenderSnapshot }): React.JSX.Element {
+  const polishedPlaques = snapshot.operation.cosmetics.includes('brassBayPlaques');
+  const afterHoursGlow = snapshot.operation.cosmetics.includes('afterHoursGlow');
   const counterBodies = STATION_IDS.map((stationId) => ({
     position: DEPARTMENT_LAYOUT.stations[stationId].counter,
     colour: BAY_COLOURS[stationId],
@@ -186,15 +194,17 @@ function ServiceBays({ snapshot }: { readonly snapshot: RenderSnapshot }): React
   const plaques = DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY.map((anchorId) => ({
     position: DEPARTMENT_LAYOUT.physicalUpgradeAnchors[anchorId],
     colour:
-      anchorId === 'hallEntry'
-        ? DEPARTMENT_PALETTE.brass
-        : BAY_COLOURS[
-            anchorId === 'espressoBay'
-              ? 'espressoBar'
-              : anchorId === 'brewBay'
-                ? 'brewBar'
-                : 'coldBar'
-          ],
+      polishedPlaques || afterHoursGlow
+        ? DEPARTMENT_PALETTE.brassBright
+        : anchorId === 'hallEntry'
+          ? DEPARTMENT_PALETTE.brass
+          : BAY_COLOURS[
+              anchorId === 'espressoBay'
+                ? 'espressoBar'
+                : anchorId === 'brewBay'
+                  ? 'brewBar'
+                  : 'coldBar'
+            ],
   }));
   return (
     <group name="motif-three-distinct-service-bays">
@@ -208,6 +218,89 @@ function ServiceBays({ snapshot }: { readonly snapshot: RenderSnapshot }): React
           <boxGeometry args={[1.55, 1, 0.14]} />
           <meshStandardMaterial color={CART_PALETTE.wattle} roughness={0.68} />
         </mesh>
+      ) : null}
+    </group>
+  );
+}
+
+function PhysicalUpgrades({ snapshot }: { readonly snapshot: RenderSnapshot }): React.JSX.Element {
+  const has = (id: RenderSnapshot['operation']['improvements'][number]): boolean =>
+    snapshot.operation.improvements.includes(id);
+  return (
+    <group name="purchased-physical-upgrades">
+      {has('heritage-welcome-marquee') ? (
+        <group
+          name="physical-upgrade-heritage-welcome-marquee"
+          position={DEPARTMENT_LAYOUT.physicalUpgradeAnchors.hallEntry}
+        >
+          <mesh castShadow position={[0, 0, 0.18]}>
+            <boxGeometry args={[3.05, 0.82, 0.24]} />
+            <meshStandardMaterial
+              color={DEPARTMENT_PALETTE.brassBright}
+              metalness={0.62}
+              roughness={0.3}
+            />
+          </mesh>
+          <mesh castShadow position={[0, -0.52, 0.12]}>
+            <boxGeometry args={[2.45, 0.16, 0.16]} />
+            <meshStandardMaterial color={DEPARTMENT_PALETTE.tileCream} roughness={0.55} />
+          </mesh>
+        </group>
+      ) : null}
+      {has('espresso-order-pass') ? (
+        <group
+          name="physical-upgrade-espresso-order-pass"
+          position={DEPARTMENT_LAYOUT.physicalUpgradeAnchors.espressoBay}
+        >
+          <mesh castShadow position={[0, -1.18, 1.1]}>
+            <boxGeometry args={[2.8, 0.14, 0.24]} />
+            <meshStandardMaterial
+              color={DEPARTMENT_PALETTE.brass}
+              metalness={0.55}
+              roughness={0.34}
+            />
+          </mesh>
+          <mesh castShadow position={[0, -0.88, 1.1]}>
+            <boxGeometry args={[0.55, 0.5, 0.18]} />
+            <meshStandardMaterial color={DEPARTMENT_PALETTE.espresso} roughness={0.55} />
+          </mesh>
+        </group>
+      ) : null}
+      {has('brew-gallery') ? (
+        <group
+          name="physical-upgrade-brew-gallery"
+          position={DEPARTMENT_LAYOUT.physicalUpgradeAnchors.brewBay}
+        >
+          {[-0.72, 0, 0.72].map((x) => (
+            <mesh castShadow key={x} position={[x, -0.82, 0.9]}>
+              <cylinderGeometry args={[0.2, 0.24, 0.76, 10]} />
+              <meshStandardMaterial
+                color={DEPARTMENT_PALETTE.brew}
+                metalness={0.22}
+                roughness={0.5}
+              />
+            </mesh>
+          ))}
+        </group>
+      ) : null}
+      {has('cold-collection-rail') ? (
+        <group
+          name="physical-upgrade-cold-collection-rail"
+          position={DEPARTMENT_LAYOUT.physicalUpgradeAnchors.coldBay}
+        >
+          <mesh castShadow position={[0, -1.2, 1.05]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.07, 0.07, 3.05, 8]} />
+            <meshStandardMaterial
+              color={DEPARTMENT_PALETTE.brassBright}
+              metalness={0.62}
+              roughness={0.3}
+            />
+          </mesh>
+          <mesh castShadow position={[0, -0.86, 1.02]}>
+            <boxGeometry args={[1.25, 0.38, 0.3]} />
+            <meshStandardMaterial color={DEPARTMENT_PALETTE.cold} roughness={0.42} />
+          </mesh>
+        </group>
       ) : null}
     </group>
   );

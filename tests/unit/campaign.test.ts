@@ -21,7 +21,15 @@ import {
   type GameState,
 } from '../../src/game';
 import { createDefaultMeta } from '../../src/persistence/saveStore';
+import { reportServedEveryStationAndLane } from '../../src/game/meta';
 import { nearBankruptcyEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
+import {
+  BALANCE_SEEDS,
+  BALANCE_STRATEGY_SIGNATURES,
+  simulateBalanceCampaign,
+  simulateMismanagement,
+  validateBalanceStrategyDiversity,
+} from '../fixtures/balanceStrategies';
 
 function closeReady(state: GameState, closingCashCents: number): GameState {
   if (!state.report) throw new Error('Fixture must have a report.');
@@ -54,6 +62,14 @@ function runRush(initial: GameState): GameState {
   }
   if (state.phase !== 'report') throw new Error('Rush did not complete.');
   return state;
+}
+
+function median(values: readonly number[]): number {
+  if (values.length === 0) throw new Error('A median requires at least one value.');
+  const sorted = [...values].sort((a, b) => a - b);
+  const value = sorted[Math.floor(sorted.length / 2)];
+  if (value === undefined) throw new Error('Median index was unavailable.');
+  return value;
 }
 
 describe('campaign outcome boundaries', () => {
@@ -123,6 +139,32 @@ describe('campaign outcome boundaries', () => {
     expect(bankrupt.outcome?.type).toBe('bankruptcy');
   });
 
+  it('caps positive settlement reputation symmetrically while preserving losses', () => {
+    const fixture = nearVictoryEnvelope().activeRun;
+    if (!fixture?.report) throw new Error('Expected a report fixture.');
+    const safelyFunded = closeReady(fixture, CAMPAIGN_RULES.victoryCashCents);
+    const positive = closeDay({
+      ...safelyFunded,
+      reputation: CAMPAIGN_RULES.reputationSoftCeiling - 1,
+      report: { ...safelyFunded.report!, reputationChange: 4 },
+    });
+    expect(positive.reputation).toBe(CAMPAIGN_RULES.reputationSoftCeiling);
+
+    const negative = closeDay({
+      ...safelyFunded,
+      reputation: CAMPAIGN_RULES.reputationSoftCeiling,
+      report: { ...safelyFunded.report!, reputationChange: -4 },
+    });
+    expect(negative.reputation).toBe(CAMPAIGN_RULES.reputationSoftCeiling - 4);
+
+    const importedAboveCeiling = closeDay({
+      ...safelyFunded,
+      reputation: CAMPAIGN_RULES.reputationSoftCeiling + 2,
+      report: { ...safelyFunded.report!, reputationChange: 3 },
+    });
+    expect(importedAboveCeiling.reputation).toBe(CAMPAIGN_RULES.reputationSoftCeiling + 2);
+  });
+
   it('continues a victory into Day 41 endless planning without another campaign ending', () => {
     const fixture = nearVictoryEnvelope().activeRun;
     if (!fixture) throw new Error('Expected victory fixture.');
@@ -176,7 +218,7 @@ describe('cosmetic-only meta progress', () => {
     const victory = closeDay({
       ...fixture,
       reputation: 90,
-      report: { ...fixture.report!, closingCashCents: 50_000 },
+      report: { ...fixture.report!, closingCashCents: 60_000 },
     });
     const initial = createDefaultMeta();
     const unlocked = recordCampaignOutcome(initial, victory);
@@ -211,9 +253,153 @@ describe('cosmetic-only meta progress', () => {
       createCampaign({ seed: 72 }).cashCents,
     );
   });
+
+  it('derives both new milestones only from the winning settled report and stays idempotent', () => {
+    const source = nearVictoryEnvelope('hard').activeRun;
+    if (!source?.report) throw new Error('Expected victory report fixture.');
+    const coveredAggregates = source.report.serviceAggregates.map((aggregate) => ({
+      ...aggregate,
+      served:
+        (aggregate.stationId === 'espressoBar' && aggregate.laneId === 'normal') ||
+        (aggregate.stationId === 'brewBar' && aggregate.laneId === 'normal') ||
+        (aggregate.stationId === 'coldBar' && aggregate.laneId === 'express')
+          ? 1
+          : 0,
+    }));
+    const coveredReport = { ...source.report, serviceAggregates: coveredAggregates };
+    expect(reportServedEveryStationAndLane(coveredReport)).toBe(true);
+    const noExpressReport = {
+      ...coveredReport,
+      serviceAggregates: coveredAggregates.map((aggregate) =>
+        aggregate.laneId === 'express' ? { ...aggregate, served: 0 } : aggregate,
+      ),
+    };
+    expect(reportServedEveryStationAndLane(noExpressReport)).toBe(false);
+    const noColdReport = {
+      ...coveredReport,
+      serviceAggregates: coveredAggregates.map((aggregate) =>
+        aggregate.stationId === 'coldBar' ? { ...aggregate, served: 0 } : aggregate,
+      ),
+    };
+    expect(reportServedEveryStationAndLane(noColdReport)).toBe(false);
+
+    const victory = closeDay({ ...source, report: coveredReport });
+    const unlocked = recordCampaignOutcome(createDefaultMeta(), victory);
+    const repeated = recordCampaignOutcome(unlocked, victory);
+    expect(unlocked.achievements).toEqual(
+      expect.arrayContaining(['departmentInstitution', 'threeBayConductor']),
+    );
+    expect(unlocked.cosmetics).toEqual(
+      expect.arrayContaining(['mosaicFloor', 'brassBayPlaques', 'afterHoursGlow']),
+    );
+    expect(repeated).toEqual(unlocked);
+
+    const unearned = recordCampaignOutcome(
+      createDefaultMeta(),
+      closeDay({ ...source, report: noExpressReport }),
+    );
+    expect(unearned.achievements).toContain('departmentInstitution');
+    expect(unearned.achievements).not.toContain('threeBayConductor');
+    expect(unearned.cosmetics).not.toContain('afterHoursGlow');
+  });
 });
 
 describe('seeded full-campaign balance', () => {
+  it('keeps the two scripted command policies materially distinct', () => {
+    expect(validateBalanceStrategyDiversity).not.toThrow();
+  });
+
+  it('keeps both strategies viable and mismanagement consequential across 20 fixed seeds', () => {
+    const difficulties = ['standard', 'hard'] as const;
+    const strategyIds = Object.keys(BALANCE_STRATEGY_SIGNATURES) as Array<
+      keyof typeof BALANCE_STRATEGY_SIGNATURES
+    >;
+    const results = difficulties.flatMap((difficulty) =>
+      strategyIds.flatMap((strategyId) =>
+        BALANCE_SEEDS.map((seed) => simulateBalanceCampaign(seed, difficulty, strategyId)),
+      ),
+    );
+
+    for (const difficulty of difficulties) {
+      const difficultyResults = results.filter((result) => result.difficulty === difficulty);
+      const winningSeeds = new Set(
+        difficultyResults
+          .filter(({ final }) => final.outcome?.type === 'victory')
+          .map(({ seed }) => seed),
+      );
+      expect(winningSeeds.size).toBeGreaterThanOrEqual(19);
+
+      for (const strategyId of strategyIds) {
+        const cohort = difficultyResults.filter((result) => result.strategyId === strategyId);
+        const winners = cohort.filter(({ final }) => final.outcome?.type === 'victory');
+        expect(winners.length).toBeGreaterThanOrEqual(16);
+        expect(cohort.filter(({ final }) => final.outcome?.type === 'bankruptcy')).toHaveLength(0);
+        expect(
+          cohort.every(
+            ({ departmentDay, final }) =>
+              departmentDay !== null &&
+              departmentDay <= 34 &&
+              final.day === CAMPAIGN_RULES.durationDays &&
+              final.venueId === 'departmentStore' &&
+              final.history.length === CAMPAIGN_RULES.durationDays &&
+              final.history.every(
+                (report) =>
+                  report.settled &&
+                  report.difficulty === difficulty &&
+                  report.causeSnapshot !== null,
+              ),
+          ),
+        ).toBe(true);
+
+        const medianWinnerCash = median(winners.map(({ final }) => final.cashCents));
+        expect(medianWinnerCash).toBeGreaterThanOrEqual(CAMPAIGN_RULES.victoryCashCents);
+        expect(medianWinnerCash).toBeLessThanOrEqual(CAMPAIGN_RULES.victoryCashCents + 50_000);
+        expect(
+          winners.every(
+            ({ final }) =>
+              final.reputation >= CAMPAIGN_RULES.victoryReputation &&
+              final.reputation <= CAMPAIGN_RULES.reputationSoftCeiling,
+          ),
+        ).toBe(true);
+
+        if (strategyId === 'premium-quality') {
+          for (const { final } of cohort) {
+            const departmentReports = final.history.filter(
+              (report) => report.causeSnapshot?.venueId === 'departmentStore',
+            );
+            expect(
+              departmentReports[0]?.causeSnapshot?.staffing.some(({ role }) => role === 'manager'),
+            ).toBe(true);
+            expect(
+              departmentReports
+                .slice(1)
+                .some((report) =>
+                  report.causeSnapshot?.staffing.some(({ role }) => role === 'manager'),
+                ),
+            ).toBe(false);
+          }
+        } else {
+          for (const result of cohort) {
+            expect(result.final.equipment.batchBrewer).toBe(3);
+            expect(result.final.equipment.serviceCounter).toBe(3);
+            for (const level of [1, 2, 3] as const) {
+              expect(result.equipmentPurchaseDays.batchBrewer[level]).toBeDefined();
+              expect(result.equipmentPurchaseDays.serviceCounter[level]).toBeDefined();
+            }
+          }
+        }
+      }
+    }
+
+    for (const difficulty of difficulties) {
+      const mismanaged = BALANCE_SEEDS.map((seed) => simulateMismanagement(seed, difficulty));
+      expect(mismanaged.filter(({ outcome }) => outcome?.type === 'victory')).toHaveLength(0);
+      expect(
+        mismanaged.filter(({ day, outcome }) => outcome?.type === 'bankruptcy' && day <= 25).length,
+      ).toBeGreaterThanOrEqual(16);
+    }
+  }, 15_000);
+
   it.each([
     ['Standard careful quality', 'standard', 7_301, 'quality', 0],
     ['Hard value-focused quality', 'hard', 9_909, 'quality', -30],

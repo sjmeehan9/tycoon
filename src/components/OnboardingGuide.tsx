@@ -19,7 +19,8 @@ const STEPS: Record<GamePhase, { number: number; title: string; detail: string }
   event: {
     number: 2,
     title: 'Make the rush call',
-    detail: 'Read both consequences, choose once, and service will resume from the same tick.',
+    detail:
+      'Read both exact consequences, choose once, and service will resume from the same tick; a day can contain up to two choices.',
   },
   report: {
     number: 3,
@@ -114,6 +115,10 @@ export function OnboardingGuide(): React.JSX.Element | null {
               <li>
                 <strong>Lead</strong> the department team with Managers for coordination and Runners
                 for stock handoffs; both roles unlock only at the final venue.
+              </li>
+              <li>
+                <strong>Finish</strong> the hall with four visible physical upgrades; cosmetic
+                rewards change its presentation, never its economy.
               </li>
             </ol>
             <div className="ending-actions">

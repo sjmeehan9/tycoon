@@ -8,6 +8,7 @@ import {
   type GamePhase,
   type GameState,
   type IngredientId,
+  type ImprovementId,
   type RushActivityEvent,
   type RushSpeed,
   type StaffRole,
@@ -79,6 +80,8 @@ export interface RenderSnapshot {
     equipment: Readonly<EquipmentState>;
     stock: readonly RenderStockSnapshot[];
     hasStreetSign: boolean;
+    improvements: readonly ImprovementId[];
+    cosmetics: readonly CosmeticId[];
     awning: CosmeticId;
   }>;
   readonly presentation: Readonly<{
@@ -155,6 +158,8 @@ export function createRenderSnapshot(
         level: stockLevel(totals[ingredientId]),
       })),
       hasStreetSign: game.improvements.includes('street-sign'),
+      improvements: [...game.improvements],
+      cosmetics: [...cosmetics],
       awning: scene.awning,
     },
     presentation: {

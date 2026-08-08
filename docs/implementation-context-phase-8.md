@@ -177,7 +177,7 @@ autosave, and exact reload identity.
 `src/game/demandInfluences.ts` is the single difficulty-policy authority for the
 complete registered arrival and order-choice factor set. Standard applies a
 1.225 multiplier to both current price-response slopes and preserves every
-non-price baseline. Hard applies a 1.675 multiplier directly to every supported
+non-price baseline. Hard applies a 1.70 multiplier directly to every supported
 baseline deviation from its declared neutral, including both price paths, with
 domain-aware clamps and no Standard compounding. The engine exposes its consumed
 factor identities so tests fail if the engine and registry diverge.
@@ -295,7 +295,7 @@ settlement remain exclusively Component 8.5.
 
 The registered team/equipment demand boundary now covers ten scheduled
 people-person traits plus commercial POS: Standard preserves the exact
-`1.05^10 × 1.07` baseline, while Hard applies the one direct configured `1.675`
+`1.05^10 × 1.07` baseline, while Hard applies the one direct configured `1.70`
 deviation inside the updated `2.3` clamp. No role code applies difficulty a
 second time.
 

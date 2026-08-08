@@ -1610,15 +1610,104 @@ legend {
   padding-left: 1.25rem;
   line-height: 1.5;
 }
+.report-cause-evidence {
+  margin: 1rem 0;
+  padding: 0.85rem;
+  border: 2px solid #a48b78;
+  background: #fffaf0;
+}
+.report-cause-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+.report-cause-grid > div,
+.report-cause-columns > div {
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid #bda996;
+  background: var(--paper);
+}
+.report-cause-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.cause-list {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  line-height: 1.45;
+}
+.captured-menu-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 0.8rem;
+  padding-left: 0;
+  list-style: none;
+}
+.captured-menu-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #bda996;
+  background: var(--paper);
+}
+.event-cause-list li span {
+  display: block;
+}
+.event-effect-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0.45rem 0 0;
+}
+.event-effect-grid > div {
+  padding: 0.35rem;
+  border: 1px solid #d1bdab;
+  background: var(--paper);
+}
+.event-effect-grid dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.event-effect-grid dd {
+  margin: 0.15rem 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.cause-unavailable {
+  margin: 0;
+  padding: 0.65rem;
+  border-left: 5px solid #8e7463;
+  background: #eee3d8;
+}
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
 .upgrade-card {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
-  margin: 1.2rem 0;
+  margin: 0;
   padding: 1rem;
   border: 2px solid var(--ink);
   background: var(--paper);
+}
+.upgrade-card h4 {
+  margin: 0 0 0.25rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+}
+.upgrade-requirements {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
 }
 .upgrade-card.is-owned {
   background: #d8e7d2;
@@ -1900,6 +1989,15 @@ legend {
   }
   .report-layout {
     grid-template-columns: 1fr;
+  }
+  .report-cause-grid,
+  .report-cause-columns,
+  .captured-menu-list,
+  .upgrade-grid {
+    grid-template-columns: 1fr;
+  }
+  .event-effect-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .report-history-layout {
     grid-template-columns: minmax(0, 1fr);

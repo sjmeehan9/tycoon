@@ -1,7 +1,17 @@
 import { useId } from 'react';
 
 import { useGame } from '../app/GameContext';
-import { INGREDIENT_DETAILS, INGREDIENT_IDS, TICKS_PER_SECOND } from '../content/gameContent';
+import {
+  CAMPAIGN_RULES,
+  DRINK_MAP,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
+  IMPROVEMENTS,
+  INGREDIENT_DETAILS,
+  INGREDIENT_IDS,
+  TICKS_PER_SECOND,
+  VENUES,
+} from '../content/gameContent';
 import {
   completedSaleLabel,
   DIFFICULTY_LABELS,
@@ -9,6 +19,7 @@ import {
   formatMoney,
   STATION_DETAILS,
   type DayReport,
+  type EventChoiceEffect,
   type IngredientId,
 } from '../game';
 
@@ -108,18 +119,25 @@ export function ReportView(props: ReportViewProps): React.JSX.Element {
                 </tr>
               </tbody>
             </table>
-            <dl className="report-stats">
-              <ReportMetric label="Served" value={`${report.served}/${report.arrivals}`} />
-              <ReportMetric label="Satisfaction" value={`${report.satisfactionPercent}%`} />
-              <ReportMetric label="Average wait" value={`${report.averageWaitSeconds}s`} />
-              <ReportMetric
-                label="Reputation"
-                value={`${report.reputationChange >= 0 ? '+' : ''}${report.reputationChange}`}
-              />
-            </dl>
+            <div>
+              <dl className="report-stats">
+                <ReportMetric label="Served" value={`${report.served}/${report.arrivals}`} />
+                <ReportMetric label="Satisfaction" value={`${report.satisfactionPercent}%`} />
+                <ReportMetric label="Average wait" value={`${report.averageWaitSeconds}s`} />
+                <ReportMetric
+                  label="Reputation"
+                  value={`${report.reputationChange >= 0 ? '+' : ''}${report.reputationChange}`}
+                />
+              </dl>
+              <p className="reputation-soft-ceiling-note" role="note">
+                Positive settlement gains pause at {CAMPAIGN_RULES.reputationSoftCeiling}
+                reputation; losses still apply.
+              </p>
+            </div>
           </div>
 
           <ServiceEvidence report={report} titleId={`service-evidence-title-${instanceId}`} />
+          <CauseEvidence report={report} titleId={`cause-evidence-title-${instanceId}`} />
           <ChargeEvidence report={report} titleId={`sale-evidence-title-${instanceId}`} />
           <InventoryLifecycle
             report={report}
@@ -146,6 +164,154 @@ export function ReportView(props: ReportViewProps): React.JSX.Element {
       </details>
     </section>
   );
+}
+
+function CauseEvidence({
+  report,
+  titleId,
+}: {
+  report: DayReport;
+  titleId: string;
+}): React.JSX.Element {
+  const snapshot = report.causeSnapshot;
+  if (!snapshot) {
+    return (
+      <section aria-labelledby={titleId} className="report-cause-evidence">
+        <h3 id={titleId}>Trading causes</h3>
+        <p className="cause-unavailable" role="note">
+          Cause detail is unavailable for this older report. No historical operating choices were
+          reconstructed.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section aria-labelledby={titleId} className="report-cause-evidence">
+      <h3 id={titleId}>Trading causes</h3>
+      <p>
+        Captured at settlement for the {VENUES[snapshot.venueId].shortName}; reopening this report
+        never reads the current plan.
+      </p>
+      <dl className="report-cause-grid">
+        <ReportMetric
+          label="Dial-in and beans"
+          value={`${snapshot.plan.dialIn} · ${snapshot.plan.beanId}`}
+        />
+        <ReportMetric
+          label="Queue pressure"
+          value={`Peak ${snapshot.wait.peakQueue}/${snapshot.wait.queueCapacity} · ${snapshot.wait.totalWaitTicks} wait ticks`}
+        />
+        <ReportMetric
+          label="Operating cost"
+          value={`${formatMoney(snapshot.equipment.venueOperatingCostCents)} venue + ${formatMoney(snapshot.equipment.equipmentOperatingCostCents)} equipment`}
+        />
+        <ReportMetric
+          label="Express menu"
+          value={
+            snapshot.plan.expressDrinkIds.length > 0
+              ? snapshot.plan.expressDrinkIds.join(', ')
+              : 'None'
+          }
+        />
+      </dl>
+      <h4>Menu and prices</h4>
+      <ul aria-label="Captured menu prices" className="cause-list captured-menu-list">
+        {snapshot.plan.menu.map(({ drinkId, priceCents }) => (
+          <li key={drinkId}>
+            <strong>{DRINK_MAP.get(drinkId)?.name ?? drinkId}</strong>
+            <span>{formatMoney(priceCents)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="report-cause-columns">
+        <div>
+          <h4>Scheduled team</h4>
+          {snapshot.staffing.length > 0 ? (
+            <ul className="cause-list">
+              {snapshot.staffing.map((member) => (
+                <li key={member.staffId}>
+                  <strong>{member.name}</strong> · {member.role} · speed {member.speed}, skill{' '}
+                  {member.skill}, {member.trait} ·{' '}
+                  {member.stationId ? STATION_DETAILS[member.stationId].label : 'unassigned'} ·{' '}
+                  {formatMoney(member.wageCents)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="empty-note">Owner-operated; no staff wages.</p>
+          )}
+        </div>
+        <div>
+          <h4>Installed operation</h4>
+          <ul className="cause-list">
+            {EQUIPMENT_IDS.filter((id) => snapshot.equipment.levels[id] > 0).map((id) => (
+              <li key={id}>
+                {EQUIPMENT[id].name} level {snapshot.equipment.levels[id]}
+              </li>
+            ))}
+            {snapshot.equipment.improvements.map((id) => (
+              <li key={id}>{IMPROVEMENTS[id].name}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <h4>Resolved service events</h4>
+      {snapshot.events.length > 0 ? (
+        <ul className="cause-list event-cause-list">
+          {snapshot.events.map((event) => (
+            <li key={event.eventId}>
+              <strong>
+                {event.title}: {event.choiceLabel}
+              </strong>
+              <span>{event.choiceDescription}</span>
+              <dl
+                aria-label={`${event.title} resolved effect values`}
+                className="event-effect-grid"
+              >
+                <EventEffect label="Cash" value={formatSignedMoney(event.effect.cashCents ?? 0)} />
+                <EventEffect
+                  label="Arrivals"
+                  value={formatSignedNumber(event.effect.addCustomers ?? 0)}
+                />
+                <EventEffect
+                  label="Demand"
+                  value={`×${formatMultiplier(event.effect.demandMultiplier ?? 1)}`}
+                />
+                <EventEffect
+                  label="Quality"
+                  value={formatSignedNumber(event.effect.qualityBonus ?? 0)}
+                />
+                <EventEffect
+                  label="Reputation"
+                  value={formatSignedNumber(event.effect.reputation ?? 0)}
+                />
+              </dl>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="empty-note">No service event occurred on this day.</p>
+      )}
+    </section>
+  );
+}
+
+function EventEffect({ label, value }: { label: string; value: string }): React.JSX.Element {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function formatSignedNumber(value: number): string {
+  if (value === 0) return '0';
+  return `${value > 0 ? '+' : '−'}${Math.abs(value)}`;
+}
+
+function formatMultiplier(value: EventChoiceEffect['demandMultiplier']): string {
+  return String(value ?? 1);
 }
 
 function ServiceEvidence({

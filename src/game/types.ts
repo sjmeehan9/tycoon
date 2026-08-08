@@ -42,8 +42,47 @@ export type StaffRole = 'barista' | 'frontOfHouse' | 'manager' | 'runner';
 export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'steady';
 export type WeatherId = 'mild' | 'sunny' | 'rainy' | 'coldSnap';
 export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
-export type CosmeticId = 'classicAwning' | 'wattleAwning' | 'neonCup';
-export type AchievementId = 'cafeFounder' | 'goldenCup' | 'hardLessons';
+export type CosmeticId =
+  | 'classicAwning'
+  | 'wattleAwning'
+  | 'neonCup'
+  | 'mosaicFloor'
+  | 'brassBayPlaques'
+  | 'afterHoursGlow';
+export type AchievementId =
+  'cafeFounder' | 'goldenCup' | 'hardLessons' | 'departmentInstitution' | 'threeBayConductor';
+export type BaseEventTemplateId = 'office-coffee-run' | 'sudden-downpour';
+export type DepartmentEventTemplateId =
+  | 'department-lunch-wave'
+  | 'tram-service-disruption'
+  | 'escalator-service-pause'
+  | 'window-display-launch'
+  | 'heritage-gala-interval'
+  | 'late-trading-coach-load';
+export type EventTemplateId = BaseEventTemplateId | DepartmentEventTemplateId;
+export type EventChoiceId =
+  | 'take-order'
+  | 'protect-queue'
+  | 'shelter-crowd'
+  | 'close-awning'
+  | 'open-concourse-pickup'
+  | 'stagger-department-orders'
+  | 'open-commuter-relief'
+  | 'hold-the-express-line'
+  | 'deploy-wayfinding'
+  | 'protect-three-bays'
+  | 'run-tasting-bench'
+  | 'keep-curated-service'
+  | 'serve-the-interval'
+  | 'reservation-pickup-only'
+  | 'open-all-bays'
+  | 'focused-last-orders';
+export type ImprovementId =
+  | 'street-sign'
+  | 'heritage-welcome-marquee'
+  | 'espresso-order-pass'
+  | 'brew-gallery'
+  | 'cold-collection-rail';
 export type RushSpeed = 1 | 2 | 4;
 export type StepDirection = -1 | 1;
 
@@ -203,22 +242,27 @@ export interface EventChoiceEffect {
 }
 
 export interface EventChoice {
-  id: string;
+  id: EventChoiceId;
   label: string;
   description: string;
   effect: EventChoiceEffect;
 }
 
 export interface SimulationEvent {
-  id: string;
+  id: EventTemplateId;
   title: string;
   description: string;
   choices: EventChoice[];
 }
 
 export interface ResolvedEvent {
-  eventId: string;
-  choiceId: string;
+  eventId: EventTemplateId;
+  title: string;
+  description: string;
+  choiceId: EventChoiceId;
+  choiceLabel: string;
+  choiceDescription: string;
+  effect: EventChoiceEffect;
   summary: string;
 }
 
@@ -392,6 +436,39 @@ export interface VenuePromotion {
   requiredEquipment: Partial<Record<EquipmentId, number>>;
 }
 
+/** Immutable service inputs copied into a report when its rush settles. */
+export interface DayReportCauseSnapshot {
+  venueId: VenueId;
+  plan: {
+    menu: Array<{ drinkId: DrinkId; priceCents: number }>;
+    dialIn: DialIn;
+    beanId: BeanId;
+    expressDrinkIds: DrinkId[];
+  };
+  staffing: Array<{
+    staffId: string;
+    name: string;
+    role: StaffRole;
+    speed: number;
+    skill: number;
+    trait: StaffTrait;
+    wageCents: number;
+    stationId: StationId | null;
+  }>;
+  equipment: {
+    levels: EquipmentState;
+    improvements: ImprovementId[];
+    venueOperatingCostCents: number;
+    equipmentOperatingCostCents: number;
+  };
+  events: ResolvedEvent[];
+  wait: {
+    peakQueue: number;
+    queueCapacity: number;
+    totalWaitTicks: number;
+  };
+}
+
 export interface DayReport {
   day: number;
   difficulty: Difficulty;
@@ -419,6 +496,8 @@ export interface DayReport {
   serviceAggregates: ServiceAggregate[];
   bottleneck: string;
   explanations: string[];
+  /** `null` means an earlier current-v4 report predates immutable cause capture. */
+  causeSnapshot: DayReportCauseSnapshot | null;
   /** Absent means the historical report predates complete charge capture. */
   chargeGroups?: ReportChargeGroup[];
   settled: boolean;
@@ -461,7 +540,7 @@ export interface GameState {
   staff: StaffMember[];
   candidateStaff: StaffMember[];
   equipment: EquipmentState;
-  improvements: string[];
+  improvements: ImprovementId[];
   history: DayReport[];
   outcome: CampaignOutcome | null;
 }
@@ -529,7 +608,7 @@ export type GameCommand =
   | { type: 'setSpeed'; speed: RushSpeed }
   | { type: 'resolveEvent'; choiceId: string }
   | { type: 'closeDay' }
-  | { type: 'buyImprovement'; improvementId: string }
+  | { type: 'buyImprovement'; improvementId: ImprovementId }
   | { type: 'hireStaff'; candidateId: string }
   | { type: 'buyEquipment'; equipmentId: EquipmentId }
   | { type: 'promoteVenue' }

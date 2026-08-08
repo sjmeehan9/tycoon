@@ -1,7 +1,8 @@
 import {
-  CART_IMPROVEMENT_COST_CENTS,
   EQUIPMENT,
   EQUIPMENT_IDS,
+  IMPROVEMENTS,
+  IMPROVEMENT_IDS,
   VENUE_PROMOTIONS,
   VENUES,
   venueMeetsRequirement,
@@ -13,7 +14,6 @@ import { formatMoney, type EquipmentId } from '../game';
 export function ReinvestPanel(): React.JSX.Element {
   const { command, game } = useGame();
   if (!game) return <></>;
-  const hasSign = game.improvements.includes('street-sign');
   const promotion = game.venueId === 'departmentStore' ? null : VENUE_PROMOTIONS[game.venueId];
   const missingPromotionEquipment = promotion
     ? Object.entries(promotion.requiredEquipment).filter(
@@ -129,26 +129,60 @@ export function ReinvestPanel(): React.JSX.Element {
         </article>
       )}
 
-      <article className={`upgrade-card ${hasSign ? 'is-owned' : ''}`}>
-        <div aria-hidden="true" className="upgrade-icon">
-          ↗
-        </div>
-        <div>
-          <h3>Hand-painted street sign</h3>
-          <p>A little more passing trade and a slightly smoother service path.</p>
-          <strong>{hasSign ? 'Owned' : formatMoney(CART_IMPROVEMENT_COST_CENTS)}</strong>
-        </div>
-        {!hasSign ? (
-          <button
-            className="button"
-            disabled={game.cashCents < CART_IMPROVEMENT_COST_CENTS}
-            onClick={() => command({ type: 'buyImprovement', improvementId: 'street-sign' })}
-            type="button"
-          >
-            Buy sign
-          </button>
-        ) : null}
-      </article>
+      <h3>Physical improvements</h3>
+      <div className="upgrade-grid">
+        {IMPROVEMENT_IDS.map((improvementId) => {
+          const improvement = IMPROVEMENTS[improvementId];
+          const owned = game.improvements.includes(improvementId);
+          const venueReady = venueMeetsRequirement(game.venueId, improvement.requiresVenue);
+          const missingEquipment = Object.entries(improvement.requiredEquipment).filter(
+            ([equipmentId, level]) => game.equipment[equipmentId as EquipmentId] < level,
+          );
+          const canBuy =
+            venueReady && missingEquipment.length === 0 && game.cashCents >= improvement.costCents;
+          return (
+            <article
+              className={`upgrade-card ${owned ? 'is-owned' : ''}`}
+              data-improvement-id={improvementId}
+              key={improvementId}
+            >
+              <div aria-hidden="true" className="upgrade-icon">
+                ↗
+              </div>
+              <div>
+                <h4>{improvement.name}</h4>
+                <p>{improvement.description}</p>
+                <strong>{owned ? 'Owned' : formatMoney(improvement.costCents)}</strong>
+                {!owned && (!venueReady || missingEquipment.length > 0) ? (
+                  <ul className="upgrade-requirements">
+                    <Requirement met={venueReady}>
+                      {VENUES[improvement.requiresVenue].shortName}
+                    </Requirement>
+                    {Object.entries(improvement.requiredEquipment).map(([equipmentId, level]) => (
+                      <Requirement
+                        key={equipmentId}
+                        met={game.equipment[equipmentId as EquipmentId] >= level}
+                      >
+                        {EQUIPMENT[equipmentId as EquipmentId].name} level {level}
+                      </Requirement>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              {!owned ? (
+                <button
+                  className="button"
+                  disabled={!canBuy}
+                  onClick={() => command({ type: 'buyImprovement', improvementId })}
+                  type="button"
+                >
+                  Buy {improvement.name} · {formatMoney(improvement.costCents)}
+                </button>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
       <button
         className="button button-primary"
         onClick={() => command({ type: 'startNextDay' })}
