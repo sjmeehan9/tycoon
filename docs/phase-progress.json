@@ -1,4 +1,5 @@
 {
+  "lastUpdated": "2026-08-08",
   "leanTeamOverride": true,
   "permittedRoles": ["technical-business-analyst", "implement"],
   "phases": [
@@ -81,6 +82,237 @@
           "id": "6.5",
           "name": "Cumulative QA, Documentation, and Hosted Verification",
           "status": "hosted-pass"
+        }
+      ]
+    },
+    {
+      "phase": 7,
+      "phaseId": 7,
+      "phaseName": "Fixed-Isometric Service World",
+      "status": "in-progress",
+      "branch": "phase-7",
+      "baseSha": "1f54d612f0e34b779dc83c76ba5ce50d3f720fa4",
+      "approvedOn": "2026-08-08",
+      "componentBreakdownDoc": "docs/phase-7-component-breakdown.md",
+      "deviceGate": {
+        "status": "reserved",
+        "evidenceDueIn": "7.6",
+        "description": "Representative mid-tier WebGL2-capable touch device confirmed and reserved; physical evidence is not yet complete."
+      },
+      "mergeGate": {
+        "status": "reserved",
+        "after": "7.6 local Tier 3 PASS",
+        "owner": "Human"
+      },
+      "components": [
+        {
+          "id": "7.1",
+          "componentId": "7.1",
+          "name": "Human Setup and Phase-7 Gate Reservation",
+          "componentName": "Human Setup and Phase-7 Gate Reservation",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "fast (lean override)",
+          "assuranceReasons": [
+            "Non-runtime documentary setup; no standard Test or Review trigger applies."
+          ],
+          "validationTier": "targeted",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": [
+            "docs/project-profile.md",
+            "docs/phase-plan.md",
+            "docs/phase-7-component-breakdown.md",
+            "docs/phase-8-component-breakdown.md",
+            "docs/implementation-context-phase-7.md"
+          ],
+          "evidenceFingerprint": "192d25bc1a421e9f9fcd09f05800bb96be936f6052b95fd4b33606617345abcd",
+          "validationEvidence": "docs/components/phase-7-component-7-1-overview.md",
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": "tier-1-pass",
+          "status": "committed"
+        },
+        {
+          "id": "7.2",
+          "componentId": "7.2",
+          "name": "Snapshot-Only WebGL Cart Service",
+          "componentName": "Snapshot-Only WebGL Cart Service",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "fast (lean override)",
+          "assuranceReasons": [
+            "Standard Test triggers recorded: first WebGL integration, UI/browser behavior, context loss, responsive/reduced-motion behavior, and service round trip.",
+            "Standard Review triggers recorded: app entry/build configuration, dependencies, shared render contract, and public snapshot API; lean override assigns the Tier 2 gate and self-review to Implement."
+          ],
+          "validationTier": "component",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": [
+            "package.json",
+            "pnpm-lock.yaml",
+            "vite.config.ts",
+            "src/App.tsx",
+            "src/scene/sceneModel.ts",
+            "src/scene/three",
+            "src/components/RushPanel.tsx",
+            "src/styles.css",
+            "tests/unit/scene.test.ts",
+            "tests/components/presentation.test.tsx",
+            "tests/components/accessibility.test.tsx",
+            "tests/e2e/webgl-service.spec.ts",
+            "tests/fixtures/campaignFixtures.ts"
+          ],
+          "evidenceFingerprint": null,
+          "validationEvidence": null,
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": null,
+          "status": "spec-validated"
+        },
+        {
+          "id": "7.3",
+          "componentId": "7.3",
+          "name": "Complete Kiosk and Cafe Isometric Worlds",
+          "componentName": "Complete Kiosk and Cafe Isometric Worlds",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "fast (lean override)",
+          "assuranceReasons": [
+            "Standard Test triggers recorded: multi-venue WebGL UI, persistence/reload, responsive performance, and regression-prone renderer replacement.",
+            "Standard Review trigger recorded: broad shared renderer and snapshot-contract scope; lean override assigns the Tier 2 gate and self-review to Implement."
+          ],
+          "validationTier": "component",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": [
+            "src/App.tsx",
+            "src/scene/CanvasScene.tsx",
+            "src/scene/scenePlayback.ts",
+            "src/scene/sceneModel.ts",
+            "src/scene/three",
+            "src/styles.css",
+            "tests/unit/scene.test.ts",
+            "tests/components/presentation.test.tsx",
+            "tests/e2e/webgl-service.spec.ts",
+            "tests/e2e/presentation.spec.ts",
+            "tests/fixtures/campaignFixtures.ts"
+          ],
+          "evidenceFingerprint": null,
+          "validationEvidence": null,
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": null,
+          "status": "spec-validated"
+        },
+        {
+          "id": "7.4",
+          "componentId": "7.4",
+          "name": "Immersive Service Information Flow",
+          "componentName": "Immersive Service Information Flow",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "fast (lean override)",
+          "assuranceReasons": [
+            "Standard Test triggers recorded: responsive touch/keyboard UI and regression-prone service navigation.",
+            "Standard Review triggers recorded: app composition and broad shared layout changes; lean override assigns the Tier 2 gate and self-review to Implement."
+          ],
+          "validationTier": "component",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": [
+            "src/App.tsx",
+            "src/components/Planner.tsx",
+            "src/components/RushPanel.tsx",
+            "src/components/RushStockGrid.tsx",
+            "src/components/GameHeader.tsx",
+            "src/accessibility/GameAnnouncer.tsx",
+            "src/scene/three/ServiceWorld.tsx",
+            "src/styles.css",
+            "tests/components/game-loop.test.tsx",
+            "tests/components/presentation.test.tsx",
+            "tests/components/accessibility.test.tsx",
+            "tests/e2e/service-layout.spec.ts",
+            "tests/e2e/accessibility.spec.ts",
+            "tests/e2e/webgl-service.spec.ts"
+          ],
+          "evidenceFingerprint": null,
+          "validationEvidence": null,
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": null,
+          "status": "spec-validated"
+        },
+        {
+          "id": "7.5",
+          "componentId": "7.5",
+          "name": "Compact Completion and Reopenable Reports",
+          "componentName": "Compact Completion and Reopenable Reports",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "fast (lean override)",
+          "assuranceReasons": [
+            "Standard Test triggers recorded: persistence/export round trips, report disclosure/navigation, and exact-once settlement.",
+            "Standard Review triggers recorded: additive DayReport public contract and cross-component report navigation; lean override assigns the Tier 2 gate and self-review to Implement."
+          ],
+          "validationTier": "component",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": [
+            "src/game/types.ts",
+            "src/game/engine.ts",
+            "src/game/selectors.ts",
+            "src/game/index.ts",
+            "src/persistence/saveStore.ts",
+            "src/app/GameContext.tsx",
+            "src/components/ReportPanel.tsx",
+            "src/components/GameTools.tsx",
+            "src/components/ReinvestPanel.tsx",
+            "src/accessibility/useModalFocus.ts",
+            "src/styles.css",
+            "tests/unit/engine.test.ts",
+            "tests/unit/persistence.test.ts",
+            "tests/components/game-loop.test.tsx",
+            "tests/components/accessibility.test.tsx",
+            "tests/e2e/report-history.spec.ts",
+            "tests/e2e/persistence.spec.ts",
+            "tests/e2e/save-transfer.spec.ts",
+            "tests/fixtures/campaignFixtures.ts"
+          ],
+          "evidenceFingerprint": null,
+          "validationEvidence": null,
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": null,
+          "status": "spec-validated"
+        },
+        {
+          "id": "7.6",
+          "componentId": "7.6",
+          "name": "Phase-7 Validation and Documentation",
+          "componentName": "Phase-7 Validation and Documentation",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
+          "assuranceLane": "phase-gate (lean override)",
+          "assuranceReasons": [
+            "Phase-final component owns cumulative Tier 3 validation, physical-device evidence, documentation reconciliation, phase report, self-review, and commit under the approved lean override."
+          ],
+          "validationTier": "phase",
+          "validationOwner": "Implement",
+          "commitOwner": "Implement",
+          "fingerprintScope": ["."],
+          "evidenceFingerprint": null,
+          "validationEvidence": null,
+          "authorRepairUsed": false,
+          "remediationCycles": 0,
+          "disposition": null,
+          "status": "spec-validated"
         }
       ]
     }

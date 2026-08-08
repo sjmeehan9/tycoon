@@ -2,7 +2,24 @@
 
 ## Current Stage
 
-Phase 6 cumulative HOSTED PASS — approved release verified on GitHub Pages
+Phase 7 sequential implementation — the user approved the complete Phases 7–8
+plan and authorized immediate implementation. Both required component
+breakdowns are `Spec-Validated`; Component 7.1 has reserved the human/device
+gates and established the documentation baseline on `phase-7`. Component 7.2
+is next and has not begun.
+
+## Next-Level Evolution Stage Progress
+
+- [x] Existing product, architecture, tests, release state, and maintenance risks mapped
+- [x] Product and delivery decisions confirmed by the user
+- [x] Lean TBA + Implement team restriction reconfirmed
+- [x] Project profile migrated to targeted, component, and phase validation tiers
+- [x] Technical Business Analyst produces the comprehensive additive phase plan
+- [x] Coordinator verifies requirement coverage, dependencies, validation targets, and scope
+- [x] User approves the complete plan
+- [x] Sequential Implement delivery begins on Phase 7
+- [x] Component 7.1 records the branch, official-source checklist, device reservation, and merge gate
+- [ ] Component 7.2 delivers the snapshot-only WebGL cart service
 
 ## Lean team contract
 
@@ -43,14 +60,35 @@ Phase 6 cumulative HOSTED PASS — approved release verified on GitHub Pages
 | three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                                    |
 | lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                               |
 | sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
+| next_level_plan           | Technical Business Analyst | retired — stalled  | Intake/context audit; no artifact mutation returned                      |
+| next_level_plan_recovery  | Technical Business Analyst | done               | Comprehensive and corrected Phases 7–8 plan                             |
+| plan_feasibility_audit    | Implement                  | done — ready       | Read-only feasibility audit and approval check; no implementation       |
+| next_level_implement      | Implement                  | active — 7.1 done  | Sequential Phases 7–8 delivery; paused before Component 7.2             |
 
-## Human task gate
+## Previous release human task gate
 
 - **Status:** CLOSED — final approval, normal PR #3 merge, Pages publication,
   exact deployment identity, public desktop/360px gameplay, staff uniqueness,
   migration/autosave, worker/update, offline continuation, and runtime health
   are verified
 - **Release:** `https://sjmeehan9.github.io/tycoon/`
+
+## Next-Level approval gate
+
+- **Status:** CLOSED — the user approved Phases 7–8 and immediate
+  implementation on 2026-08-08. Both component breakdowns are materialized and
+  `Spec-Validated`; Component 7.1 has entered the approved Phase 7 branch.
+
+## Phase 7 human/device gates
+
+- **Representative device:** CONFIRMED/RESERVED — the user's response approved
+  the combined plan/device request. Physical model/browser/WebGL/performance
+  evidence remains Component 7.6 work and is not yet claimed.
+- **External setup:** CLOSED — no account, credential, secret, environment
+  variable, paid asset, backend, runtime service, or publication setup exists.
+- **Merge:** RESERVED — after Component 7.6 local Tier 3 PASS, the user must
+  explicitly approve or reject merging `phase-7`. No Phase 7 Pages publication
+  is planned.
 
 ## Decisions log
 
@@ -71,6 +109,15 @@ Phase 6 cumulative HOSTED PASS — approved release verified on GitHub Pages
 | 2026-07-18 | Staff-name uniqueness is stateless and indexed      | A seed-keyed bijection covers 40,000 slots without persisted history or rejection loops                         | Component 6.4      |
 | 2026-07-19 | Final Phase 6 release approved and normally merged  | Owner approved publication; PR #3 merged reviewed head `c14bd24` at `2ddf899` without bypass                    | Component 6.5      |
 | 2026-07-19 | Phase 6 public release is HOSTED PASS               | Exact Pages deployment and direct desktop/touch/PWA/persistence audits passed against the merge                 | Final release      |
+| 2026-08-08 | Preserve the lean TBA + Implement team              | User selected the existing two-role workflow and continuous delivery after one comprehensive-plan approval      | Phase 7+ workflow  |
+| 2026-08-08 | Migrate to lean-owned validation tiers              | Current agent standards require three tiers; Implement owns all gates because other delivery roles remain barred | Phase 7+ assurance |
+| 2026-08-08 | Replace current progression with a 40-day campaign  | Existing progress may be invalidated; Standard is default and Hard symmetrically amplifies demand sensitivity   | Campaign/economy   |
+| 2026-08-08 | Add a fourth department-store coffee-hall tier      | Final venue uses 10 staff, three stations, Manager/Runner roles, express service, commercial unlocks, and more demand | Progression     |
+| 2026-08-08 | Replace every service scene with fixed-isometric 3D | Procedural Three.js/React Three Fiber presentation is the primary visual uplift; WebGL is required               | Presentation       |
+| 2026-08-08 | Recompose planning, service, and report flows       | Planning has no scene; service orders scene/dashboard/activity/stock; reports default compact and remain reopenable | UI/UX           |
+| 2026-08-08 | Approve complete Phases 7–8 plan                    | User authorized immediate implementation after the audited planning gate                                         | Phase 7+ delivery |
+| 2026-08-08 | Reserve representative WebGL2 touch-device evidence | The approval response answered the combined plan/device request; reservation is confirmed but physical proof remains due in 7.6 | Components 7.1/7.6 |
+| 2026-08-08 | Materialize both additive component breakdowns      | All 15 components now carry ownership, dependencies, Technical Validation, acceptance, lane, tier, and `Spec-Validated` status | Phases 7–8 entry |
 
 ## Drift log
 
@@ -81,6 +128,8 @@ Phase 6 cumulative HOSTED PASS — approved release verified on GitHub Pages
 | 2026-07-18 | In-app browser runtime unavailable                      | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths         |
 | 2026-07-18 | Additive TBA threads did not return a document mutation | User-authorized coordinator skeleton points the sole Implement agent to the approved root plan; no substitute role was added |
 | 2026-07-19 | Pages workflow emitted compatibility warnings           | Node action-runtime and upload-input annotations were non-blocking; jobs, deployment, assets, and public runtime all passed  |
+| 2026-08-08 | Initial Phase 7+ TBA engagement produced no artifact after bounded follow-ups | Coordinator retired the stalled engagement and re-onboarded the same permitted role with a narrower write-first contract |
+| 2026-08-08 | R3F stable release advanced after planning research | Official releases now list v9.7.0 rather than v9.6.1 as latest stable; Component 7.1 selects no dependency and Component 7.2 must re-check and build-test its exact pin |
 
 ## Deferred log
 
