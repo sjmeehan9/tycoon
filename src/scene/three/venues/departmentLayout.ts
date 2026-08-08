@@ -53,6 +53,23 @@ export interface DepartmentPerformanceBudget {
   readonly shadowLights: number;
 }
 
+export interface DepartmentFramePerformanceBudget {
+  readonly maximumP95FrameTimeMs: number;
+  readonly minimumFramesPerSecond: number;
+}
+
+/** Automated render-loop budgets; mobile describes browser emulation, not a physical device. */
+export const DEPARTMENT_FRAME_PERFORMANCE_BUDGET = Object.freeze({
+  full: Object.freeze({
+    maximumP95FrameTimeMs: 34,
+    minimumFramesPerSecond: 55,
+  }),
+  compact: Object.freeze({
+    maximumP95FrameTimeMs: 50,
+    minimumFramesPerSecond: 30,
+  }),
+} satisfies Readonly<Record<DepartmentLod, DepartmentFramePerformanceBudget>>);
+
 const STATION_X: Readonly<Record<StationId, number>> = Object.freeze({
   espressoBar: -4.25,
   brewBar: 0,

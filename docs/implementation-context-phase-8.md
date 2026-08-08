@@ -409,3 +409,60 @@ publication change belongs to this component. Automated Chromium/touch-mobile
 results remain browser evidence only. The title art remains byte-identical at
 SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.8 offline, update, performance, and release boundary
+
+The production PWA now precaches one canonical copy of the complete generated
+runtime graph after a successful online load. The Workbox runtime is inlined,
+the separately copied manifest/icon duplicates are ignored in favor of their
+generated URLs, and the one-megabyte per-file ceiling remains enforced. Browser
+evidence owns installability, `/tycoon/` routing, every-precache-entry offline
+fetch, warm and cold offline reload, and an entirely offline dense department
+service through exact settlement and next-day continuation.
+
+The title screen, PWA registration, Planner, onboarding, and active rush controls
+remain on the immediate application path. Other non-title gameplay panels,
+audio/announcement directors, and game tools load in bounded lazy chunks with
+accessible status fallbacks. This reduces the initial entry cost that gates the
+title heading while retaining complete offline play: every lazy chunk is part of
+the canonical precache and browser-tested offline.
+
+A waiting worker cannot activate or reload while the game is in a rush or
+service event. The prompt explains the active-service boundary and disables its
+primary action. Dismissal remains dismissal only; it does not queue activation.
+When service ends, the player must make a new explicit **Save and update** choice.
+The current schema-v4 payload is then written, read back, structurally verified,
+and given a monotonically refreshed top-level `savedAt` before `SKIP_WAITING`;
+control transition and reload restore all persisted gameplay, preferences, and
+meta content exactly without duplicate settlement.
+
+The dense department renderer retains canonical simulation and snapshot truth
+while reducing redundant GPU work. Full desktop detail uses a 0.9 internal
+render scale and no multisample antialiasing over the existing capped DPR;
+compact detail retains scale 1. Static instance colors upload only when the
+immutable snapshot/layout changes. Shadows render on creation and snapshot
+change instead of every display frame. Transform animation still uses the one
+React Three Fiber render loop, and pause/reduced motion remain intact.
+
+Renderer cadence is measured after thirty warm-up callbacks over 120 rendered
+frame deltas. Automated desktop Chromium at 1280×800 must sustain at least 55
+FPS with p95 at most 34 ms; emulated DPR-2 touch Chromium at 360×780 must sustain
+at least 30 FPS with p95 at most 50 ms. The evidence records browser/version,
+viewport, browser or emulated DPR, actual canvas DPR, WebGL renderer, LOD, scene
+state, and method. It is explicitly not physical-device evidence. The optional
+physical 30 FPS check remains owner-only, hosted, pending, and unclaimed.
+
+The production dependency graph remains unchanged. Its current audit reports no
+known vulnerability and its runtime licenses are MIT or BSD-3-Clause. Source,
+built-output, and browser-request audits own proof that there is no runtime
+external API, remote asset, analytics, telemetry, advertising, secret, or
+personal-data path. Lighthouse 13.4.1 owns mobile Performance, Accessibility,
+and Best Practices; the installed version exposes no PWA category, so the
+manifest/installability/service-worker/offline browser suite owns that proof.
+
+Release instructions now cover the forty-day, four-venue Standard/Hard
+candidate; separate human merge and publication decisions; consent-safe hosted
+updates; and schema-v4-compatible superseding-build recovery. Component 8.8 does
+not merge, publish, deploy, alter repository settings, or claim hosted or
+physical-device evidence. The title artwork remains byte-identical at SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.

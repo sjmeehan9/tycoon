@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { BasicShadowMap, OrthographicCamera } from 'three';
 
 import { useGame } from '../../app/GameContext';
@@ -11,6 +11,7 @@ import {
   boundedDevicePixelRatio,
   CART_PALETTE,
   COMPACT_SHADOW_MAP_SIZE,
+  DEPARTMENT_FULL_RENDER_SCALE,
   MAX_DEVICE_PIXEL_RATIO,
   SHADOW_MAP_SIZE,
 } from './materials';
@@ -20,6 +21,7 @@ import { CartWorld } from './venues/CartWorld';
 import { DepartmentStoreWorld } from './venues/DepartmentStoreWorld';
 import {
   DEPARTMENT_EQUIPMENT_REGISTRY,
+  DEPARTMENT_FRAME_PERFORMANCE_BUDGET,
   DEPARTMENT_HERITAGE_MOTIFS,
   DEPARTMENT_LAYOUT,
   DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY,
@@ -31,6 +33,8 @@ import { venueLayoutFor } from './venues/venueLayout';
 import { WebGLBoundary } from './WebGLBoundary';
 
 const COMPACT_SCENE_QUERY = '(max-width: 620px), (max-height: 500px)';
+const FRAME_SAMPLE_COUNT = 120;
+const FRAME_WARMUP_COUNT = 30;
 
 /** Lazy, snapshot-only WebGL service renderer for every campaign venue. */
 export function ServiceWorld(): React.JSX.Element | null {
@@ -49,6 +53,7 @@ export function ServiceWorld(): React.JSX.Element | null {
   const lod: DepartmentLod = isDepartment && compactViewport ? 'compact' : 'full';
   const venueLayout = venueLayoutFor(snapshot.identity.venueId);
   const departmentBudget = departmentPerformanceBudget(lod);
+  const frameBudget = DEPARTMENT_FRAME_PERFORMANCE_BUDGET[lod];
   const overflow = snapshot.service.queueSummary.omitted;
   const latestSale = snapshot.service.activity.findLast((event) => event.type === 'sale');
   const latestWalkaway = snapshot.service.activity.findLast((event) => event.type === 'walkaway');
@@ -77,11 +82,13 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-active-customer={snapshot.service.active?.id ?? 'none'}
       data-active-job-ids={activeJobIds || 'none'}
       data-animation={snapshot.presentation.animate ? 'active' : 'still'}
+      data-antialias={isDepartment ? 'false' : 'true'}
       data-bay-registry={
         isDepartment ? Object.keys(DEPARTMENT_LAYOUT.stations).join(',') : undefined
       }
       data-budget-status="pending"
       data-camera="orthographic-isometric"
+      data-colour-update-policy="snapshot"
       data-customer-entity-ids={customerIds}
       data-customer-statuses={customerStatuses}
       data-dpr-max={isDepartment ? departmentBudget.devicePixelRatio : MAX_DEVICE_PIXEL_RATIO}
@@ -89,6 +96,11 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-effect-cap={isDepartment ? MAX_SCENE_EFFECTS : 0}
       data-equipment={equipmentLabel}
       data-equipment-registry={isDepartment ? DEPARTMENT_EQUIPMENT_REGISTRY.join(',') : undefined}
+      data-frame-budget-status={
+        isDepartment && snapshot.presentation.animate ? 'pending' : 'not-applicable'
+      }
+      data-frame-sample-count={isDepartment ? FRAME_SAMPLE_COUNT : undefined}
+      data-frame-warmup-count={isDepartment ? FRAME_WARMUP_COUNT : undefined}
       data-instanced-people="true"
       data-last-event={lastActivity?.id ?? 'none'}
       data-layout={`${venueLayout.floor.width}x${venueLayout.floor.depth}`}
@@ -100,6 +112,8 @@ export function ServiceWorld(): React.JSX.Element | null {
           : venueLayout.performance.maxRepeatedFurnishings
       }
       data-max-visible-customers={maxVisibleCustomers}
+      data-maximum-p95-frame-time-ms={isDepartment ? frameBudget.maximumP95FrameTimeMs : undefined}
+      data-minimum-fps={isDepartment ? frameBudget.minimumFramesPerSecond : undefined}
       data-max-visible-staff={
         isDepartment ? MAX_SCENE_STAFF : venueLayout.performance.maxVisibleStaff
       }
@@ -113,11 +127,13 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-queue-overflow={overflow}
       data-reduced-motion={snapshot.presentation.reducedMotion}
       data-renderer="webgl"
+      data-render-scale={isDepartment && lod === 'full' ? DEPARTMENT_FULL_RENDER_SCALE : 1}
       data-service-section="scene"
       data-shadow-light-count={
         isDepartment ? departmentBudget.shadowLights : venueLayout.performance.shadowLightCount
       }
       data-shadow-map-size={isDepartment ? departmentBudget.shadowMapSize : SHADOW_MAP_SIZE}
+      data-shadow-update-policy="snapshot"
       data-snapshot-id={snapshot.snapshotId}
       data-snapshot-only="true"
       data-speed={snapshot.service.speed}
@@ -183,8 +199,9 @@ function ServiceCanvas({
 }): React.JSX.Element {
   const isDepartment = snapshot.identity.venueId === 'departmentStore';
   const rawDpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio;
+  const renderScale = isDepartment && lod === 'full' ? DEPARTMENT_FULL_RENDER_SCALE : 1;
   const dpr = isDepartment
-    ? boundedDepartmentDevicePixelRatio(rawDpr, lod === 'compact')
+    ? boundedDepartmentDevicePixelRatio(rawDpr, lod === 'compact') * renderScale
     : boundedDevicePixelRatio(rawDpr);
   const shadowMapSize = isDepartment
     ? lod === 'compact'
@@ -208,7 +225,9 @@ function ServiceCanvas({
       frameloop={snapshot.presentation.animate ? 'always' : 'demand'}
       gl={{
         alpha: false,
-        antialias: true,
+        // The flagship deliberately uses the existing pixel-crisp presentation instead of
+        // expensive MSAA; geometry, DPR, lighting, and shadow detail remain unchanged.
+        antialias: !isDepartment,
         failIfMajorPerformanceCaveat: false,
         powerPreference: 'high-performance',
         preserveDrawingBuffer: false,
@@ -217,7 +236,9 @@ function ServiceCanvas({
       key={generation}
       onCreated={({ gl }) => {
         gl.shadowMap.enabled = true;
+        gl.shadowMap.autoUpdate = false;
         gl.shadowMap.type = BasicShadowMap;
+        gl.shadowMap.needsUpdate = true;
         gl.domElement.dataset.renderAuthority = 'snapshot-only';
         gl.domElement.dataset.snapshotId = snapshot.snapshotId;
       }}
@@ -242,9 +263,22 @@ function ServiceCanvas({
       />
       <IsometricCamera lod={lod} venueId={snapshot.identity.venueId} />
       <VenueWorld lod={lod} snapshot={snapshot} />
+      <SnapshotShadowMap snapshotId={snapshot.snapshotId} />
       <RendererTelemetry lod={lod} snapshot={snapshot} />
     </Canvas>
   );
+}
+
+function SnapshotShadowMap({ snapshotId }: { readonly snapshotId: string }): null {
+  const renderedSnapshotId = useRef<string | null>(null);
+  useFrame(({ gl }) => {
+    if (renderedSnapshotId.current === snapshotId) return;
+    // Immutable snapshots are the sole source of scene-transform changes, so one
+    // refresh preserves current shadows without repeating the pass every display frame.
+    gl.shadowMap.needsUpdate = true;
+    renderedSnapshotId.current = snapshotId;
+  });
+  return null;
 }
 
 function VenueWorld({
@@ -293,6 +327,62 @@ function RendererTelemetry({
 }): null {
   const gl = useThree(({ gl: renderer }) => renderer);
   const invalidate = useThree(({ invalidate: requestFrame }) => requestFrame);
+  const frameSample = useRef<FrameSampleState>(createFrameSampleState('initial'));
+  const isFrameSamplingEnabled =
+    snapshot.identity.venueId === 'departmentStore' && snapshot.presentation.animate;
+  const frameSampleKey = `${snapshot.identity.venueId}:${lod}:${String(snapshot.presentation.animate)}`;
+
+  useFrame((_state, deltaSeconds) => {
+    if (!isFrameSamplingEnabled) return;
+    if (frameSample.current.key !== frameSampleKey) {
+      frameSample.current = createFrameSampleState(frameSampleKey);
+    }
+    const sample = frameSample.current;
+    if (sample.warmupFrames < FRAME_WARMUP_COUNT) {
+      sample.warmupFrames += 1;
+      return;
+    }
+    if (sample.frameTimesMs.length >= FRAME_SAMPLE_COUNT) return;
+    const frameTimeMs = deltaSeconds * 1_000;
+    if (!Number.isFinite(frameTimeMs) || frameTimeMs <= 0) return;
+    sample.frameTimesMs.push(frameTimeMs);
+    if (sample.frameTimesMs.length !== FRAME_SAMPLE_COUNT) return;
+
+    const metrics = frameMetrics(sample.frameTimesMs);
+    const budget = DEPARTMENT_FRAME_PERFORMANCE_BUDGET[lod];
+    const status =
+      metrics.framesPerSecond >= budget.minimumFramesPerSecond &&
+      metrics.p95FrameTimeMs <= budget.maximumP95FrameTimeMs
+        ? 'pass'
+        : 'fail';
+    const frame = gl.domElement.closest('figure');
+    for (const element of [gl.domElement, frame]) {
+      if (!(element instanceof HTMLElement)) continue;
+      element.dataset.frameBudgetStatus = status;
+      element.dataset.frameSampleStatus = 'complete';
+      element.dataset.measuredFps = metrics.framesPerSecond.toFixed(2);
+      element.dataset.medianFrameTimeMs = metrics.medianFrameTimeMs.toFixed(2);
+      element.dataset.p95FrameTimeMs = metrics.p95FrameTimeMs.toFixed(2);
+      element.dataset.sampleDurationMs = metrics.sampleDurationMs.toFixed(2);
+    }
+  });
+
+  useEffect(() => {
+    frameSample.current = createFrameSampleState(frameSampleKey);
+    const frame = gl.domElement.closest('figure');
+    const frameSampleStatus = isFrameSamplingEnabled ? 'sampling' : 'not-applicable';
+    for (const element of [gl.domElement, frame]) {
+      if (!(element instanceof HTMLElement)) continue;
+      element.dataset.frameBudgetStatus =
+        frameSampleStatus === 'sampling' ? 'pending' : 'not-applicable';
+      element.dataset.frameSampleStatus = frameSampleStatus;
+      delete element.dataset.measuredFps;
+      delete element.dataset.medianFrameTimeMs;
+      delete element.dataset.p95FrameTimeMs;
+      delete element.dataset.sampleDurationMs;
+    }
+  }, [frameSampleKey, gl, isFrameSamplingEnabled]);
+
   useEffect(() => {
     invalidate();
     let secondFrame = 0;
@@ -326,6 +416,36 @@ function RendererTelemetry({
     };
   }, [gl, invalidate, lod, snapshot.identity.venueId, snapshot.snapshotId]);
   return null;
+}
+
+interface FrameSampleState {
+  readonly frameTimesMs: number[];
+  readonly key: string;
+  warmupFrames: number;
+}
+
+interface FrameMetrics {
+  readonly framesPerSecond: number;
+  readonly medianFrameTimeMs: number;
+  readonly p95FrameTimeMs: number;
+  readonly sampleDurationMs: number;
+}
+
+function createFrameSampleState(key: string): FrameSampleState {
+  return { frameTimesMs: [], key, warmupFrames: 0 };
+}
+
+function frameMetrics(frameTimesMs: readonly number[]): FrameMetrics {
+  const ordered = [...frameTimesMs].sort((left, right) => left - right);
+  const sampleDurationMs = frameTimesMs.reduce((total, value) => total + value, 0);
+  const medianIndex = Math.floor((ordered.length - 1) / 2);
+  const p95Index = Math.ceil(ordered.length * 0.95) - 1;
+  return {
+    framesPerSecond: (frameTimesMs.length * 1_000) / sampleDurationMs,
+    medianFrameTimeMs: ordered[medianIndex] ?? Number.POSITIVE_INFINITY,
+    p95FrameTimeMs: ordered[p95Index] ?? Number.POSITIVE_INFINITY,
+    sampleDurationMs,
+  };
 }
 
 function SceneHud({

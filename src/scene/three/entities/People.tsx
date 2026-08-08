@@ -64,7 +64,7 @@ function PeopleBatch({
   const colour = useMemo(() => new Color(), []);
 
   useLayoutEffect(() => {
-    updatePeopleInstances(bodiesRef.current, headsRef.current, colour, dummy, poses, 0);
+    updatePeopleInstances(bodiesRef.current, headsRef.current, colour, dummy, poses, 0, true);
   }, [colour, dummy, poses]);
 
   useFrame(({ clock }) => {
@@ -76,6 +76,7 @@ function PeopleBatch({
       dummy,
       poses,
       clock.getElapsedTime(),
+      false,
     );
   });
 
@@ -210,6 +211,7 @@ function updatePeopleInstances(
   dummy: Object3D,
   poses: readonly PersonPlacement[],
   elapsed: number,
+  updateColours: boolean,
 ): void {
   if (!bodies || !heads) return;
   poses.forEach((placement, index) => {
@@ -219,7 +221,7 @@ function updatePeopleInstances(
     dummy.scale.set(transform.width, transform.height, 1);
     dummy.updateMatrix();
     bodies.setMatrixAt(index, dummy.matrix);
-    bodies.setColorAt(index, colour.set(placement.colour));
+    if (updateColours) bodies.setColorAt(index, colour.set(placement.colour));
     dummy.position.set(transform.x, transform.headY, transform.z);
     dummy.rotation.set(0, transform.rotation, transform.roll * 0.3);
     dummy.scale.set(1, 1, 1);
@@ -228,7 +230,7 @@ function updatePeopleInstances(
   });
   bodies.instanceMatrix.needsUpdate = true;
   heads.instanceMatrix.needsUpdate = true;
-  if (bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
+  if (updateColours && bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
 }
 
 function poseTransform(

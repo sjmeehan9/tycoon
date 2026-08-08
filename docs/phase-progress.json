@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-08-08",
+  "lastUpdated": "2026-08-09",
   "leanTeamOverride": true,
   "permittedRoles": ["technical-business-analyst", "implement"],
   "phases": [
@@ -818,10 +818,49 @@
         },
         {
           "id": "8.8",
+          "componentId": "8.8",
           "name": "Offline, Update, Performance, and Release Readiness",
+          "componentName": "Offline, Update, Performance, and Release Readiness",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
           "assuranceLane": "fast (lean override)",
           "validationTier": "component",
-          "status": "spec-validated"
+          "assuranceReasons": [
+            "Standard Test triggers recorded: service-worker lifecycle and installability, complete offline persistence/service round trips, responsive desktop/touch browser behavior, and real WebGL cadence evidence.",
+            "Standard Review triggers recorded: shared app entry/build/PWA configuration, public renderer budget contracts, release safety behavior, and broad runtime/test scope; the lean override assigns Tier 2 and self-review to Implement.",
+            "Two bounded remediation cycles preserved the approved thresholds: one corrected the Lighthouse title-entry cost, and one retained the established immediate Planner contract while keeping non-critical chunks lazy."
+          ],
+          "validationOwner": "Implement",
+          "commitOwner": "Lead Coordinator",
+          "fingerprintScope": [
+            "vite.config.ts",
+            "package.json",
+            "pnpm-lock.yaml",
+            "src/main.tsx",
+            "src/App.tsx",
+            "src/pwa/PwaUpdatePrompt.tsx",
+            "src/scene/three",
+            "src/styles.css",
+            "public",
+            "tests/components/pwa-update.test.tsx",
+            "tests/e2e/pwa.spec.ts",
+            "tests/e2e/department-store-scene.spec.ts",
+            "tests/e2e/persistence.spec.ts",
+            "tests/e2e/service-layout.spec.ts",
+            "docs/release-runbook.md",
+            "docs/public-release-checklist.md",
+            "docs/components/phase-8-component-8-8-overview.md",
+            "docs/implementation-context-phase-8.md",
+            "docs/phase-progress.json",
+            "docs/phase-8-component-breakdown.md"
+          ],
+          "evidenceFingerprint": "292d06c8b4260cc1500474c90ca13b27f10a40bd21ae07ca047d0a1b19619e3b",
+          "validationEvidence": "docs/components/phase-8-component-8-8-overview.md",
+          "authorRepairUsed": true,
+          "remediationCycles": 2,
+          "disposition": "tier-2-pass-after-bounded-lighthouse-and-immediate-planner-remediation",
+      "status": "committed"
         },
         {
           "id": "8.9",

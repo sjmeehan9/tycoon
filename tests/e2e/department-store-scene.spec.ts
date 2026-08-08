@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { writeFileSync } from 'node:fs';
 
 import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { denseDepartmentRushEnvelope } from '../fixtures/campaignFixtures';
@@ -73,6 +74,73 @@ test.describe('dense department-store heritage hall', () => {
     );
     expect(performance.actualTriangles).toBeLessThanOrEqual(performance.triangleBudget);
     await expect(frame).toHaveAttribute('data-budget-status', 'pass');
+
+    await page.getByRole('button', { name: 'Resume' }).click();
+    await expect(frame).toHaveAttribute('data-animation', 'active');
+    await expect(frame).toHaveAttribute('data-frame-sample-status', 'complete', {
+      timeout: 20_000,
+    });
+    const framePerformance = await frame.evaluate((element) => {
+      const canvas = element.querySelector('canvas');
+      if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Department canvas is missing.');
+      const context = canvas.getContext('webgl2');
+      if (!context) throw new Error('Department WebGL2 context is missing.');
+      const rendererInfo = context.getExtension('WEBGL_debug_renderer_info');
+      return {
+        antialias: element.getAttribute('data-antialias'),
+        browserDevicePixelRatio: window.devicePixelRatio,
+        canvasDevicePixelRatio: canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : null,
+        colourUpdatePolicy: element.getAttribute('data-colour-update-policy'),
+        frameSampleCount: Number(element.getAttribute('data-frame-sample-count')),
+        frameWarmupCount: Number(element.getAttribute('data-frame-warmup-count')),
+        measuredFramesPerSecond: Number(element.getAttribute('data-measured-fps')),
+        medianFrameTimeMs: Number(element.getAttribute('data-median-frame-time-ms')),
+        maximumP95FrameTimeMs: Number(element.getAttribute('data-maximum-p95-frame-time-ms')),
+        minimumFramesPerSecond: Number(element.getAttribute('data-minimum-fps')),
+        p95FrameTimeMs: Number(element.getAttribute('data-p95-frame-time-ms')),
+        renderScale: Number(element.getAttribute('data-render-scale')),
+        rendererDevicePixelRatioCap: Number(element.getAttribute('data-dpr-max')),
+        sampleDurationMs: Number(element.getAttribute('data-sample-duration-ms')),
+        userAgent: navigator.userAgent,
+        viewport: { height: window.innerHeight, width: window.innerWidth },
+        webglRenderer: rendererInfo
+          ? String(context.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL))
+          : String(context.getParameter(context.RENDERER)),
+      };
+    });
+    const frameEvidence = {
+      ...framePerformance,
+      browserName: testInfo.project.use.browserName ?? 'chromium',
+      browserVersion: page.context().browser()?.version() ?? 'unknown',
+      method:
+        '30 React Three Fiber rendered-frame callbacks discarded, followed by 120 callback deltas in the foreground dense animated scene; BasicShadowMap and static instance colours refreshed on immutable snapshot changes; full LOD uses deliberate pixel-art upscaling from 0.9 internal scale',
+      physicalDeviceClaimed: false,
+      project: testInfo.project.name,
+    };
+    const frameEvidencePath = testInfo.outputPath('renderer-frame-cadence.json');
+    writeFileSync(frameEvidencePath, JSON.stringify(frameEvidence, null, 2), 'utf8');
+    await testInfo.attach('renderer-frame-cadence.json', {
+      path: frameEvidencePath,
+      contentType: 'application/json',
+    });
+    expect(frameEvidence.frameSampleCount).toBe(120);
+    expect(frameEvidence.frameWarmupCount).toBe(30);
+    expect(frameEvidence.antialias).toBe('false');
+    expect(frameEvidence.colourUpdatePolicy).toBe('snapshot');
+    expect(frameEvidence.renderScale).toBe(testInfo.project.name === 'touch-mobile' ? 1 : 0.9);
+    expect(frameEvidence.canvasDevicePixelRatio).toBeCloseTo(
+      Math.min(frameEvidence.browserDevicePixelRatio, frameEvidence.rendererDevicePixelRatioCap) *
+        frameEvidence.renderScale,
+      2,
+    );
+    expect(
+      frameEvidence.measuredFramesPerSecond,
+      JSON.stringify(frameEvidence),
+    ).toBeGreaterThanOrEqual(frameEvidence.minimumFramesPerSecond);
+    expect(frameEvidence.p95FrameTimeMs, JSON.stringify(frameEvidence)).toBeLessThanOrEqual(
+      frameEvidence.maximumP95FrameTimeMs,
+    );
+    await expect(frame).toHaveAttribute('data-frame-budget-status', 'pass');
 
     const screenshot = await frame.screenshot({
       animations: 'disabled',

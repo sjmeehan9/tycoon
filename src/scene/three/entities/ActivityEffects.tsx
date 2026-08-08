@@ -38,12 +38,12 @@ export function ActivityEffects({ snapshot }: ActivityEffectsProps): React.JSX.E
   const colour = useMemo(() => new Color(), []);
 
   useLayoutEffect(
-    () => updateEffects(meshRef.current, colour, dummy, effects, 0),
+    () => updateEffects(meshRef.current, colour, dummy, effects, 0, true),
     [colour, dummy, effects],
   );
   useFrame(({ clock }) => {
     if (!snapshot.presentation.animate) return;
-    updateEffects(meshRef.current, colour, dummy, effects, clock.getElapsedTime());
+    updateEffects(meshRef.current, colour, dummy, effects, clock.getElapsedTime(), false);
   });
 
   if (effects.length === 0) return null;
@@ -90,6 +90,7 @@ function updateEffects(
   dummy: Object3D,
   effects: readonly ActivityEffect[],
   elapsed: number,
+  updateColours: boolean,
 ): void {
   if (!mesh) return;
   effects.forEach((effect, index) => {
@@ -105,10 +106,10 @@ function updateEffects(
     dummy.scale.setScalar(scale);
     dummy.updateMatrix();
     mesh.setMatrixAt(index, dummy.matrix);
-    mesh.setColorAt(index, colour.set(effect.colour));
+    if (updateColours) mesh.setColorAt(index, colour.set(effect.colour));
   });
   mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  if (updateColours && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
 function stablePhase(id: string): number {

@@ -1,5 +1,6 @@
 export const MAX_DEVICE_PIXEL_RATIO = 1.5;
 export const COMPACT_DEVICE_PIXEL_RATIO = 1.25;
+export const DEPARTMENT_FULL_RENDER_SCALE = 0.9;
 export const SHADOW_MAP_SIZE = 1_024;
 export const COMPACT_SHADOW_MAP_SIZE = 512;
 
