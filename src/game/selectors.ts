@@ -8,11 +8,37 @@ import {
 import { purchaseCost } from './engine';
 import { ingredientQuantity } from './inventory';
 import type {
+  CampaignRecord,
   CompletedSaleActivity,
+  Difficulty,
   GameState,
+  MetaProgress,
   ReportChargeGroup,
   RushActivityEvent,
 } from './types';
+
+/** Player-facing immutable difficulty names. */
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  standard: 'Standard',
+  hard: 'Hard',
+};
+
+/** Concise accessible explanation shared by creation, onboarding, and help. */
+export const DIFFICULTY_DESCRIPTIONS: Record<Difficulty, string> = {
+  standard:
+    'A balanced campaign with stronger price sensitivity; other demand factors use their original tuning.',
+  hard: 'Every supported demand factor reacts more strongly in either direction, so each operating decision matters more.',
+};
+
+/** Return completed campaign records partitioned by their immutable difficulty. */
+export function campaignRecordsByDifficulty(
+  meta: Pick<MetaProgress, 'records'>,
+): Record<Difficulty, CampaignRecord[]> {
+  return {
+    standard: meta.records.filter((record) => record.difficulty === 'standard'),
+    hard: meta.records.filter((record) => record.difficulty === 'hard'),
+  };
+}
 
 /** Format integer cents as Australian dollars. */
 export function formatMoney(cents: number): string {

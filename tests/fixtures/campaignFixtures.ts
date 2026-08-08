@@ -103,8 +103,8 @@ export function stockLifecyclePlanningEnvelope(): SaveEnvelope {
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
 
-/** Schema-v3 planning save with exact duplicate names for deterministic repair proof. */
-export function duplicateStaffNamesEnvelope(): SaveEnvelope {
+/** Legacy schema-v3 planning save with duplicate names for reset-boundary proof. */
+export function duplicateStaffNamesEnvelope(): Record<string, unknown> {
   const seed = 6_404;
   const base = createCampaign({ seed });
   const duplicateName = LEGACY_STAFF_NAMES[0];
@@ -120,7 +120,7 @@ export function duplicateStaffNamesEnvelope(): SaveEnvelope {
     ...member,
     name: index === 0 ? reservedStaffName(seed, 0) : index === 2 ? 'Marnie Unique' : duplicateName,
   }));
-  return createSaveEnvelope(
+  const current = createSaveEnvelope(
     {
       ...base,
       mode: 'endless',
@@ -131,6 +131,16 @@ export function duplicateStaffNamesEnvelope(): SaveEnvelope {
     fixturePreferences(),
     createDefaultMeta(),
   );
+  const legacy = JSON.parse(JSON.stringify(current)) as {
+    schemaVersion: number;
+    activeRun: Record<string, unknown>;
+    preferences: Record<string, unknown>;
+  };
+  legacy.schemaVersion = 3;
+  legacy.activeRun.stateVersion = 3;
+  delete legacy.activeRun.difficulty;
+  delete legacy.preferences.evolutionNoticeSeen;
+  return legacy;
 }
 
 /** Valid endless reinvestment save ready to generate the final supported daily pool. */
@@ -377,6 +387,7 @@ function livingRushCustomer(id: string, segment: Customer['segment']): Customer 
 function fixtureReport(base: GameState, day: number, closingCashCents: number): DayReport {
   return {
     day,
+    difficulty: base.difficulty,
     weather: base.weather,
     openingCashCents: closingCashCents,
     purchaseCostCents: 0,

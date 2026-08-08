@@ -7,6 +7,7 @@ import {
   SEGMENT_LARGE_SIZE_PROBABILITY,
   SEGMENT_PRICE_SENSITIVITY_CENTS,
 } from '../content/gameContent';
+import { applyDemandInfluence, type OrderChoiceDemandInfluenceId } from './demandInfluences';
 import type {
   CustomerSegment,
   DrinkConfig,
@@ -18,6 +19,13 @@ import type {
 
 const SEGMENT_ORDER: CustomerSegment[] = ['commuter', 'student', 'enthusiast', 'regular'];
 const MILK_INTERVALS = [0, 0.52, 0.72, 0.84, 1] as const;
+
+/** Registry identities consumed by the order-choice engine path. */
+export const ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES = [
+  'orderSegmentPrice',
+  'orderSegmentAppeal',
+  'orderWeather',
+] as const satisfies readonly OrderChoiceDemandInfluenceId[];
 
 /** Select a customer segment from the service PRNG draw. */
 export function segmentForDraw(draw: number): CustomerSegment {
@@ -40,11 +48,27 @@ export function baseDrinkChoiceWeight(
   if (!drink) return 0;
   const price = state.plan.pricesCents[drinkId];
   const sensitivity = SEGMENT_PRICE_SENSITIVITY_CENTS[segment];
-  const priceFactor = clamp(1.25 - (price - drink.basePriceCents) / sensitivity, 0.25, 1.5);
-  return (
-    SEGMENT_DRINK_APPEAL[segment][drinkId] *
-    priceFactor *
-    drinkWeatherChoiceMultiplier(drinkId, state.weather)
+  const baselinePriceFactor = clamp(1.25 - (price - drink.basePriceCents) / sensitivity, 0.25, 1.5);
+  const factors = {
+    orderSegmentPrice: applyDemandInfluence(
+      state.difficulty,
+      'orderSegmentPrice',
+      baselinePriceFactor,
+    ),
+    orderSegmentAppeal: applyDemandInfluence(
+      state.difficulty,
+      'orderSegmentAppeal',
+      SEGMENT_DRINK_APPEAL[segment][drinkId],
+    ),
+    orderWeather: applyDemandInfluence(
+      state.difficulty,
+      'orderWeather',
+      drinkWeatherChoiceMultiplier(drinkId, state.weather),
+    ),
+  } satisfies Record<OrderChoiceDemandInfluenceId, number>;
+  return ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES.reduce(
+    (weight, influenceId) => weight * factors[influenceId],
+    1,
   );
 }
 

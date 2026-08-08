@@ -30,6 +30,8 @@ export type DialIn = 'speed' | 'balanced' | 'quality';
 export type GamePhase =
   'planning' | 'rush' | 'event' | 'report' | 'reinvest' | 'victory' | 'defeat';
 export type GameMode = 'campaign' | 'endless';
+/** Immutable demand policy selected when a campaign is created. */
+export type Difficulty = 'standard' | 'hard';
 export type VenueId = 'cart' | 'kiosk' | 'cafe';
 export type CustomerSegment = 'commuter' | 'student' | 'enthusiast' | 'regular';
 export type StaffRole = 'barista' | 'frontOfHouse';
@@ -307,6 +309,7 @@ export interface VenuePromotion {
 
 export interface DayReport {
   day: number;
+  difficulty: Difficulty;
   weather: WeatherId;
   openingCashCents: number;
   purchaseCostCents: number;
@@ -351,11 +354,12 @@ export interface CampaignOutcome {
 }
 
 export interface GameState {
-  stateVersion: 3;
+  stateVersion: 4;
   campaignId: string;
   seed: number;
   rngState: number;
   scenarioId: ScenarioId;
+  difficulty: Difficulty;
   mode: GameMode;
   phase: GamePhase;
   day: number;
@@ -382,10 +386,13 @@ export interface Preferences {
   reducedMotion: boolean;
   onboardingComplete: boolean;
   activeTab: string;
+  /** Prevents the preferences-only v4 evolution notice from replaying. */
+  evolutionNoticeSeen: boolean;
 }
 
 export interface CampaignRecord {
   campaignId: string;
+  difficulty: Difficulty;
   result: CampaignOutcome['type'];
   day: number;
   cashCents: number;
@@ -402,7 +409,7 @@ export interface MetaProgress {
 }
 
 export interface SaveEnvelope {
-  schemaVersion: 3;
+  schemaVersion: 4;
   savedAt: string;
   activeRun: GameState | null;
   preferences: Preferences;
@@ -412,6 +419,7 @@ export interface SaveEnvelope {
 export interface CampaignOptions {
   seed: number;
   scenarioId?: ScenarioId;
+  difficulty?: Difficulty;
 }
 
 export interface PlanPatch {

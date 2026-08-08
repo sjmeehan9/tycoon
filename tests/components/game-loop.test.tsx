@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
@@ -15,12 +15,14 @@ import {
 import {
   SAVE_KEY,
   BrowserSaveStore,
+  EVOLUTION_NOTICE,
+  createDefaultMeta,
+  createDefaultPreferences,
   createSaveEnvelope,
   parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import {
-  duplicateStaffNamesEnvelope,
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
   livingRushEnvelope,
@@ -203,6 +205,7 @@ describe('playable cart UI', () => {
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    expect(screen.getByText('Day 1 report · Standard')).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Day 1 result summary')).toBeVisible();
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).not.toBeVisible();
@@ -273,6 +276,47 @@ describe('playable cart UI', () => {
     ).toBeVisible();
   });
 
+  it('renders separate Standard and Hard records with shared neutral unlocks', async () => {
+    const meta = {
+      ...createDefaultMeta(),
+      endlessUnlocked: true,
+      records: [
+        {
+          campaignId: 'standard-record',
+          difficulty: 'standard' as const,
+          result: 'victory' as const,
+          day: 30,
+          cashCents: 40_000,
+          reputation: 80,
+          venueId: 'cafe' as const,
+        },
+        {
+          campaignId: 'hard-record',
+          difficulty: 'hard' as const,
+          result: 'bankruptcy' as const,
+          day: 12,
+          cashCents: -10_001,
+          reputation: 30,
+          venueId: 'kiosk' as const,
+        },
+      ],
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(createCampaign({ seed: 8_202 }), createDefaultPreferences(), meta),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Records' }));
+    const dialog = screen.getByRole('dialog', { name: 'Game menu' });
+    expect(within(dialog).getByRole('heading', { name: 'Standard records' })).toBeVisible();
+    expect(within(dialog).getByRole('heading', { name: 'Hard records' })).toBeVisible();
+    expect(within(dialog).getByText(/shared across difficulties/i)).toBeVisible();
+    expect(within(dialog).getByText(/Day 30 · cafe/)).toBeVisible();
+    expect(within(dialog).getByText(/Day 12 · kiosk/)).toBeVisible();
+  });
+
   it('hires both roles and schedules a daily team with visible payroll', async () => {
     const user = userEvent.setup();
     renderGame();
@@ -290,34 +334,127 @@ describe('playable cart UI', () => {
     expect(screen.getByText(/payroll at close/)).toBeVisible();
   });
 
-  it('imports, hires, autosaves, and reloads repaired campaign-unique staff names', async () => {
+  it('imports legacy data through the preferences-only v4 boundary', async () => {
     const user = userEvent.setup();
-    const firstView = renderGame();
+    renderGame();
     await user.click(screen.getByRole('button', { name: 'Game menu' }));
     await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as Record<string, unknown>;
+    legacy.schemaVersion = 3;
+    legacy.preferences = {
+      ...createDefaultPreferences(),
+      soundEnabled: true,
+      reducedMotion: true,
+      onboardingComplete: true,
+      activeTab: 'team',
+    };
     await user.upload(
       screen.getByLabelText('Import save JSON file'),
-      new File([JSON.stringify(duplicateStaffNamesEnvelope())], 'duplicate-staff.json', {
+      new File([JSON.stringify(legacy)], 'legacy-v3.json', {
         type: 'application/json',
       }),
     );
-    expect(await screen.findByText('Imported Day 10000 safely.')).toBeVisible();
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
+    expect(await screen.findByText(EVOLUTION_NOTICE)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Continue autosave' })).toBeNull();
+    const persisted = parseEnvelope(window.localStorage.getItem(SAVE_KEY) ?? '');
+    expect(persisted).toMatchObject({
+      schemaVersion: 4,
+      activeRun: null,
+      meta: createDefaultMeta(),
+      preferences: {
+        soundEnabled: true,
+        ambienceEnabled: false,
+        reducedMotion: true,
+        onboardingComplete: false,
+        activeTab: 'plan',
+        evolutionNoticeSeen: true,
+      },
+    });
+  });
 
-    const importedNames = visibleTeamNames();
-    expect(importedNames).toHaveLength(6);
-    expect(new Set(importedNames).size).toBe(6);
-    expect(importedNames[0]).toBe('Ari Nguyen');
-    await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
-    const hiredNames = visibleTeamNames();
-    expect(hiredNames).toHaveLength(6);
-    expect(new Set(hiredNames).size).toBe(6);
-    firstView.unmount();
-
+  it('fails a legacy import closed when browser storage is unavailable', async () => {
+    const unavailableStorage = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Storage is blocked.', 'SecurityError');
+    });
+    const user = userEvent.setup();
     renderGame();
-    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
-    expect(visibleTeamNames()).toEqual(hiredNames);
+    expect(
+      await screen.findByText(
+        'Browser storage is unavailable. You can still play, but this run may not persist.',
+      ),
+    ).toBeVisible();
+    unavailableStorage.mockRestore();
+
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as Record<string, unknown>;
+    legacy.schemaVersion = 3;
+    legacy.preferences = {
+      ...createDefaultPreferences(),
+      soundEnabled: true,
+      reducedMotion: true,
+      onboardingComplete: true,
+      activeTab: 'team',
+    };
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([JSON.stringify(legacy)], 'legacy-without-storage.json', {
+        type: 'application/json',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Browser storage is unavailable, so the imported save was not applied.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByText('Import rejected; current data is unchanged.')).toBeVisible();
+    expect(screen.queryByText(EVOLUTION_NOTICE)).not.toBeInTheDocument();
+    expect(screen.queryByText('Save imported and verified.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue autosave' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(SAVE_KEY)).toBeNull();
+    expect(document.documentElement).toHaveAttribute('data-reduced-motion', 'false');
+
+    await user.click(screen.getByRole('tab', { name: 'Records' }));
+    expect(screen.getByText('No Standard outcomes yet.')).toBeVisible();
+    expect(screen.getByText('No Hard outcomes yet.')).toBeVisible();
+    expect(screen.getByText(/Endless mode:/)).toHaveTextContent('Win once to unlock');
+    await user.click(screen.getByRole('button', { name: 'Close game menu' }));
+    expect(screen.getByRole('heading', { name: 'Laneway Tycoon' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: /Standard/ })).toBeChecked();
+  });
+
+  it('preselects Standard while keeping scenario and difficulty independent', async () => {
+    const meta = {
+      ...createDefaultMeta(),
+      scenarios: ['lanewayClassic', 'rainySeason'] as const,
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(null, createDefaultPreferences(), {
+        ...meta,
+        scenarios: [...meta.scenarios],
+      }),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    const standard = screen.getByRole('radio', { name: /Standard/ });
+    const hard = screen.getByRole('radio', { name: /Hard/ });
+    const scenario = screen.getByRole('combobox', { name: 'Scenario' });
+    expect(standard).toBeChecked();
+    expect(hard).not.toBeChecked();
+    await user.selectOptions(scenario, 'rainySeason');
+    await user.click(hard);
+    expect(scenario).toHaveValue('rainySeason');
+    expect(hard).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Welcome to your laneway' }),
+    ).toHaveTextContent('Hard difficulty is locked for this run');
+    expect(parseEnvelope(window.localStorage.getItem(SAVE_KEY) ?? '')?.activeRun).toMatchObject({
+      difficulty: 'hard',
+      scenarioId: 'rainySeason',
+    });
+    expect(screen.queryByRole('radio', { name: /Hard/ })).toBeNull();
   });
 
   it('buys equipment and promotes the same venue through kiosk to cafe', async () => {
@@ -425,9 +562,3 @@ describe('playable cart UI', () => {
     expect(window.localStorage.getItem(SAVE_KEY)).toBe(serializeEnvelope(first));
   });
 });
-
-function visibleTeamNames(): string[] {
-  return [...document.querySelectorAll('.staff-card strong, .candidate-card strong')].map(
-    (element) => element.textContent ?? '',
-  );
-}

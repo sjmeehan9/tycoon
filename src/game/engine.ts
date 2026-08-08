@@ -31,6 +31,7 @@ import {
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
 import { baseDrinkChoiceWeight, milkForDraw, segmentForDraw, sizeForDraw } from './demandModel';
+import { applyDemandInfluence, type ArrivalDemandInfluenceId } from './demandInfluences';
 import {
   addPlannedPurchases,
   completeIngredientTotals,
@@ -82,6 +83,22 @@ import type {
 const MAX_HIRED_STAFF = 8;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
 const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
+
+/** Registry identities consumed by the arrival-rate engine path. */
+export const ARRIVAL_DEMAND_ENGINE_INFLUENCES = [
+  'arrivalAggregatePrice',
+  'arrivalReputation',
+  'arrivalImprovements',
+  'arrivalDialIn',
+  'arrivalBean',
+  'arrivalWeather',
+  'arrivalVenue',
+  'arrivalScenario',
+  'arrivalTeamEquipment',
+  'arrivalQueueWait',
+  'arrivalAvailability',
+  'arrivalRushEvent',
+] as const satisfies readonly ArrivalDemandInfluenceId[];
 
 /** Maximum distinct drink/size/milk variants a single configured rush can charge. */
 export const MAX_REPORT_CHARGE_GROUPS = [...DRINK_MAP.values()].reduce(
@@ -145,12 +162,17 @@ export function createCampaign(options: CampaignOptions): GameState {
   if (!Number.isFinite(options.seed)) throw new GameRuleError('Campaign seed must be a number.');
   const seed = Math.trunc(options.seed) >>> 0;
   const rngState = seed === 0 ? 0x6d2b79f5 : seed;
+  const difficulty = options.difficulty ?? 'standard';
+  if (difficulty !== 'standard' && difficulty !== 'hard') {
+    throw new GameRuleError('Difficulty must be Standard or Hard.');
+  }
   return {
-    stateVersion: 3,
-    campaignId: `laneway-${seed.toString(16).padStart(8, '0')}`,
+    stateVersion: 4,
+    campaignId: `laneway-${difficulty}-${seed.toString(16).padStart(8, '0')}`,
     seed,
     rngState,
     scenarioId: options.scenarioId ?? 'lanewayClassic',
+    difficulty,
     mode: 'campaign',
     phase: 'planning',
     day: 1,
@@ -1211,6 +1233,7 @@ function finishRush(state: GameState): GameState {
   const chargeGroups = finalizedChargeGroups(rush);
   const report: DayReport = {
     day: state.day,
+    difficulty: state.difficulty,
     weather: state.weather,
     openingCashCents: rush.openingCashCents,
     purchaseCostCents: rush.purchaseCostCents,
@@ -1350,17 +1373,17 @@ export function demandRate(state: GameState): number {
   const averagePrice =
     state.plan.activeMenu.reduce((total, id) => total + state.plan.pricesCents[id], 0) /
     state.plan.activeMenu.length;
-  const priceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
-  const reputationFactor = 0.8 + state.reputation / 250;
-  const signFactor = state.improvements.includes('street-sign') ? 1.08 : 1;
-  const qualityFactor =
+  const baselinePriceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
+  const baselineReputationFactor = 0.8 + state.reputation / 250;
+  const baselineSignFactor = state.improvements.includes('street-sign') ? 1.08 : 1;
+  const baselineQualityFactor =
     state.plan.dialIn === 'quality' ? 1.06 : state.plan.dialIn === 'speed' ? 0.97 : 1;
-  const beanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
-  const weatherFactor = WEATHER_DETAILS[state.weather].demand;
-  const venueFactor = VENUE_DEMAND_FACTOR[state.venueId];
-  const scenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
-  const teamFactor = operationalEffects(state).demandMultiplier;
-  const queueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
+  const baselineBeanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
+  const baselineWeatherFactor = WEATHER_DETAILS[state.weather].demand;
+  const baselineVenueFactor = VENUE_DEMAND_FACTOR[state.venueId];
+  const baselineScenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
+  const baselineTeamFactor = operationalEffects(state).demandMultiplier;
+  const baselineQueueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
   const availableItems = state.plan.activeMenu.filter((drinkId) => {
     const recipe = getDrink(drinkId).variants[0];
     return recipe
@@ -1370,21 +1393,58 @@ export function demandRate(state: GameState): number {
         )
       : false;
   }).length;
-  const availabilityFactor = 0.35 + 0.65 * (availableItems / state.plan.activeMenu.length);
+  const baselineAvailabilityFactor = 0.35 + 0.65 * (availableItems / state.plan.activeMenu.length);
+  const factors = {
+    arrivalAggregatePrice: applyDemandInfluence(
+      state.difficulty,
+      'arrivalAggregatePrice',
+      baselinePriceFactor,
+    ),
+    arrivalReputation: applyDemandInfluence(
+      state.difficulty,
+      'arrivalReputation',
+      baselineReputationFactor,
+    ),
+    arrivalImprovements: applyDemandInfluence(
+      state.difficulty,
+      'arrivalImprovements',
+      baselineSignFactor,
+    ),
+    arrivalDialIn: applyDemandInfluence(state.difficulty, 'arrivalDialIn', baselineQualityFactor),
+    arrivalBean: applyDemandInfluence(state.difficulty, 'arrivalBean', baselineBeanFactor),
+    arrivalWeather: applyDemandInfluence(state.difficulty, 'arrivalWeather', baselineWeatherFactor),
+    arrivalVenue: applyDemandInfluence(state.difficulty, 'arrivalVenue', baselineVenueFactor),
+    arrivalScenario: applyDemandInfluence(
+      state.difficulty,
+      'arrivalScenario',
+      baselineScenarioFactor,
+    ),
+    arrivalTeamEquipment: applyDemandInfluence(
+      state.difficulty,
+      'arrivalTeamEquipment',
+      baselineTeamFactor,
+    ),
+    arrivalQueueWait: applyDemandInfluence(
+      state.difficulty,
+      'arrivalQueueWait',
+      baselineQueueFactor,
+    ),
+    arrivalAvailability: applyDemandInfluence(
+      state.difficulty,
+      'arrivalAvailability',
+      baselineAvailabilityFactor,
+    ),
+    arrivalRushEvent: applyDemandInfluence(
+      state.difficulty,
+      'arrivalRushEvent',
+      rush?.demandMultiplier ?? 1,
+    ),
+  } satisfies Record<ArrivalDemandInfluenceId, number>;
   return clamp(
-    0.075 *
-      priceFactor *
-      reputationFactor *
-      signFactor *
-      qualityFactor *
-      beanFactor *
-      weatherFactor *
-      venueFactor *
-      scenarioFactor *
-      teamFactor *
-      queueFactor *
-      availabilityFactor *
-      (rush?.demandMultiplier ?? 1),
+    ARRIVAL_DEMAND_ENGINE_INFLUENCES.reduce(
+      (rate, influenceId) => rate * factors[influenceId],
+      0.075,
+    ),
     0.005,
     0.3,
   );

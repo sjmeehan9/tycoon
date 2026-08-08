@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { SAVE_KEY } from '../../src/persistence/saveStore';
+
 // Hosted CI can contend for CPU/GPU across browser workers. This bound awaits
 // the settled report state and is not renderer or simulation performance proof.
 const CONSTRAINED_RUNNER_REPORT_TIMEOUT_MS = 60_000;
@@ -54,8 +56,8 @@ test.describe('autosaved continuation', () => {
     await expect(page.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
     await expect(page.locator('.status-strip dd').first()).toHaveText(settledCash ?? '');
     await expect(page.getByRole('button', { name: 'Settle & reinvest' })).toHaveCount(0);
-    const settlement = await page.evaluate(() => {
-      const save = JSON.parse(window.localStorage.getItem('laneway-tycoon.save.v3') ?? '{}') as {
+    const settlement = await page.evaluate((saveKey) => {
+      const save = JSON.parse(window.localStorage.getItem(saveKey) ?? '{}') as {
         activeRun?: {
           history?: Array<{
             chargeGroups?: Array<{ quantity: number; revenueCents: number }>;
@@ -73,7 +75,7 @@ test.describe('autosaved continuation', () => {
         reportRevenueCents: report?.revenueCents,
         served: report?.served,
       };
-    });
+    }, SAVE_KEY);
     expect(settlement.historyLength).toBe(1);
     expect(settlement.served).toBeGreaterThan(0);
     expect(settlement.quantity).toBe(settlement.served);

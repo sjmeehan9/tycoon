@@ -33,7 +33,7 @@ test.describe('compact completion and report history', () => {
       historyLength: 1,
       quantity: report.served,
       revenueCents: report.revenueCents,
-      schemaVersion: 3,
+      schemaVersion: 4,
     });
 
     await page.reload();
@@ -151,7 +151,7 @@ test.describe('compact completion and report history', () => {
     await expect(
       dialog.getByText('Charge breakdown unavailable for this older report.'),
     ).toBeVisible();
-    expect((await persistedSettlement(page)).schemaVersion).toBe(3);
+    expect((await persistedSettlement(page)).schemaVersion).toBe(4);
     await dialog.getByRole('button', { name: 'Close game menu' }).click();
     await expect(menuTrigger).toBeFocused();
   });

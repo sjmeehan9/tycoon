@@ -55,6 +55,10 @@ outside a restricted process sandbox.
 - Display speed changes how often the controller dispatches a tick, not the
   calculation performed by a tick.
 - Tests and other consumers import public contracts from `src/game/index.ts`.
+- Campaign creation locks `standard` or `hard` difficulty independently from
+  scenario. `demandInfluences.ts` is the sole difficulty-policy authority:
+  Standard applies 1.225 to both price-response slopes only, while Hard applies
+  1.675 directly to every registered baseline deviation without compounding.
 - The campaign closes on Day 30. Victory requires the cafe, $300 cash, and 65
   reputation; bankruptcy is checked after settlement only below −$100.
 - Balance maintenance belongs in `tests/unit/campaign.test.ts`: keep at least
@@ -76,9 +80,9 @@ outside a restricted process sandbox.
   configured size and milk surcharge. Revenue consumes that recorded order
   value; UI and reports must display it rather than calculate it again.
 - `RushState.recentActivity` stores at most the latest 80 ordered arrival,
-  service-start, sale, and walkaway observations. Compatible older rushes
-  without activity import as an empty list; legacy sale-only rows normalize to
-  honest stable observations. It is player feedback, not a second revenue
+  service-start, sale, and walkaway observations. Schema-v4 imports validate
+  this bounded evidence; v1/v2/v3 activity is discarded with the old campaign
+  at the preferences-only reset. It is player feedback, not a second revenue
   ledger. Filter on `type === 'sale'` before reading sale-only fields.
 - Run `tests/e2e/planner-controls.spec.ts` in both configured projects after any
   planner, pricing, service, report, settlement, responsive, or persistence
@@ -128,15 +132,15 @@ outside a restricted process sandbox.
 - Candidate ordinal is `(day - 1) × 4 + index` for four candidates through Day
   10,000. `staffNames.ts` directly maps it into a seed/tier-keyed 65,536-name
   namespace; do not add rejection sampling or persisted seen-name history.
-- Ordinals 0–39,999 are candidate-only. Ordinals 40,000–65,535 are reserved for
-  compatible-save repair. The first 4,096 names omit a middle initial; later
-  disjoint tiers add one only when required.
+- Ordinals 0–39,999 are candidate-only. The remaining deterministic namespace
+  is reserved and is not a current migration path. The first 4,096 names omit a
+  middle initial; later disjoint tiers add one only when required.
 - Candidate generation intentionally consumes the old unused 12-way name draw
   so role, speed, skill, wage, trait, and balance sequences stay exact.
-- Schema-v3 normalization processes hires then candidates in stable order,
-  preserves the first duplicate occurrence and every originally unique name,
-  and renames later duplicates from the reserved range. IDs, stats, economics,
-  and scheduling do not change; combined IDs and names validate unique.
+- Current schema-v4 state validates combined hire/candidate IDs and names as
+  unique and rejects a forged duplicate. Fresh campaigns generate deterministic
+  unique identities. Version 1–3 staff progress is reset with the rest of the
+  legacy campaign rather than repaired or carried into v4.
 - Run `tests/unit/staff-names.test.ts`, persistence/operations/campaign tests,
   and `tests/e2e/staff-names.spec.ts` after any staff, candidate, day progression,
   save, import, or seed change.
@@ -167,19 +171,22 @@ outside a restricted process sandbox.
 
 ## Save recovery
 
-The current browser adapter uses schema/key version 3 and retains the previous
-validated primary as a last-known-good backup. Current storage keys are
-`laneway-tycoon.save.v3` and `laneway-tycoon.save.backup.v3`. Version-1 and
-version-2 exports and legacy local keys migrate automatically; future versions
-are rejected. A legacy flat inventory becomes current-day full-life batches
-using the saved refrigeration tier. Old lifecycle history is left unavailable
-rather than invented.
+The current browser adapter uses schema/key version 4 and retains the previous
+validated v4 primary as a last-known-good backup. Current storage keys are
+`laneway-tycoon.save.v4` and `laneway-tycoon.save.backup.v4`. Readable v1, v2,
+and v3 primary/backup/import candidates cross one immutable allowlist reset:
+only sound, ambience, and reduced-motion are retained. Active campaigns, meta,
+records, history, onboarding progress, and the selected tab restart cleanly;
+future versions are rejected. After the new v4 payload is verified, every
+legacy primary/backup key is removed so fallback cannot resurrect old progress.
 
 If the primary payload is corrupt and a valid backup exists, the title screen
 shows a recovery warning. Open **Game menu → Save transfer → Restore
 last-known-good save** to make that snapshot primary again. Export before a
 manual browser-data reset whenever possible. Imported files are limited to
-750 KB and validated completely before current data changes; do not hand-edit
+750 KB and validated completely before current data changes. An import fails
+closed if browser storage is unavailable or its verified write fails; it cannot
+consume the evolution notice or replace in-memory state. Do not hand-edit
 local-storage payloads.
 
 ## Compact completion and report history
@@ -194,9 +201,9 @@ local-storage payloads.
   the sale transition. A reconciled copy enters a new `DayReport` once. Never
   derive historical charges from `rush.recentActivity`, current stock, or a
   renderer snapshot.
-- Older schema-v3 reports without charge groups remain unchanged and show
+- Read-only schema-v4 reports without charge groups remain unchanged and show
   **Charge breakdown unavailable for this older report.** Do not estimate or
-  reconstruct missing evidence. Schema version remains 3 throughout Phase 7.
+  reconstruct missing evidence.
 - Run `tests/unit/engine.test.ts`, `tests/unit/persistence.test.ts`,
   `tests/components/game-loop.test.tsx`, and
   `tests/e2e/report-history.spec.ts` after any report, settlement, history,

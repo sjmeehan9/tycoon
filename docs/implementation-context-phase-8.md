@@ -136,3 +136,67 @@ The documentary gate consists only of:
 No application build, unit/component test, Playwright run, preview server,
 workflow rerun, deployment, hosted browser session, or device operation belongs
 to Component 8.1.
+
+## Component 8.2 v4 reset and difficulty boundary
+
+Component 8.2 is the sole breaking persistence boundary for this initiative.
+Current browser saves use schema/key version 4. Any readable version 1, 2, or 3
+primary, last-known-good backup, recovery candidate, or imported file passes
+through one immutable allowlist converter. The converter retains exactly sound,
+ambience, and reduced-motion preferences, then creates a fresh v4 envelope with
+no active run, default shared meta, empty records/history, incomplete onboarding,
+the planning tab selected, and a pending one-time evolution notice.
+
+The browser adapter consumes that marker only after a validated v4 write. It
+then removes every v1/v2/v3 primary and backup key. A verified v4 primary or
+backup always wins over stale legacy data, so repeated startup, autosave,
+recovery, export, and import cannot replay the reset or resurrect discarded
+progress. Corrupt, oversized, unsupported, and structurally inconsistent input
+continues to fail through the bounded save-validation contract.
+
+The import controller also fails closed when browser storage is unavailable or
+the verified write throws. It does not flip the notice marker, replace the
+loaded-run/preferences/meta refs, or mutate React state until one concrete
+`BrowserSaveStore.save` call succeeds. The UI reports the actionable storage
+error and keeps the existing run/progress unchanged.
+
+Every new campaign now records immutable `standard` or `hard` difficulty in the
+game state, campaign identity, reports, and outcome records. Standard is the
+accessible first and preselected creation option. Scenario and difficulty are
+independent controls, and no post-creation command can alter difficulty.
+Completed records are shown in separate Standard and Hard groups; achievements,
+scenarios, cosmetics, and endless unlocks remain shared and economically neutral.
+
+The bounded compatibility reconciliation updates the two cumulative browser
+specs that previously encoded superseded v3 behavior. Current v4 report history
+still settles once, exports/imports, reloads, and remains accessible. A v3 save
+containing duplicate staff identities now resets at the same preferences-only
+boundary; the subsequent fresh campaign still proves unique candidates, hiring,
+autosave, and exact reload identity.
+
+`src/game/demandInfluences.ts` is the single difficulty-policy authority for the
+complete registered arrival and order-choice factor set. Standard applies a
+1.225 multiplier to both current price-response slopes and preserves every
+non-price baseline. Hard applies a 1.675 multiplier directly to every supported
+baseline deviation from its declared neutral, including both price paths, with
+domain-aware clamps and no Standard compounding. The engine exposes its consumed
+factor identities so tests fail if the engine and registry diverge.
+
+Because later Phase 8 venue/equipment, workforce, and parallel-service slices
+change the registered venue, scheduled-team/equipment, queue/wait, and
+availability ranges, Components 8.3–8.5 explicitly co-own
+`demandInfluences.ts` and `tests/unit/demand.test.ts`. Their gates must update
+registry metadata/bounds and preserve exhaustive Standard/Hard proofs rather
+than bypassing the Component 8.2 authority.
+
+`README.md` and `docs/agent-runbook.md` now describe the current intermediate
+runtime accurately: schema v4 and immutable Standard/Hard are live, while three
+venues and the 30-day target remain until later components. They also document
+the preferences-only legacy reset, v4 save keys, current unique-name validation,
+and honest read-only v4 reports without charge groups.
+
+This component intentionally does not introduce the fourth venue, third
+equipment tiers, expanded workforce, multi-station service, dense department-
+store world, or forty-day content. Those remain sequential Components 8.3–8.7.
+Automated desktop Chromium and touch-mobile checks are browser evidence only;
+no physical device was accessed or claimed.

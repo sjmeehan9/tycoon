@@ -1,5 +1,6 @@
 /** Public simulation API for application code and tests. */
 export {
+  ARRIVAL_DEMAND_ENGINE_INFLUENCES,
   advanceTick,
   adjustPlanPrice,
   adjustPlanPurchase,
@@ -46,10 +47,25 @@ export {
   drinkWeatherChoiceMultiplier,
   milkForDraw,
   milkProbabilities,
+  ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES,
   segmentForDraw,
   sizeForDraw,
   sizeProbabilities,
 } from './demandModel';
+export {
+  applyDemandInfluence,
+  DEMAND_INFLUENCES,
+  DEMAND_INFLUENCE_IDS,
+  DIFFICULTY_DEVIATION_MULTIPLIERS,
+} from './demandInfluences';
+export type {
+  ArrivalDemandInfluenceId,
+  DemandInfluenceApplication,
+  DemandInfluenceDefinition,
+  DemandInfluenceDomain,
+  DemandInfluenceId,
+  OrderChoiceDemandInfluenceId,
+} from './demandInfluences';
 export { formatIngredientQuantity, ingredientCapacities, weightedIngredientUse } from './capacity';
 export type { IngredientCapacity } from './capacity';
 export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
@@ -69,9 +85,12 @@ export {
   refrigerationExtensionDays,
 } from './inventory';
 export {
+  campaignRecordsByDifficulty,
   canOpen,
   completedSaleLabel,
   describeRushActivity,
+  DIFFICULTY_DESCRIPTIONS,
+  DIFFICULTY_LABELS,
   formatMoney,
   rushClock,
   selectedSupplyCost,

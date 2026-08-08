@@ -210,6 +210,51 @@ small {
   border: 2px solid var(--ink);
   background: #fff;
 }
+.difficulty-picker {
+  display: grid;
+  width: 100%;
+  max-width: 520px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  text-align: left;
+}
+.difficulty-picker legend {
+  width: 100%;
+  margin-bottom: 0.35rem;
+  font-weight: 900;
+  text-align: center;
+}
+.difficulty-picker label {
+  display: flex;
+  min-width: 0;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 2px solid #8e7463;
+  background: var(--paper);
+  cursor: pointer;
+}
+.difficulty-picker label.is-selected {
+  border-color: var(--green);
+  background: #d8e7d2;
+}
+.difficulty-picker input {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+.difficulty-picker span,
+.difficulty-picker small {
+  display: block;
+}
+.difficulty-picker small {
+  margin-top: 0.2rem;
+  color: #5d4a3f;
+  line-height: 1.35;
+}
 .field-help {
   max-width: 40ch;
   margin: 0.4rem auto 1rem;
@@ -1009,6 +1054,12 @@ legend {
   padding-left: 1.4rem;
   line-height: 1.45;
 }
+.difficulty-note {
+  padding: 0.7rem;
+  border-left: 5px solid var(--orange);
+  background: #faedca;
+  line-height: 1.45;
+}
 .onboarding-guide {
   display: flex;
   align-items: center;
@@ -1100,6 +1151,12 @@ legend {
   display: grid;
   gap: 0.45rem;
   margin: 0.7rem 0;
+}
+.difficulty-records {
+  margin-top: 1rem;
+}
+.difficulty-records h4 {
+  margin-bottom: 0.45rem;
 }
 .achievement-list article,
 .record-list article {
@@ -1528,6 +1585,9 @@ legend {
   .title-art {
     position: fixed;
     object-position: 62% center;
+  }
+  .difficulty-picker {
+    grid-template-columns: minmax(0, 1fr);
   }
   .title-card {
     padding: 1.2rem 1rem;

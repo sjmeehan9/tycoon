@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { useModalFocus } from '../accessibility/useModalFocus';
 import { useGame } from '../app/GameContext';
-import type { GamePhase } from '../game';
+import { DIFFICULTY_DESCRIPTIONS, DIFFICULTY_LABELS, type GamePhase } from '../game';
 
 const STEPS: Record<GamePhase, { number: number; title: string; detail: string }> = {
   planning: {
@@ -90,6 +90,12 @@ export function OnboardingGuide(): React.JSX.Element | null {
               Four real actions teach the whole loop: plan, serve, read the report, and reinvest.
               Nothing here changes the simulation.
             </p>
+            <p className="difficulty-note">
+              <strong>
+                {DIFFICULTY_LABELS[game.difficulty]} difficulty is locked for this run.
+              </strong>{' '}
+              {DIFFICULTY_DESCRIPTIONS[game.difficulty]}
+            </p>
             <ol className="onboarding-steps">
               <li>
                 <strong>Plan</strong> a small menu and stock.
@@ -101,7 +107,7 @@ export function OnboardingGuide(): React.JSX.Element | null {
                 <strong>Learn</strong> from the causal report.
               </li>
               <li>
-                <strong>Grow</strong> equipment and venues over 30 days.
+                <strong>Grow</strong> equipment and venues over the full campaign.
               </li>
             </ol>
             <div className="ending-actions">
@@ -126,6 +132,9 @@ export function OnboardingGuide(): React.JSX.Element | null {
             <p className="eyebrow">First-day guide · step {step.number}/4</p>
             <h2 id="guide-title">{step.title}</h2>
             <p>{step.detail}</p>
+            <p>
+              {DIFFICULTY_LABELS[game.difficulty]} mode · difficulty stays locked for this campaign.
+            </p>
           </div>
           <button className="text-button" onClick={finish} type="button">
             {step.number === 4 ? 'Finish guide' : 'Skip guide'}

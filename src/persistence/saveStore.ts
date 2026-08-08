@@ -5,7 +5,6 @@ import {
   INGREDIENT_DETAILS,
   INGREDIENT_IDS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
-  PURCHASE_PACKAGES,
   RUSH_ACTIVITY_LIMIT,
 } from '../content/gameContent';
 import {
@@ -14,7 +13,6 @@ import {
   MIN_REPORT_CHARGE_PRICE_CENTS,
 } from '../game/engine';
 import { batchExpiryDay } from '../game/inventory';
-import { RESERVED_STAFF_NAME_COUNT, reservedStaffName } from '../game/staffNames';
 import type {
   AchievementId,
   CampaignOutcome,
@@ -24,6 +22,7 @@ import type {
   CustomerSegment,
   DayPlan,
   DayReport,
+  Difficulty,
   EquipmentId,
   GamePhase,
   GameState,
@@ -38,8 +37,10 @@ import type {
   VenueId,
 } from '../game';
 
-export const SAVE_KEY = 'laneway-tycoon.save.v3';
-export const BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v3';
+export const SAVE_KEY = 'laneway-tycoon.save.v4';
+export const BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v4';
+export const LEGACY_V3_SAVE_KEY = 'laneway-tycoon.save.v3';
+export const LEGACY_V3_BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v3';
 export const LEGACY_V2_SAVE_KEY = 'laneway-tycoon.save.v2';
 export const LEGACY_V2_BACKUP_SAVE_KEY = 'laneway-tycoon.save.backup.v2';
 export const LEGACY_SAVE_KEY = 'laneway-tycoon.save.v1';
@@ -59,6 +60,7 @@ const VENUES: VenueId[] = ['cart', 'kiosk', 'cafe'];
 const SCENARIOS: ScenarioId[] = ['lanewayClassic', 'rainySeason', 'festivalWeek'];
 const COSMETICS: CosmeticId[] = ['classicAwning', 'wattleAwning', 'neonCup'];
 const ACHIEVEMENTS: AchievementId[] = ['cafeFounder', 'goldenCup', 'hardLessons'];
+const DIFFICULTIES: Difficulty[] = ['standard', 'hard'];
 const EQUIPMENT_IDS: EquipmentId[] = [
   'grinder',
   'espressoMachine',
@@ -68,6 +70,9 @@ const EQUIPMENT_IDS: EquipmentId[] = [
   'serviceCounter',
 ];
 
+export const EVOLUTION_NOTICE =
+  'The game has evolved. Your settings were kept, while campaign progress was reset for the new Standard and Hard modes.';
+
 /** User-facing preferences with audio disabled until explicit interaction. */
 export function createDefaultPreferences(): Preferences {
   return {
@@ -76,6 +81,7 @@ export function createDefaultPreferences(): Preferences {
     reducedMotion: false,
     onboardingComplete: false,
     activeTab: 'plan',
+    evolutionNoticeSeen: true,
   };
 }
 
@@ -97,7 +103,7 @@ export function createSaveEnvelope(
   meta: MetaProgress = createDefaultMeta(),
 ): SaveEnvelope {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     savedAt: new Date().toISOString(),
     activeRun,
     preferences,
@@ -107,7 +113,7 @@ export function createSaveEnvelope(
 
 export interface LoadSaveResult {
   envelope: SaveEnvelope | null;
-  source: 'primary' | 'backup' | 'legacy-v2' | 'legacy-v1' | 'empty';
+  source: 'primary' | 'backup' | 'legacy-v3' | 'legacy-v2' | 'legacy-v1' | 'empty';
   warning: string | null;
   recoveryAvailable: boolean;
 }
@@ -142,21 +148,28 @@ export class BrowserSaveStore {
 
   /** Save a validated envelope while retaining the previous verified payload. */
   public save(envelope: SaveEnvelope): void {
-    const serialized = serializeEnvelope(envelope);
+    const persistedEnvelope = markEvolutionNoticeSeen(envelope);
+    const serialized = serializeEnvelope(persistedEnvelope);
     const previous = this.storage.getItem(SAVE_KEY);
     try {
       const previousEnvelope = previous ? parseEnvelope(previous) : null;
       if (previousEnvelope) {
-        this.storage.setItem(BACKUP_SAVE_KEY, serializeEnvelope(previousEnvelope));
+        this.storage.setItem(
+          BACKUP_SAVE_KEY,
+          serializeEnvelope(markEvolutionNoticeSeen(previousEnvelope)),
+        );
       } else {
         const legacy = this.firstValidLegacyEnvelope();
-        if (legacy) this.storage.setItem(BACKUP_SAVE_KEY, serializeEnvelope(legacy));
+        if (legacy) {
+          this.storage.setItem(BACKUP_SAVE_KEY, serializeEnvelope(markEvolutionNoticeSeen(legacy)));
+        }
       }
       this.storage.setItem(SAVE_KEY, serialized);
       const verified = this.storage.getItem(SAVE_KEY);
       if (verified !== serialized || !parseEnvelope(verified)) {
         throw new SaveStoreError('The browser did not verify the autosave write.');
       }
+      this.quarantineLegacyCandidates();
     } catch (error) {
       if (previous !== null) {
         try {
@@ -175,21 +188,36 @@ export class BrowserSaveStore {
     const primaryRaw = this.storage.getItem(SAVE_KEY);
     const primary = primaryRaw ? parseEnvelope(primaryRaw) : null;
     if (primary) {
-      return { envelope: primary, source: 'primary', warning: null, recoveryAvailable: false };
+      const noticePending = !primary.preferences.evolutionNoticeSeen;
+      if (noticePending) this.save(primary);
+      else this.quarantineLegacyCandidates();
+      return {
+        envelope: markEvolutionNoticeSeen(primary),
+        source: 'primary',
+        warning: noticePending ? EVOLUTION_NOTICE : null,
+        recoveryAvailable: false,
+      };
     }
 
     const backupRaw = this.storage.getItem(BACKUP_SAVE_KEY);
     const backup = backupRaw ? parseEnvelope(backupRaw) : null;
     if (backup) {
+      const noticePending = !backup.preferences.evolutionNoticeSeen;
+      if (noticePending) this.save(backup);
+      else this.quarantineLegacyCandidates();
       return {
-        envelope: backup,
+        envelope: markEvolutionNoticeSeen(backup),
         source: 'backup',
-        warning: 'The latest autosave was unreadable, so the last-known-good save was restored.',
+        warning: noticePending
+          ? `${EVOLUTION_NOTICE} The last-known-good v4 save was restored.`
+          : 'The latest autosave was unreadable, so the last-known-good save was restored.',
         recoveryAvailable: true,
       };
     }
 
     for (const [key, source, isBackup] of [
+      [LEGACY_V3_SAVE_KEY, 'legacy-v3', false],
+      [LEGACY_V3_BACKUP_SAVE_KEY, 'legacy-v3', true],
       [LEGACY_V2_SAVE_KEY, 'legacy-v2', false],
       [LEGACY_V2_BACKUP_SAVE_KEY, 'legacy-v2', true],
       [LEGACY_SAVE_KEY, 'legacy-v1', false],
@@ -198,15 +226,12 @@ export class BrowserSaveStore {
       const legacyRaw = this.storage.getItem(key);
       const legacy = legacyRaw ? parseEnvelope(legacyRaw) : null;
       if (legacy) {
+        this.save(legacy);
         return {
-          envelope: legacy,
+          envelope: markEvolutionNoticeSeen(legacy),
           source,
-          warning: isBackup
-            ? `The old version ${source === 'legacy-v2' ? '2' : '1'} primary was unreadable, so its last-known-good backup was migrated.`
-            : source === 'legacy-v2'
-              ? 'A version 2 save was safely migrated to dated stock batches.'
-              : 'A version 1 save was safely migrated to the current format.',
-          recoveryAvailable: isBackup,
+          warning: legacyResetWarning(source, isBackup),
+          recoveryAvailable: false,
         };
       }
     }
@@ -214,6 +239,8 @@ export class BrowserSaveStore {
     const hadData = [
       primaryRaw,
       backupRaw,
+      this.storage.getItem(LEGACY_V3_SAVE_KEY),
+      this.storage.getItem(LEGACY_V3_BACKUP_SAVE_KEY),
       this.storage.getItem(LEGACY_V2_SAVE_KEY),
       this.storage.getItem(LEGACY_V2_BACKUP_SAVE_KEY),
       this.storage.getItem(LEGACY_SAVE_KEY),
@@ -231,19 +258,22 @@ export class BrowserSaveStore {
 
   /** Replace an unreadable primary with its validated last-known-good backup. */
   public restoreBackup(): SaveEnvelope {
-    const backup = [BACKUP_SAVE_KEY, LEGACY_V2_BACKUP_SAVE_KEY, LEGACY_BACKUP_SAVE_KEY]
+    const backup = [BACKUP_SAVE_KEY]
       .map((key) => this.storage.getItem(key))
       .map((raw) => (raw ? parseEnvelope(raw) : null))
       .find((candidate): candidate is SaveEnvelope => candidate !== null);
     if (!backup) throw new SaveStoreError('No valid last-known-good save is available.');
-    this.storage.setItem(SAVE_KEY, serializeEnvelope(backup));
-    return backup;
+    const restored = markEvolutionNoticeSeen(backup);
+    this.save(restored);
+    return restored;
   }
 
   /** Remove current, backup, and legacy runs from this browser. */
   public clear(): void {
     this.storage.removeItem(SAVE_KEY);
     this.storage.removeItem(BACKUP_SAVE_KEY);
+    this.storage.removeItem(LEGACY_V3_SAVE_KEY);
+    this.storage.removeItem(LEGACY_V3_BACKUP_SAVE_KEY);
     this.storage.removeItem(LEGACY_V2_SAVE_KEY);
     this.storage.removeItem(LEGACY_V2_BACKUP_SAVE_KEY);
     this.storage.removeItem(LEGACY_SAVE_KEY);
@@ -252,6 +282,8 @@ export class BrowserSaveStore {
 
   private firstValidLegacyEnvelope(): SaveEnvelope | null {
     for (const key of [
+      LEGACY_V3_SAVE_KEY,
+      LEGACY_V3_BACKUP_SAVE_KEY,
       LEGACY_V2_SAVE_KEY,
       LEGACY_V2_BACKUP_SAVE_KEY,
       LEGACY_SAVE_KEY,
@@ -262,6 +294,19 @@ export class BrowserSaveStore {
       if (envelope) return envelope;
     }
     return null;
+  }
+
+  private quarantineLegacyCandidates(): void {
+    for (const key of [
+      LEGACY_V3_SAVE_KEY,
+      LEGACY_V3_BACKUP_SAVE_KEY,
+      LEGACY_V2_SAVE_KEY,
+      LEGACY_V2_BACKUP_SAVE_KEY,
+      LEGACY_SAVE_KEY,
+      LEGACY_BACKUP_SAVE_KEY,
+    ]) {
+      this.storage.removeItem(key);
+    }
   }
 }
 
@@ -284,17 +329,24 @@ export function importEnvelope(serialized: string): SaveEnvelope {
   if (!isRecord(value)) {
     throw new SaveValidationError('The save must contain one JSON object.', 'invalidSchema');
   }
-  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3) {
+  if (
+    value.schemaVersion !== 1 &&
+    value.schemaVersion !== 2 &&
+    value.schemaVersion !== 3 &&
+    value.schemaVersion !== 4
+  ) {
     throw new SaveValidationError(
       `Save schema ${String(value.schemaVersion)} is not supported by this version.`,
       'unknownVersion',
     );
   }
-  const versionTwo = value.schemaVersion === 1 ? migrateVersionOne(value) : value;
-  const migrated = versionTwo.schemaVersion === 2 ? migrateVersionTwo(versionTwo) : versionTwo;
-  const normalized = normalizeVersionThree(migrated);
-  validateEnvelope(normalized);
-  return normalized as unknown as SaveEnvelope;
+  if (value.schemaVersion !== 4) {
+    const reset = resetLegacyEnvelope(normalizeLegacyVersion(value));
+    validateEnvelope(reset as unknown as Record<string, unknown>);
+    return reset;
+  }
+  validateEnvelope(value);
+  return value as unknown as SaveEnvelope;
 }
 
 /** Return null for invalid storage payloads; use importEnvelope for actionable errors. */
@@ -314,313 +366,69 @@ export function serializeEnvelope(envelope: SaveEnvelope): string {
   return serialized;
 }
 
-function migrateVersionOne(value: Record<string, unknown>): Record<string, unknown> {
-  const activeRun = isRecord(value.activeRun) ? value.activeRun : value.activeRun;
-  const migratedRun = isRecord(activeRun)
-    ? {
-        ...activeRun,
-        stateVersion: 2,
-        rush: isRecord(activeRun.rush)
-          ? { ...activeRun.rush, wageCostCents: finiteOr(activeRun.rush.wageCostCents, 0) }
-          : activeRun.rush,
-        report: migrateVersionOneReport(activeRun.report),
-        history: Array.isArray(activeRun.history)
-          ? activeRun.history.map((report) => migrateVersionOneReport(report))
-          : activeRun.history,
-      }
-    : activeRun;
-  const meta = isRecord(value.meta) ? value.meta : {};
+function normalizeLegacyVersion(value: Record<string, unknown>): Record<string, unknown> {
+  if (value.schemaVersion === 1) return { ...value, schemaVersion: 3 };
+  if (value.schemaVersion === 2) return { ...value, schemaVersion: 3 };
+  return { ...value };
+}
+
+/** Convert supported legacy data through one immutable preferences-only boundary. */
+function resetLegacyEnvelope(value: Record<string, unknown>): SaveEnvelope {
+  const preferences = legacyPreferences(value.preferences);
   return {
-    ...value,
-    schemaVersion: 2,
-    activeRun: migratedRun,
-    preferences: isRecord(value.preferences) ? value.preferences : createDefaultPreferences(),
-    meta: {
-      ...createDefaultMeta(),
-      ...meta,
-      achievements: Array.isArray(meta.achievements)
-        ? meta.achievements.filter((id): id is AchievementId =>
-            ACHIEVEMENTS.includes(id as AchievementId),
-          )
-        : [],
+    schemaVersion: 4,
+    savedAt: '1970-01-01T00:00:00.000Z',
+    activeRun: null,
+    preferences: {
+      ...createDefaultPreferences(),
+      ...preferences,
+      onboardingComplete: false,
+      activeTab: 'plan',
+      evolutionNoticeSeen: false,
     },
+    meta: createDefaultMeta(),
   };
 }
 
-function migrateVersionOneReport(value: unknown): unknown {
-  return isRecord(value) ? { ...value, wageCostCents: finiteOr(value.wageCostCents, 0) } : value;
-}
-
-function migrateVersionTwo(value: Record<string, unknown>): Record<string, unknown> {
-  if (!isRecord(value.activeRun)) return { ...value, schemaVersion: 3 };
-  const activeRun = value.activeRun;
-  const day = boundedIntegerOr(activeRun.day, 1, 1, 10_000);
-  const equipment = isRecord(activeRun.equipment) ? activeRun.equipment : {};
-  const refrigeration = boundedIntegerOr(equipment.refrigeration, 0, 0, 2);
-  const flatInventory = activeRun.inventory;
-  const migratedInventory = migrateFlatInventory(flatInventory, day, refrigeration);
-  const currentTotals = legacyInventoryTotals(flatInventory);
-  const purchased = legacyPurchaseTotals(activeRun.plan);
-  const report = migrateVersionTwoReport(activeRun.report);
-  const rush = isRecord(activeRun.rush)
-    ? migrateVersionTwoRush(activeRun.rush, currentTotals, purchased, activeRun.report)
-    : activeRun.rush;
-  return {
-    ...value,
-    schemaVersion: 3,
-    activeRun: {
-      ...activeRun,
-      stateVersion: 3,
-      inventory: migratedInventory,
-      rush,
-      report,
-      history: Array.isArray(activeRun.history)
-        ? activeRun.history.map((historyReport) => migrateVersionTwoReport(historyReport))
-        : activeRun.history,
-    },
-  };
-}
-
-function migrateVersionTwoRush(
-  value: Record<string, unknown>,
-  current: IngredientTotals,
-  purchased: IngredientTotals,
-  reportValue: unknown,
-): Record<string, unknown> {
-  const stats = isRecord(value.stats) ? value.stats : {};
-  const consumed = boundedTotalsFromUnknown(stats.consumed);
-  const report = isRecord(reportValue) ? reportValue : {};
-  const expired = boundedTotalsFromUnknown(report.waste);
-  const opening = emptyTotalsRecord();
-  for (const ingredientId of INGREDIENT_IDS) {
-    opening[ingredientId] = Math.max(
-      0,
-      current[ingredientId] +
-        consumed[ingredientId] +
-        expired[ingredientId] -
-        purchased[ingredientId],
-    );
-  }
-  return {
-    ...value,
-    wageCostCents: finiteOr(value.wageCostCents, 0),
-    recentActivity: value.recentActivity === undefined ? [] : value.recentActivity,
-    openingInventory: opening,
-    purchasedInventory: purchased,
-  };
-}
-
-function migrateVersionTwoReport(value: unknown): unknown {
-  if (!isRecord(value)) return value;
-  return {
-    ...value,
-    wageCostCents: finiteOr(value.wageCostCents, 0),
-    inventoryLifecycle: null,
-  };
-}
-
-function normalizeVersionThree(value: Record<string, unknown>): Record<string, unknown> {
-  if (!isRecord(value.activeRun)) return value;
-  const activeRun = value.activeRun;
-  const people = normalizeStaffNames(activeRun);
-  const rush = isRecord(activeRun.rush)
-    ? normalizeRushActivity(activeRun.rush, boundedIntegerOr(activeRun.day, 1, 1, 10_000))
-    : activeRun.rush;
-  return {
-    ...value,
-    activeRun: {
-      ...activeRun,
-      ...people,
-      rush,
-    },
-  };
-}
-
-function normalizeStaffNames(
-  activeRun: Record<string, unknown>,
-): Pick<Record<string, unknown>, 'staff' | 'candidateStaff'> {
-  const staff = activeRun.staff;
-  const candidateStaff = activeRun.candidateStaff;
-  const seed = activeRun.seed;
-  if (
-    !isUnknownArray(staff) ||
-    !isUnknownArray(candidateStaff) ||
-    typeof seed !== 'number' ||
-    !Number.isInteger(seed) ||
-    seed < 0 ||
-    seed > 0xffff_ffff
-  ) {
-    return { staff, candidateStaff };
-  }
-
-  const people = [...staff, ...candidateStaff];
-  const originalNames = new Set(
-    people.flatMap((person) =>
-      isRecord(person) && typeof person.name === 'string' ? [person.name] : [],
-    ),
-  );
-  const retainedNames = new Set<string>();
-  let repairIndex = 0;
-
-  const normalizePeople = (records: unknown[]): unknown[] =>
-    records.map((person) => {
-      if (!isRecord(person) || typeof person.name !== 'string') return person;
-      if (!retainedNames.has(person.name)) {
-        retainedNames.add(person.name);
-        return person;
-      }
-
-      while (repairIndex < RESERVED_STAFF_NAME_COUNT) {
-        const repairedName = reservedStaffName(seed, repairIndex);
-        repairIndex += 1;
-        if (originalNames.has(repairedName) || retainedNames.has(repairedName)) continue;
-        retainedNames.add(repairedName);
-        return { ...person, name: repairedName };
-      }
-      throw new SaveValidationError(
-        'Duplicate staff names exceed the deterministic repair namespace.',
-        'invalidSchema',
-      );
-    });
-
-  return {
-    staff: normalizePeople(staff),
-    candidateStaff: normalizePeople(candidateStaff),
-  };
-}
-
-function normalizeRushActivity(
-  value: Record<string, unknown>,
-  day: number,
-): Record<string, unknown> {
-  const rawActivity = value.recentActivity === undefined ? [] : value.recentActivity;
-  const recentActivity = Array.isArray(rawActivity)
-    ? rawActivity.map((event, index) => normalizeLegacySaleActivity(event, day, index))
-    : rawActivity;
-  const derivedSequence = deriveActivitySequence(recentActivity);
-  return {
-    ...value,
-    nextActivitySequence:
-      value.nextActivitySequence === undefined ? derivedSequence : value.nextActivitySequence,
-    recentActivity,
-  };
-}
-
-function deriveActivitySequence(value: unknown): number {
-  if (!Array.isArray(value)) return 0;
-  const events: unknown[] = value;
-  let maximum = 0;
-  for (const event of events) {
-    if (isRecord(event) && typeof event.sequence === 'number') {
-      maximum = Math.max(maximum, event.sequence + 1);
-    }
-  }
-  return maximum;
-}
-
-function normalizeLegacySaleActivity(value: unknown, day: number, index: number): unknown {
-  if (
-    !isRecord(value) ||
-    value.type !== 'sale' ||
-    value.id !== undefined ||
-    value.sequence !== undefined ||
-    value.customerId !== undefined ||
-    value.segment !== undefined
-  ) {
-    return value;
-  }
-  return {
-    ...value,
-    id: `d${day}-legacy-e${index}`,
-    sequence: index,
-    customerId: `legacy-sale-${index + 1}`,
-    segment: null,
-  };
-}
-
-function migrateFlatInventory(value: unknown, day: number, refrigerationTier: number): unknown {
-  if (!isRecord(value)) return value;
-  return Object.fromEntries(
-    INGREDIENT_IDS.map((ingredientId) => {
-      const quantity = value[ingredientId];
-      return [
-        ingredientId,
-        quantity === 0
-          ? []
-          : [
-              {
-                quantity,
-                acquiredDay: day,
-                expiresAfterDay: batchExpiryDay(ingredientId, day, refrigerationTier),
-              },
-            ],
-      ];
-    }),
-  );
-}
-
-function legacyInventoryTotals(value: unknown): IngredientTotals {
-  const inventory = isRecord(value) ? value : {};
-  const totals = emptyTotalsRecord();
-  for (const ingredientId of INGREDIENT_IDS) {
-    totals[ingredientId] = boundedNumberOr(inventory[ingredientId], 0, 0, 1_000_000_000);
-  }
-  return totals;
-}
-
-function legacyPurchaseTotals(value: unknown): IngredientTotals {
-  const plan = isRecord(value) ? value : {};
-  const purchases = isRecord(plan.purchases) ? plan.purchases : {};
-  const totals = emptyTotalsRecord();
-  for (const item of PURCHASE_PACKAGES) {
-    const packages = boundedIntegerOr(purchases[item.ingredientId], 0, 0, 20);
-    totals[item.ingredientId] = packages * item.amount;
-  }
-  return totals;
-}
-
-function boundedTotalsFromUnknown(value: unknown): IngredientTotals {
-  const record = isRecord(value) ? value : {};
-  const totals = emptyTotalsRecord();
-  for (const ingredientId of INGREDIENT_IDS) {
-    totals[ingredientId] = boundedNumberOr(record[ingredientId], 0, 0, 1_000_000_000);
-  }
-  return totals;
-}
-
-function emptyTotalsRecord(): IngredientTotals {
-  return Object.fromEntries(
-    INGREDIENT_IDS.map((ingredientId) => [ingredientId, 0]),
-  ) as IngredientTotals;
-}
-
-function boundedIntegerOr(
+function legacyPreferences(
   value: unknown,
-  fallback: number,
-  minimum: number,
-  maximum: number,
-): number {
-  return typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= minimum &&
-    value <= maximum
-    ? value
-    : fallback;
+): Pick<Preferences, 'soundEnabled' | 'ambienceEnabled' | 'reducedMotion'> {
+  if (value === undefined || value === null) {
+    return { soundEnabled: false, ambienceEnabled: false, reducedMotion: false };
+  }
+  const record = expectRecord(value, 'preferences');
+  const retained = {
+    soundEnabled: false,
+    ambienceEnabled: false,
+    reducedMotion: false,
+  };
+  for (const key of Object.keys(retained) as Array<keyof typeof retained>) {
+    if (record[key] === undefined) continue;
+    assert(typeof record[key] === 'boolean', `preferences.${key} must be boolean.`);
+    retained[key] = record[key];
+  }
+  return retained;
 }
 
-function boundedNumberOr(
-  value: unknown,
-  fallback: number,
-  minimum: number,
-  maximum: number,
-): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= minimum && value <= maximum
-    ? value
-    : fallback;
+function markEvolutionNoticeSeen(envelope: SaveEnvelope): SaveEnvelope {
+  if (envelope.preferences.evolutionNoticeSeen) return envelope;
+  return {
+    ...envelope,
+    preferences: { ...envelope.preferences, evolutionNoticeSeen: true },
+  };
+}
+
+function legacyResetWarning(
+  source: 'legacy-v3' | 'legacy-v2' | 'legacy-v1',
+  fromBackup: boolean,
+): string {
+  const version = source.slice(-1);
+  const location = fromBackup ? `version ${version} recovery backup` : `version ${version} save`;
+  return `The game has evolved. Your ${location} kept sound, ambience, and reduced-motion settings; campaign progress was reset for the new Standard and Hard modes.`;
 }
 
 function validateEnvelope(value: Record<string, unknown>): void {
-  assert(value.schemaVersion === 3, 'Save schema must be version 3.');
+  assert(value.schemaVersion === 4, 'Save schema must be version 4.');
   assertString(value.savedAt, 'savedAt', 64);
   assert(!Number.isNaN(Date.parse(value.savedAt)), 'savedAt must be an ISO date.');
   validatePreferences(value.preferences);
@@ -630,7 +438,13 @@ function validateEnvelope(value: Record<string, unknown>): void {
 
 function validatePreferences(value: unknown): asserts value is Preferences {
   const record = expectRecord(value, 'preferences');
-  for (const key of ['soundEnabled', 'ambienceEnabled', 'reducedMotion', 'onboardingComplete']) {
+  for (const key of [
+    'soundEnabled',
+    'ambienceEnabled',
+    'reducedMotion',
+    'onboardingComplete',
+    'evolutionNoticeSeen',
+  ]) {
     assert(typeof record[key] === 'boolean', `preferences.${key} must be boolean.`);
   }
   assertString(record.activeTab, 'preferences.activeTab', 32);
@@ -649,6 +463,7 @@ function validateMeta(value: unknown): asserts value is MetaProgress {
 function validateCampaignRecord(value: unknown, path: string): asserts value is CampaignRecord {
   const record = expectRecord(value, path);
   assertSafeId(record.campaignId, `${path}.campaignId`);
+  assertEnum(record.difficulty, DIFFICULTIES, `${path}.difficulty`);
   assertEnum(record.result, ['victory', 'bankruptcy', 'targetMissed'], `${path}.result`);
   assertNumber(record.day, `${path}.day`, 1, 10_000, true);
   assertNumber(record.cashCents, `${path}.cashCents`, -1_000_000_000, 1_000_000_000, true);
@@ -658,11 +473,12 @@ function validateCampaignRecord(value: unknown, path: string): asserts value is 
 
 function validateGameState(value: unknown): asserts value is GameState {
   const state = expectRecord(value, 'activeRun');
-  assert(state.stateVersion === 3, 'activeRun.stateVersion must be 3.');
+  assert(state.stateVersion === 4, 'activeRun.stateVersion must be 4.');
   assertSafeId(state.campaignId, 'activeRun.campaignId');
   assertNumber(state.seed, 'activeRun.seed', 0, 0xffff_ffff, true);
   assertNumber(state.rngState, 'activeRun.rngState', 0, 0xffff_ffff, true);
   assertEnum(state.scenarioId, SCENARIOS, 'activeRun.scenarioId');
+  assertEnum(state.difficulty, DIFFICULTIES, 'activeRun.difficulty');
   assertEnum(state.mode, ['campaign', 'endless'], 'activeRun.mode');
   assertEnum(state.phase, GAME_PHASES, 'activeRun.phase');
   assertNumber(state.day, 'activeRun.day', 1, 10_000, true);
@@ -673,7 +489,13 @@ function validateGameState(value: unknown): asserts value is GameState {
   validateInventory(state.inventory, 'activeRun.inventory', state.day);
   validatePlan(state.plan);
   if (state.rush !== null) validateRush(state.rush, state.day);
-  if (state.report !== null) validateReport(state.report, 'activeRun.report');
+  if (state.report !== null) {
+    validateReport(state.report, 'activeRun.report');
+    assert(
+      state.report.difficulty === state.difficulty,
+      'activeRun.report difficulty must match its campaign.',
+    );
+  }
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
   const staff = validateStaffArray(state.staff, 'activeRun.staff', 8);
   const candidateStaff = validateStaffArray(state.candidateStaff, 'activeRun.candidateStaff', 4);
@@ -682,7 +504,13 @@ function validateGameState(value: unknown): asserts value is GameState {
   const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
   improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
   expectArray(state.history, 'activeRun.history', CAMPAIGN_RULES.maximumHistoryDays).forEach(
-    (report, index) => validateReport(report, `activeRun.history[${index}]`),
+    (report, index) => {
+      validateReport(report, `activeRun.history[${index}]`);
+      assert(
+        report.difficulty === state.difficulty,
+        `activeRun.history[${index}] difficulty must match its campaign.`,
+      );
+    },
   );
   if (state.outcome !== null) validateOutcome(state.outcome);
 }
@@ -881,6 +709,7 @@ function validateEvent(value: unknown): void {
 
 function validateReport(value: unknown, path: string): asserts value is DayReport {
   const report = expectRecord(value, path);
+  assertEnum(report.difficulty, DIFFICULTIES, `${path}.difficulty`);
   for (const key of [
     'day',
     'openingCashCents',
@@ -1155,14 +984,6 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new SaveValidationError(message, 'invalidSchema');
 }
 
-function finiteOr(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
 }

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 import { BACKUP_SAVE_KEY, SAVE_KEY, serializeEnvelope } from '../../src/persistence/saveStore';
 import {
@@ -37,6 +37,7 @@ test.describe('portable save controls', () => {
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Day 30/30 · Specialty Cafe' })).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-reduced-motion', 'true');
+    await dismissOptionalPwaPrompt(page);
     await page.getByRole('button', { name: 'Close game menu' }).click();
     await expect(
       page.getByText('Charge breakdown unavailable for this older report.'),
@@ -59,13 +60,12 @@ test.describe('portable save controls', () => {
       buffer: Buffer.from('{"schemaVersion":99}'),
     });
     await expect(page.getByText('Import rejected; current data is unchanged.')).toBeVisible();
+    await dismissOptionalPwaPrompt(page);
     await page.getByRole('button', { name: 'Close game menu' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
   });
 
-  test('migrates a supported version-1 file and rejects malformed JSON safely', async ({
-    page,
-  }) => {
+  test('resets a supported version-1 file and rejects malformed JSON safely', async ({ page }) => {
     await page.goto('./');
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('tab', { name: 'Save transfer' }).click();
@@ -75,18 +75,21 @@ test.describe('portable save controls', () => {
       mimeType: 'application/json',
       buffer: Buffer.from(versionOneVictorySave()),
     });
-    await expect(page.getByRole('heading', { name: 'Day 30/30 · Specialty Cafe' })).toBeVisible();
+    await expect(page.getByText(/game has evolved/i)).toBeVisible();
+    await expect(page.getByText(/campaign progress was reset/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue autosave' })).toHaveCount(0);
+    await expect(page.getByRole('radio', { name: /Standard/ })).toBeChecked();
 
-    await page.getByRole('button', { name: 'Game menu', exact: true }).click();
-    await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles({
       name: 'broken.json',
       mimeType: 'application/json',
       buffer: Buffer.from('{broken'),
     });
     await expect(page.getByText('Import rejected; current data is unchanged.')).toBeVisible();
+    await dismissOptionalPwaPrompt(page);
     await page.getByRole('button', { name: 'Close game menu' }).click();
-    await expect(page.getByRole('heading', { name: 'Day 30/30 · Specialty Cafe' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Laneway Tycoon' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue autosave' })).toHaveCount(0);
   });
 
   test('offers and restores a validated last-known-good browser save', async ({ page }) => {
@@ -111,3 +114,12 @@ test.describe('portable save controls', () => {
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
   });
 });
+
+async function dismissOptionalPwaPrompt(page: Page): Promise<void> {
+  const prompt = page.getByRole('button', { name: 'Got it' });
+  const appeared = await prompt
+    .waitFor({ state: 'visible', timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (appeared) await prompt.click();
+}

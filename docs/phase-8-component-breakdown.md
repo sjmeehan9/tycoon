@@ -142,6 +142,9 @@ transparent demand rules.
   bounded and honest.
 - Make a v4 round trip idempotent. Repeated startup, autosave, recovery, and
   export/import must not reset a verified v4 campaign or repeat the notice.
+- Fail imported data closed when no concrete browser store exists or its v4
+  write fails. Do not consume the notice marker or mutate refs/React state until
+  persistence succeeds; surface an actionable storage error.
 - Put Standard first and visibly preselect it on new-campaign creation. Changing
   scenario does not change difficulty, and changing difficulty does not change
   scenario. Difficulty cannot change after creation.
@@ -179,7 +182,10 @@ transparent demand rules.
 - `tests/components/game-loop.test.tsx`, `tests/components/accessibility.test.tsx`
 - `tests/e2e/difficulty-reset.spec.ts`
 - `tests/e2e/persistence.spec.ts`, `tests/e2e/save-transfer.spec.ts`
+- `tests/e2e/report-history.spec.ts`, `tests/e2e/staff-names.spec.ts`
 - `tests/fixtures/campaignFixtures.ts`
+- `README.md`, `docs/agent-runbook.md`
+- `docs/phase-8-component-breakdown.md`
 - `docs/components/phase-8-component-8-2-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`
 
@@ -201,6 +207,11 @@ progression.
   Positive/negative-only entries test neutral, every supported sign, clamps,
   boundaries, and absence of an invented opposite direction.
 - Demand equality remains seeded and independent of render frames/speed.
+- Force unavailable browser storage in a component test and prove a legacy
+  import changes no run, preferences, meta progress, marker, or success notice.
+- Reconcile only the superseded schema-v3 and legacy-progress-repair expectations
+  in cumulative report-history/staff-name browser specs. Preserve their report,
+  naming, reload, and accessibility outcomes.
 
 ### Acceptance mapping
 
@@ -208,6 +219,8 @@ progression.
   three allowed preferences and discard every progress/meta/history field.
 - Onboarding and the evolution notice replay once; verified v4 never resets or
   resurrects legacy state.
+- An unavailable or failed store leaves the current in-memory/save state
+  unchanged and never claims a successful import or reset.
 - Standard is the accessible preselected default; difficulty/scenario are
   orthogonal and difficulty is immutable after campaign creation.
 - Records are separate by difficulty; shared unlocks give no economic bonus.
@@ -255,6 +268,7 @@ a playable Day-40 victory requiring the department store.
 ### File ownership
 
 - `src/game/types.ts`, `src/game/engine.ts`, `src/game/selectors.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/index.ts`, `src/game/capacity.ts`, `src/game/meta.ts`
 - `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
@@ -267,6 +281,7 @@ a playable Day-40 victory requiring the department store.
 - `src/scene/three/venues/DepartmentStoreWorld.tsx`
 - `src/styles.css`
 - `tests/unit/coffee-content.test.ts`, `tests/unit/operations.test.ts`
+- `tests/unit/demand.test.ts`
 - `tests/unit/campaign.test.ts`, `tests/unit/persistence.test.ts`
 - `tests/components/game-loop.test.tsx`
 - `tests/e2e/department-store.spec.ts`, `tests/e2e/campaign-outcomes.spec.ts`
@@ -288,6 +303,10 @@ dispatcher.
 - Keep 40-day rules typed and difficulty-aware. Boundary fixtures cover Day 39,
   Day 40, equality, missing department venue, bankruptcy, victory, target miss,
   and endless continuation.
+- Department venue and tier-three equipment values change the registered venue
+  and scheduled-team/equipment demand ranges. Update their registry baselines,
+  clamps, boundaries, and engine sources; keep engine/registry identities
+  exhaustive and retain exact Standard/Hard deviation proofs.
 - The department scene reads existing engine truth only; it does not prebuild
   station outcomes.
 
@@ -337,6 +356,7 @@ and hire Manager and Runner roles with visible, deterministic operational value.
 ### File ownership
 
 - `src/game/types.ts`, `src/game/engine.ts`, `src/game/selectors.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/staffNames.ts`, `src/game/index.ts`
 - `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
@@ -345,6 +365,7 @@ and hire Manager and Runner roles with visible, deterministic operational value.
 - `src/scene/three/renderSnapshot.ts`, `src/scene/three/entities/People.tsx`
 - `src/styles.css`
 - `tests/unit/operations.test.ts`, `tests/unit/staff-names.test.ts`
+- `tests/unit/demand.test.ts`
 - `tests/unit/persistence.test.ts`, `tests/unit/campaign.test.ts`
 - `tests/components/game-loop.test.tsx`
 - `tests/e2e/department-workforce.spec.ts`
@@ -361,6 +382,10 @@ Component 8.3 venue/equipment capacity and existing staff/name/payroll systems.
 - Capacity values have one typed authority shared by engine validation and UI.
 - Manager/Runner effects are bounded pure modifiers with one application point;
   animation never applies them.
+- Ten-person scheduling and new operational roles expand the registered
+  scheduled-team/traits/equipment demand range. Update its baseline/clamp/
+  boundary metadata and prove Standard remains baseline while Hard applies one
+  direct domain-aware deviation through the sole registry authority.
 - Payroll/report totals reconcile for zero, one, duplicate-role, and ten-person
   schedules across reload/import.
 - Candidate/name uniqueness remains deterministic through 40-day/endless runs.
@@ -416,12 +441,14 @@ and serves normal/express customers concurrently with exact-once economic truth.
 
 - `src/game/types.ts`, `src/game/engine.ts`, `src/game/inventory.ts`
 - `src/game/serviceStations.ts`, `src/game/selectors.ts`, `src/game/index.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/capacity.ts`, `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
 - `src/components/Planner.tsx`, `src/components/TeamPlanner.tsx`
 - `src/components/RushPanel.tsx`, `src/components/ReportPanel.tsx`
 - `src/accessibility/GameAnnouncer.tsx`, `src/styles.css`
 - `tests/unit/engine.test.ts`, `tests/unit/operations.test.ts`
+- `tests/unit/demand.test.ts`
 - `tests/unit/inventory.test.ts`, `tests/unit/persistence.test.ts`
 - `tests/components/game-loop.test.tsx`, `tests/components/accessibility.test.tsx`
 - `tests/e2e/parallel-service.spec.ts`
@@ -443,6 +470,10 @@ v4 persistence.
 - Stock reservations have explicit ownership/release rules and conservation
   invariants. Completion and reload cannot consume or settle twice.
 - Queue fairness is typed/bounded and tested so express does not starve normal.
+- Normal/express queues, station jobs, and shared-stock availability must still
+  feed the registered queue/wait and availability influences exactly once.
+  Update their engine sources/bounds as needed and keep the registry
+  exhaustiveness and Standard/Hard domain proofs green.
 - Legacy venues use generalized structures but retain established seeded
   outcomes unless an explicitly required contract changes.
 

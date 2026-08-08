@@ -8,6 +8,31 @@ import { BrowserSaveStore, SAVE_KEY, parseEnvelope } from '../../src/persistence
 import { livingRushEnvelope, reportHistoryEnvelope } from '../fixtures/campaignFixtures';
 
 describe('onboarding and accessible interaction', () => {
+  it('exposes a named Standard-first difficulty group and persistent help', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    const group = screen.getByRole('group', { name: 'Difficulty' });
+    const standard = screen.getByRole('radio', { name: /Standard/ });
+    const hard = screen.getByRole('radio', { name: /Hard/ });
+    expect(group).toHaveAccessibleDescription(
+      'Difficulty is locked for this campaign. Scenario selection stays independent.',
+    );
+    expect(standard).toBeChecked();
+    expect(hard).not.toBeChecked();
+    await user.click(hard);
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    expect(screen.getByRole('dialog', { name: 'Welcome to your laneway' })).toHaveTextContent(
+      'Hard difficulty is locked for this run',
+    );
+    await user.click(screen.getByRole('button', { name: 'Skip onboarding' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Help' }));
+    await user.click(screen.getByText('Standard and Hard difficulty'));
+    expect(screen.getByRole('tabpanel', { name: 'Help' })).toHaveTextContent(
+      'cannot change after campaign creation',
+    );
+  });
+
   it('follows real first-day phases and supports skip/replay', async () => {
     const user = userEvent.setup();
     renderGame();

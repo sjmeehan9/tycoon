@@ -87,6 +87,16 @@ describe('seeded cart engine', () => {
     expect(accelerated.rush?.nextActivitySequence).toBe(baseline.rush?.nextActivitySequence);
   });
 
+  it('keeps Hard demand seeded and independent of presentation speed', () => {
+    const baseline = runToReport(startRush(createCampaign({ seed: 18_102, difficulty: 'hard' })));
+    const accelerated = runToReport(
+      setRushSpeed(startRush(createCampaign({ seed: 18_102, difficulty: 'hard' })), 4),
+    );
+    expect(accelerated.report).toEqual(baseline.report);
+    expect(accelerated.rngState).toBe(baseline.rngState);
+    expect(accelerated.report?.difficulty).toBe('hard');
+  });
+
   it('retains complete canonical charges after the mixed activity feed truncates', () => {
     const planning = prepareDay(createCampaign({ seed: 7_505 }), {
       activeMenu: ['espresso'],

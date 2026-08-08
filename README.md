@@ -13,6 +13,11 @@ The game is deterministic, local-first, installable, and designed for desktop
 and mobile browsers. There are no accounts, ads, analytics, payments, or runtime
 external services.
 
+Each new campaign locks one difficulty for its full run. Standard keeps the
+original non-price tuning while making both price-response paths more sensitive;
+Hard strengthens every supported demand influence in either direction. Scenario
+selection remains independent from difficulty.
+
 ## Play
 
 The public release will be available at
@@ -52,11 +57,9 @@ Coffee content follows a recognisable Australian specialty menu: espresso,
 short and long black, flat white, latte, cappuccino, piccolo, mocha, filter, and
 iced drinks, including common milk options and modifiers.
 
-The current Phase 7 candidate intentionally retains the existing 30-day,
-single-mode, cart → kiosk → cafe campaign and schema-v3 saves. The approved
-Phase 8 plan—not current runtime behavior—adds Standard and Hard modes, a
-one-time v4 progress reset, a 40-day campaign, and a department-store coffee
-operation.
+The current Phase 8 runtime uses schema-v4 saves and immutable Standard/Hard
+modes. It intentionally still has the 30-day cart → kiosk → cafe campaign; the
+later Phase 8 components add the 40-day target and department-store operation.
 
 ## Controls and accessibility
 
@@ -76,6 +79,13 @@ The current campaign, settings, unlocks, and records are versioned in browser
 `localStorage`. A validated last-known-good copy is retained. The Game menu can
 export portable JSON, import a bounded schema-validated file, recover the prior
 copy, or clear only the active campaign.
+
+Current saves use `laneway-tycoon.save.v4` and
+`laneway-tycoon.save.backup.v4`. A readable v1, v2, or v3 browser save, recovery
+copy, or imported file crosses one preferences-only reset: sound, ambience, and
+reduced-motion are retained, while campaign progress, records, unlocks, history,
+and onboarding progress restart cleanly. After a verified v4 write, legacy keys
+are removed and the evolution notice does not repeat.
 
 After one successful production load, the service worker caches the complete
 same-origin game so it can relaunch offline. A new release never refreshes an
@@ -127,7 +137,7 @@ pnpm test:e2e
 
 Playwright uses the production build and `/tycoon/` preview, including offline,
 service-worker update, save-continuation, accessibility, desktop, and touch
-flows. The Phase 7 automated gate covers desktop Chromium and the exact 360×780
+flows. The automated gate covers desktop Chromium and the exact 360×780
 touch-browser profile. A later physical check, if requested, is performed only
 by the repository owner against the exact approved build at the public game URL;
 the automated report leaves that result pending and unclaimed. Install the

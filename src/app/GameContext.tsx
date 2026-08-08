@@ -13,6 +13,7 @@ import {
   createCampaign,
   dispatchGameCommand,
   recordCampaignOutcome,
+  type Difficulty,
   type GameCommand,
   type GameState,
   type MetaProgress,
@@ -21,6 +22,7 @@ import {
 } from '../game';
 import {
   BrowserSaveStore,
+  EVOLUTION_NOTICE,
   SaveStoreError,
   SaveValidationError,
   createDefaultMeta,
@@ -42,7 +44,7 @@ interface GameContextValue {
   hasSave: boolean;
   recoveryAvailable: boolean;
   message: string | null;
-  startCampaign: (seed: number, scenarioId?: ScenarioId) => void;
+  startCampaign: (seed: number, scenarioId?: ScenarioId, difficulty?: Difficulty) => void;
   continueCampaign: () => void;
   command: (command: GameCommand) => void;
   updatePreferences: (patch: Partial<Preferences>) => void;
@@ -103,15 +105,21 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
   );
 
   const startCampaign = useCallback(
-    (seed: number, scenarioId: ScenarioId = 'lanewayClassic') => {
+    (
+      seed: number,
+      scenarioId: ScenarioId = 'lanewayClassic',
+      difficulty: Difficulty = 'standard',
+    ) => {
       if (!metaRef.current.scenarios.includes(scenarioId)) {
         setMessage('That scenario has not been unlocked yet.');
         return;
       }
-      const nextGame = createCampaign({ seed, scenarioId });
+      const nextGame = createCampaign({ seed, scenarioId, difficulty });
       setGame(nextGame);
       persist(nextGame);
-      setMessage('A fresh cart campaign is ready. Plan Day 1, then open the laneway.');
+      setMessage(
+        `A fresh ${difficulty === 'hard' ? 'Hard' : 'Standard'} cart campaign is ready. Plan Day 1, then open the laneway.`,
+      );
     },
     [persist],
   );
@@ -173,26 +181,43 @@ export function GameProvider({ children }: { children: ReactNode }): React.JSX.E
   const importSave = useCallback((serialized: string): boolean => {
     try {
       const envelope = importEnvelope(serialized);
-      storeRef.current?.save(envelope);
-      loadedRunRef.current = envelope.activeRun;
-      preferencesRef.current = envelope.preferences;
-      metaRef.current = envelope.meta;
-      setGame(envelope.activeRun);
-      setPreferences(envelope.preferences);
-      setMeta(envelope.meta);
-      setHasSave(Boolean(envelope.activeRun));
+      const store = storeRef.current;
+      if (!store) {
+        throw new SaveStoreError(
+          'Browser storage is unavailable, so the imported save was not applied.',
+        );
+      }
+      const legacyReset = !envelope.preferences.evolutionNoticeSeen;
+      const activatedEnvelope = legacyReset
+        ? {
+            ...envelope,
+            preferences: { ...envelope.preferences, evolutionNoticeSeen: true },
+          }
+        : envelope;
+      store.save(activatedEnvelope);
+      loadedRunRef.current = activatedEnvelope.activeRun;
+      preferencesRef.current = activatedEnvelope.preferences;
+      metaRef.current = activatedEnvelope.meta;
+      setGame(activatedEnvelope.activeRun);
+      setPreferences(activatedEnvelope.preferences);
+      setMeta(activatedEnvelope.meta);
+      setHasSave(Boolean(activatedEnvelope.activeRun));
       setRecoveryAvailable(false);
       setMessage(
-        envelope.activeRun
-          ? `Imported Day ${envelope.activeRun.day} safely.`
-          : 'Imported settings and records; this file has no active campaign.',
+        legacyReset
+          ? EVOLUTION_NOTICE
+          : activatedEnvelope.activeRun
+            ? `Imported Day ${activatedEnvelope.activeRun.day} safely.`
+            : 'Imported settings and records; this file has no active campaign.',
       );
       return true;
     } catch (error) {
       setMessage(
         error instanceof SaveValidationError
           ? error.message
-          : 'The selected save could not be imported safely.',
+          : error instanceof SaveStoreError
+            ? error.message
+            : 'The selected save could not be imported safely.',
       );
       return false;
     }

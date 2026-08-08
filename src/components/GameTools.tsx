@@ -4,7 +4,16 @@ import { handleTabListKeyDown } from '../accessibility/keyboard';
 import { useModalFocus } from '../accessibility/useModalFocus';
 import { CAMPAIGN_RULES } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
-import { ACHIEVEMENT_DETAILS, formatMoney, type Preferences } from '../game';
+import {
+  ACHIEVEMENT_DETAILS,
+  campaignRecordsByDifficulty,
+  DIFFICULTY_DESCRIPTIONS,
+  DIFFICULTY_LABELS,
+  formatMoney,
+  type CampaignRecord,
+  type Difficulty,
+  type Preferences,
+} from '../game';
 import { ReportView } from './ReportPanel';
 
 type ToolSection = 'settings' | 'reports' | 'records' | 'help' | 'save';
@@ -31,6 +40,7 @@ export function GameTools(): React.JSX.Element {
   const history = game?.history ?? [];
   const selectedReport =
     history.find((report) => report.day === selectedReportDay) ?? history.at(-1) ?? null;
+  const recordsByDifficulty = campaignRecordsByDifficulty(meta);
 
   const downloadSave = (): void => {
     const exported = exportSave();
@@ -182,6 +192,10 @@ export function GameTools(): React.JSX.Element {
                   Endless mode:{' '}
                   <strong>{meta.endlessUnlocked ? 'Unlocked' : 'Win once to unlock'}</strong>
                 </p>
+                <p className="field-help">
+                  Achievements, scenarios, cosmetics, and endless mode are shared across
+                  difficulties. They never add an economic bonus.
+                </p>
                 <div className="achievement-list">
                   {meta.achievements.length > 0 ? (
                     meta.achievements.map((achievement) => (
@@ -196,19 +210,21 @@ export function GameTools(): React.JSX.Element {
                     </p>
                   )}
                 </div>
-                <div className="record-list">
-                  {meta.records.map((record) => (
-                    <article key={`${record.campaignId}-${record.result}-${record.day}`}>
-                      <strong className="capitalize">
-                        {record.result.replace(/([A-Z])/g, ' $1')}
-                      </strong>
-                      <span>
-                        Day {record.day} · {record.venueId} · {formatMoney(record.cashCents)} · rep{' '}
-                        {record.reputation}
-                      </span>
-                    </article>
-                  ))}
-                </div>
+                {(['standard', 'hard'] as const).map((difficulty) => (
+                  <section
+                    aria-labelledby={`records-${difficulty}-title`}
+                    className="difficulty-records"
+                    key={difficulty}
+                  >
+                    <h4 id={`records-${difficulty}-title`}>
+                      {DIFFICULTY_LABELS[difficulty]} records
+                    </h4>
+                    <DifficultyRecordList
+                      difficulty={difficulty}
+                      records={recordsByDifficulty[difficulty]}
+                    />
+                  </section>
+                ))}
               </ToolSectionPanel>
             ) : null}
 
@@ -236,6 +252,11 @@ export function GameTools(): React.JSX.Element {
                     Price changes alter demand; modifiers add surcharges and consume their fixed
                     recipe ingredients. Speed makes cups faster, quality improves satisfaction, and
                     balanced splits the difference.
+                  </HelpTopic>
+                  <HelpTopic summary="Standard and Hard difficulty">
+                    <strong>Standard:</strong> {DIFFICULTY_DESCRIPTIONS.standard}{' '}
+                    <strong>Hard:</strong> {DIFFICULTY_DESCRIPTIONS.hard} Difficulty is chosen
+                    independently from scenario and cannot change after campaign creation.
                   </HelpTopic>
                   <HelpTopic summary="Queues, reports, and progression">
                     Queue length, patience, staff, equipment, and stock decide service outcomes. The
@@ -288,6 +309,8 @@ export function GameTools(): React.JSX.Element {
                 {importStatus ? <p role="status">{importStatus}</p> : null}
                 <p className="field-help">
                   Imports are local, size-bounded, schema-validated, and never execute file content.
+                  Version 1–3 files retain only sound, ambience, and reduced-motion settings; their
+                  campaign progress is intentionally reset at the v4 boundary.
                 </p>
               </ToolSectionPanel>
             ) : null}
@@ -295,6 +318,31 @@ export function GameTools(): React.JSX.Element {
         </div>
       ) : null}
     </>
+  );
+}
+
+function DifficultyRecordList({
+  difficulty,
+  records,
+}: {
+  difficulty: Difficulty;
+  records: CampaignRecord[];
+}): React.JSX.Element {
+  if (records.length === 0) {
+    return <p className="empty-note">No {DIFFICULTY_LABELS[difficulty]} outcomes yet.</p>;
+  }
+  return (
+    <div className="record-list">
+      {records.map((record) => (
+        <article key={`${record.difficulty}-${record.campaignId}-${record.result}-${record.day}`}>
+          <strong className="capitalize">{record.result.replace(/([A-Z])/g, ' $1')}</strong>
+          <span>
+            Day {record.day} · {record.venueId} · {formatMoney(record.cashCents)} · rep{' '}
+            {record.reputation}
+          </span>
+        </article>
+      ))}
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import { useGame } from '../app/GameContext';
 import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../content/gameContent';
 import {
   completedSaleLabel,
+  DIFFICULTY_LABELS,
   formatIngredientQuantity,
   formatMoney,
   type DayReport,
@@ -33,7 +34,9 @@ export function ReportView(props: ReportViewProps): React.JSX.Element {
     >
       <div className="panel-heading report-heading">
         <div>
-          <p className="eyebrow">Day {report.day} report</p>
+          <p className="eyebrow">
+            Day {report.day} report · {DIFFICULTY_LABELS[report.difficulty]}
+          </p>
           <h2 id={titleId}>
             {isCurrent ? 'How the cart traded' : `Day ${report.day} trading report`}
           </h2>

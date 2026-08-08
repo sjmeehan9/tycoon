@@ -22,6 +22,7 @@ export function recordCampaignOutcome(meta: MetaProgress, state: GameState): Met
   if (!outcome) return meta;
   const record: CampaignRecord = {
     campaignId: state.campaignId,
+    difficulty: state.difficulty,
     result: outcome.type,
     day: state.day,
     cashCents: state.cashCents,
@@ -31,6 +32,7 @@ export function recordCampaignOutcome(meta: MetaProgress, state: GameState): Met
   const alreadyRecorded = meta.records.some(
     (existing) =>
       existing.campaignId === record.campaignId &&
+      existing.difficulty === record.difficulty &&
       existing.result === record.result &&
       existing.day === record.day,
   );

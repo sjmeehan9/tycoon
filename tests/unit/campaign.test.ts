@@ -4,6 +4,7 @@ import { CAMPAIGN_RULES, EQUIPMENT } from '../../src/content/gameContent';
 import {
   advanceTick,
   buyEquipment,
+  campaignRecordsByDifficulty,
   closeDay,
   continueEndless,
   createCampaign,
@@ -55,6 +56,20 @@ function runRush(initial: GameState): GameState {
 }
 
 describe('campaign outcome boundaries', () => {
+  it('defaults to Standard and keeps scenario and immutable difficulty orthogonal', () => {
+    const standard = createCampaign({ seed: 4_000, scenarioId: 'rainySeason' });
+    const hard = createCampaign({
+      seed: 4_000,
+      scenarioId: 'rainySeason',
+      difficulty: 'hard',
+    });
+    expect(standard).toMatchObject({ difficulty: 'standard', scenarioId: 'rainySeason' });
+    expect(hard).toMatchObject({ difficulty: 'hard', scenarioId: 'rainySeason' });
+    expect(hard.campaignId).not.toBe(standard.campaignId);
+    expect(prepareDay(hard, { dialIn: 'quality' }).difficulty).toBe('hard');
+    expect(startRush(hard).difficulty).toBe('hard');
+  });
+
   it('wins only at Day 30 with cafe, cash, and reputation targets', () => {
     const fixture = nearVictoryEnvelope().activeRun;
     if (!fixture) throw new Error('Expected victory fixture.');
@@ -165,6 +180,29 @@ describe('cosmetic-only meta progress', () => {
     expect(unlocked.scenarios).toEqual(expect.arrayContaining(['rainySeason', 'festivalWeek']));
     expect(repeated.records).toHaveLength(1);
     expect(createCampaign({ seed: 8 }).cashCents).toBe(createCampaign({ seed: 9 }).cashCents);
+  });
+
+  it('partitions records by difficulty while retaining shared neutral unlocks', () => {
+    const source = nearVictoryEnvelope().activeRun;
+    if (!source) throw new Error('Expected victory fixture.');
+    const standardVictory = closeDay(source);
+    const hardVictory = closeDay({
+      ...source,
+      campaignId: source.campaignId.replace('standard', 'hard'),
+      difficulty: 'hard',
+      report: source.report ? { ...source.report, difficulty: 'hard' } : null,
+    });
+    const afterStandard = recordCampaignOutcome(createDefaultMeta(), standardVictory);
+    const combined = recordCampaignOutcome(afterStandard, hardVictory);
+    const partitioned = campaignRecordsByDifficulty(combined);
+
+    expect(partitioned.standard).toHaveLength(1);
+    expect(partitioned.hard).toHaveLength(1);
+    expect(combined.endlessUnlocked).toBe(true);
+    expect(combined.scenarios).toEqual(afterStandard.scenarios);
+    expect(createCampaign({ seed: 71, difficulty: 'hard' }).cashCents).toBe(
+      createCampaign({ seed: 72 }).cashCents,
+    );
   });
 });
 

@@ -10,11 +10,14 @@ Deployment `5806728203` / status `16540798993` identifies that exact SHA at
 `https://sjmeehan9.github.io/tycoon/`. This is automated deployment evidence,
 not hosted-browser or physical-device proof.
 
-Phase 8 is started on `phase-8` from that exact main head. Component 8.1 has
-Tier 1 documentary PASS and is committed as the Phase 8 entry gate.
+Phase 8 is active on `phase-8` from that exact main head. Components 8.1 and
+8.2 are committed. Component 8.2 delivers schema-v4 preferences-only reset,
+immutable Standard/Hard campaigns, difficulty-partitioned records, and one
+typed exhaustive demand-influence authority at repaired fingerprint
+`9434536ff79e7807134246cb4beb5073d61d61b9048cb97824294848fbb2b2b8`.
 Physical Safari/mobile-GPU/FPS validation remains pending and unclaimed for
-optional owner-only testing against the exact final Phase 8 hosted build. No
-Phase 8 runtime work or Component 8.2 change has started.
+optional owner-only testing against the exact final Phase 8 hosted build.
+Component 8.3 is next and has not started.
 
 ## Next-Level Evolution Stage Progress
 
@@ -43,7 +46,9 @@ Phase 8 runtime work or Component 8.2 change has started.
 - [x] Phase 8 starts from final repaired main head `d3ef6d9e`
 - [x] Component 8.1 records ancestry, setup boundaries, and final release gates
 - [x] Lead Coordinator audits and commits Component 8.1
-- [ ] Component 8.2 runtime implementation begins
+- [x] Component 8.2 delivers v4 reset, immutable difficulty, and demand registry
+- [x] Lead Coordinator audits, repairs, validates, and commits Component 8.2
+- [ ] Component 8.3 department-store/equipment implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -88,7 +93,7 @@ Phase 8 runtime work or Component 8.2 change has started.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.2 next        | Phase 8 runtime sequence after committed Component 8.1                  |
+| next_level_implement      | Implement                  | ready — 8.3 next        | Phase 8 runtime sequence after committed Component 8.2                  |
 
 ## Previous release human task gate
 
@@ -150,6 +155,10 @@ Phase 8 runtime work or Component 8.2 change has started.
   approvals.
 - **Component 8.1:** COMMITTED / TIER 1 DOCUMENTARY PASS — independently
   audited; no runtime or Component 8.2 mutation.
+- **Component 8.2:** COMMITTED / TIER 2 PASS AFTER AUDIT REPAIR — fingerprint
+  `9434536f…b2b2b8`; build/lint, 159 Vitest cases, retained desktop/touch smoke,
+  and the coordinator's independent 48-test persistence/demand/context audit
+  passed. No physical device, push, merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -198,6 +207,8 @@ Phase 8 runtime work or Component 8.2 change has started.
 | 2026-08-08 | Start Phase 8 from final repaired main                      | `phase-8` begins at `d3ef6d9e` with Phase 7 executable fingerprint `5d2da832…9b55096` and no intermediate ancestry ambiguity                                                                          | Component 8.1      |
 | 2026-08-08 | Prohibit all agent physical-device access                   | Any physical Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, exact-hosted, and pending/unclaimed until owner evidence exists                                                     | Phase 8 validation |
 | 2026-08-08 | Reserve two separate final Phase 8 decisions                | Local 8.9 PASS does not authorize merge; merge approval does not authorize Pages publication/owner-hosted verification                                                                                | Component 8.1/8.9  |
+| 2026-08-08 | Establish the v4 difficulty boundary                        | Legacy v1–v3 data retains only three preferences; Standard/Hard is immutable and every current direct demand factor uses one typed registry                                                            | Component 8.2      |
+| 2026-08-08 | Fail unavailable-storage imports closed                     | No legacy marker or in-memory state may change until a concrete browser store verifies the v4 write; focused and full repaired gates pass                                                             | Component 8.2      |
 
 ## Drift log
 
