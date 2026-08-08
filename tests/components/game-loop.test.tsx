@@ -8,6 +8,7 @@ import {
   advanceTick,
   closeDay,
   createCampaign,
+  formatMoney,
   resolveEvent,
   startRush,
   type GameState,
@@ -23,6 +24,7 @@ import {
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import {
+  departmentWorkforceEnvelope,
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
   livingRushEnvelope,
@@ -317,11 +319,18 @@ describe('playable cart UI', () => {
     expect(within(dialog).getByText(/Day 12 · Coffee Kiosk/)).toBeVisible();
   });
 
-  it('hires both roles and schedules a daily team with visible payroll', async () => {
+  it('hires both cart-eligible roles and schedules a daily team with visible payroll', async () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
     await user.click(await screen.findByRole('tab', { name: 'Team' }));
+    const initialHireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    expect(initialHireButtons).toHaveLength(4);
+    expect(initialHireButtons[2]).toBeDisabled();
+    expect(initialHireButtons[3]).toBeDisabled();
+    expect(screen.getAllByText(/hiring unlocks at the Department Store Coffee Hall/)).toHaveLength(
+      2,
+    );
     await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
     await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
     const barista = screen.getByRole('checkbox', { name: /Barista · speed/ });
@@ -332,6 +341,47 @@ describe('playable cart UI', () => {
     expect(frontOfHouse).toBeChecked();
     expect(screen.getByText(/2\/2 scheduled/)).toBeVisible();
     expect(screen.getByText(/payroll at close/)).toBeVisible();
+  });
+
+  it('shows ten-person department scheduling, operational value, and accessible overflow', async () => {
+    const envelope = departmentWorkforceEnvelope();
+    const expectedPayroll = envelope.activeRun?.staff.reduce(
+      (total, member) => total + member.wageCents,
+      0,
+    );
+    if (expectedPayroll === undefined) throw new Error('Expected department fixture.');
+    new BrowserSaveStore(window.localStorage).save(envelope);
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+
+    expect(screen.getByText(/10\/10 scheduled/)).toBeVisible();
+    expect(screen.getByText(/Roster · 10\/12 employed/)).toBeVisible();
+    expect(screen.getByText(`${formatMoney(expectedPayroll)} payroll at close`)).toBeVisible();
+    expect(document.querySelector('#schedule-capacity-note')).toHaveTextContent(
+      'Daily schedule full',
+    );
+    expect(
+      screen.getByRole('list', { name: 'Applied department workforce effects' }),
+    ).toHaveTextContent(
+      /Manager.*coordination\/reliability ticks remain.*Runner.*replenishment\/handoff ticks remain/,
+    );
+    expect(screen.getAllByText(/without changing stock/).length).toBeGreaterThan(0);
+
+    let hireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    expect(hireButtons).toHaveLength(2);
+    expect(hireButtons.every((button) => !button.hasAttribute('disabled'))).toBe(true);
+    await user.click(hireButtons[0]!);
+    hireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    await user.click(hireButtons[0]!);
+
+    expect(screen.getByText(/Roster · 12\/12 employed/)).toBeVisible();
+    const hired = screen.getByLabelText('Hired staff');
+    const checkboxes = within(hired).getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(12);
+    expect(checkboxes.filter((checkbox) => checkbox.hasAttribute('disabled'))).toHaveLength(2);
+    expect(screen.getByText(/candidate list is empty/)).toBeVisible();
   });
 
   it('imports legacy data through the preferences-only v4 boundary', async () => {

@@ -26,7 +26,11 @@ It delivers the fourth venue, all six commercial tier-three upgrades, a
 reachable 40-day Standard/Hard campaign, and a truthful single-queue department
 WebGL shell. The Lead Coordinator independently reproduced the fingerprint and
 128-test focused gate, audited, staged, and committed the repaired candidate.
-Component 8.4 is next and has not started.
+Component 8.4 is committed at fingerprint
+`64dd0298c9cdcf6973b55fe1882106252e893f065adc5a727c07a5fc8cb4c3e5`.
+It delivers a twelve-person department roster, ten-person daily scheduling,
+Manager/Runner roles with exact operational value, canonical staff identities,
+and strict payroll/persistence proof. Component 8.5 is next and has not started.
 
 ## Next-Level Evolution Stage Progress
 
@@ -60,7 +64,9 @@ Component 8.4 is next and has not started.
 - [x] Component 8.3 delivers the department venue, commercial tiers, 40-day campaign, and WebGL shell
 - [x] Component 8.3 focused and unchanged-candidate Tier 2 validation passes
 - [x] Lead Coordinator audits and commits Component 8.3
-- [ ] Component 8.4 department workforce implementation begins
+- [x] Component 8.4 delivers department workforce, Manager, and Runner behavior
+- [x] Lead Coordinator audits and commits Component 8.4
+- [ ] Component 8.5 parallel service implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -105,7 +111,7 @@ Component 8.4 is next and has not started.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.4 next        | Sequential Component 8.4 workforce implementation after committed 8.3  |
+| next_level_implement      | Implement                  | ready — 8.5 next        | Sequential Component 8.5 service implementation after committed 8.4    |
 
 ## Previous release human task gate
 
@@ -178,6 +184,12 @@ Component 8.4 is next and has not started.
   passed build/lint, all 168 Vitest cases, and 4 applicable retained
   desktop/touch smoke cases with 2 intentional routing skips. No physical
   device, Git mutation, merge, deployment, or publication occurred.
+- **Component 8.4:** COMMITTED / TIER 2 PASS — fingerprint
+  `64dd0298…b4c3e5`; focused workforce logic passed 139 cases, department and
+  retained current-v4 browser proof passed 24 desktop/touch cases, and the
+  final gate passed build/lint, all 180 Vitest cases, and retained smoke. The
+  coordinator independently reproduced the fingerprint and 59-test core audit.
+  No physical device, push, merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -231,6 +243,9 @@ Component 8.4 is next and has not started.
 | 2026-08-08 | Generalize venue and equipment progression from typed data  | One four-venue order and six validated three-tier catalogues now drive purchase, maintenance, reliability, throughput, quality, demand, queue, inventory, persistence, and UI truth                   | Component 8.3      |
 | 2026-08-08 | Keep the department shell single-queue and snapshot-only     | The heritage hall truthfully presents the current engine; Manager/Runner, stations, express priority, and parallel settlement remain in Components 8.4–8.5                                            | Component 8.3      |
 | 2026-08-08 | Record repaired Component 8.3 candidate as Tier 2 PASS     | Fingerprint `3f9f9485…8253067` passed focused 128-test/6-browser proof, repaired 18-case cumulative browser proof, build, lint, 168 Vitest, and retained desktop/touch smoke                               | Component 8.3      |
+| 2026-08-08 | Establish one per-venue workforce authority                 | Roster/schedule capacities are 8/2, 8/3, 8/5, and 12/10; engine, persistence, and UI consume that authority while legacy projections are derived                                                          | Component 8.4      |
+| 2026-08-08 | Make Manager/Runner value deterministic and exact-once       | Manager reduces bounded coordination/reliability delay; Runner reduces bounded handoff workload without creating stock; order preparation is the sole application point                                 | Component 8.4      |
+| 2026-08-08 | Bind staff identity and payroll at the v4 boundary           | Seed/day/slot-derived attributes, venue eligibility, complete daily pools, schedule IDs, and rush/report payroll are validated on import                                                                  | Component 8.4      |
 
 ## Drift log
 

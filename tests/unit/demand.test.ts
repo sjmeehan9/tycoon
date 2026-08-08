@@ -210,7 +210,7 @@ describe('explainable demand factors', () => {
     expect(venue.clamp.maximum).toBeGreaterThanOrEqual(2.0385);
 
     const base = createCampaign({ seed: 8_303 });
-    const staff = Array.from({ length: 8 }, (_, index) => ({
+    const staff = Array.from({ length: 10 }, (_, index) => ({
       ...base.candidateStaff[index % base.candidateStaff.length]!,
       id: `demand-staff-${index}`,
       name: `Demand Staff ${index}`,
@@ -233,7 +233,10 @@ describe('explainable demand factors', () => {
     expect(DEMAND_INFLUENCES.arrivalTeamEquipment.engineSource).toBe(
       'engine.demandRate.operationalEffects(state).demandMultiplier',
     );
-    expect(baselineTeamEquipment).toBeCloseTo(1.05 ** 8 * 1.07, 8);
+    expect(baselineTeamEquipment).toBeCloseTo(1.05 ** 10 * 1.07, 8);
+    expect(
+      applyDemandInfluence('standard', 'arrivalTeamEquipment', baselineTeamEquipment),
+    ).toBeCloseTo(baselineTeamEquipment, 8);
     expect(hardTeamEquipment).toBeCloseTo(1 + (baselineTeamEquipment - 1) * 1.675, 8);
     expect(hardTeamEquipment).toBeLessThanOrEqual(
       DEMAND_INFLUENCES.arrivalTeamEquipment.clamp.maximum,

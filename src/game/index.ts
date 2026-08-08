@@ -24,10 +24,20 @@ export {
   resolveEvent,
   serviceQueueCapacity,
   setRushSpeed,
+  staffRoleOperationalEffect,
   startNextDay,
   startRush,
   togglePause,
 } from './engine';
+export {
+  DEPARTMENT_WORKLOAD_DELAYS,
+  STAFF_ROLES,
+  STAFF_ROLE_DETAILS,
+  STAFF_ROLE_LABELS,
+  VENUE_WORKFORCE_CAPACITY,
+  staffRoleAvailableAtVenue,
+  workforceCapacityFor,
+} from '../content/gameContent';
 export { GameRuleError } from './errors';
 export {
   CANDIDATES_PER_DAY,
@@ -37,8 +47,10 @@ export {
   STAFF_NAME_NAMESPACE_SIZE,
   STAFF_NAMES_PER_TIER,
   SUPPORTED_CANDIDATE_NAME_COUNT,
+  candidateStaffId,
   candidateStaffName,
   candidateStaffOrdinal,
+  candidateStaffSlotFromId,
   reservedStaffName,
   staffNameAtOrdinal,
 } from './staffNames';
@@ -94,7 +106,9 @@ export {
   formatMoney,
   rushClock,
   selectedSupplyCost,
+  staffRoleValue,
   stockedInventory,
   venueLabel,
+  workforceAppliedEffectLabels,
 } from './selectors';
 export type * from './types';

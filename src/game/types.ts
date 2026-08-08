@@ -34,7 +34,7 @@ export type GameMode = 'campaign' | 'endless';
 export type Difficulty = 'standard' | 'hard';
 export type VenueId = 'cart' | 'kiosk' | 'cafe' | 'departmentStore';
 export type CustomerSegment = 'commuter' | 'student' | 'enthusiast' | 'regular';
-export type StaffRole = 'barista' | 'frontOfHouse';
+export type StaffRole = 'barista' | 'frontOfHouse' | 'manager' | 'runner';
 export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'steady';
 export type WeatherId = 'mild' | 'sunny' | 'rainy' | 'coldSnap';
 export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
@@ -260,6 +260,42 @@ export interface StaffMember {
   hiredOnDay: number;
 }
 
+/** The two independent workforce limits configured for one venue. */
+export interface WorkforceCapacity {
+  rosterCapacity: number;
+  scheduleCapacity: number;
+}
+
+/** Engine operation owned by a role; every role has exactly one primary value path. */
+export type StaffRoleOperation =
+  'coffeePreparation' | 'guestFlow' | 'coordinationReliability' | 'handoffWorkload';
+
+/** Data-driven bounded reduction contributed by one scheduled operational role. */
+export interface StaffWorkloadReduction {
+  attribute: 'speed' | 'skill';
+  baseTicks: number;
+  pointsPerExtraTick: number;
+  threshold: number;
+  maximumTicks: number;
+}
+
+/** Canonical role contract shared by generation, eligibility, engine, and UI. */
+export interface StaffRoleConfig {
+  id: StaffRole;
+  label: string;
+  description: string;
+  operation: StaffRoleOperation;
+  requiresVenue: VenueId;
+  wagePremiumCents: number;
+  workloadReduction: StaffWorkloadReduction | null;
+}
+
+/** Pure bounded operational value calculated for one scheduled team member. */
+export interface StaffRoleOperationalEffect {
+  operation: StaffRoleOperation;
+  reductionTicks: number;
+}
+
 export interface EquipmentState {
   grinder: number;
   espressoMachine: number;
@@ -307,6 +343,7 @@ export interface VenueConfig {
   actionName: string;
   description: string;
   menuCapacity: number;
+  /** Derived daily schedule projection retained for existing presentation consumers. */
   staffCapacity: number;
   queueCapacity: number;
   demandFactor: number;

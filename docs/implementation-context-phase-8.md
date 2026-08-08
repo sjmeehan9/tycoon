@@ -254,3 +254,61 @@ An exhaustive current-v4 E2E source audit found no other genuine `/30`, Day
 scoped kiosk/cafe recovery case remains a kiosk/cafe case, and legacy schema
 fixtures/docs remain historical evidence. No Canvas route, runtime behavior,
 fixture migration, dependency, or later Component 8.4 behavior was added.
+
+## Component 8.4 department workforce and operational roles boundary
+
+Workforce capacity now has one typed authority with independent roster and
+daily schedule limits. Cart, kiosk, and cafe retain their eight-person roster
+and respective two-, three-, and five-person schedules. The department hall
+supports a twelve-person roster for rotation and accepts zero through ten
+scheduled people; engine and import validation reject eleven. The older
+`VenueConfig.staffCapacity` and `VENUE_STAFF_CAPACITY` names remain derived
+schedule projections only, so they cannot compete with the new authority.
+
+Every deterministic daily pool now contains one Barista, Front of house,
+Manager, and Runner with collision-free names and role-specific wage premiums.
+Managers and Runners can be hired and scheduled only at the department hall.
+Their role contracts are exhaustive across generation, UI labels/value,
+persistence, public exports, and scene colours. Canonical staff IDs bind seed,
+day, and pool slot; v4 imports verify the corresponding name, role, attributes,
+wage, trait, hire day, current-day pool completeness, per-venue eligibility,
+schedule membership, and exact rush/report payroll.
+
+The two new effects are pure, bounded, and applied exactly once when an order's
+preparation ticks are created. Department coordination starts with fixed work
+plus an installed-equipment reliability deficit; scheduled Managers reduce
+that combined delay. Department replenishment/handoff work has a fixed delay;
+scheduled Runners reduce it without reading, reserving, consuming, or creating
+inventory. Both paths clamp at one remaining tick, so duplicate roles cannot
+erase work or bypass equipment/staff requirements. Non-department calculations
+retain zero added workload and their seeded outcomes.
+
+Planner cards expose each role, trait, exact per-day wage, and role value. The
+department team panel reports the twelve-person roster, ten-person schedule,
+exact payroll, and applied Manager/Runner reductions; an eleventh checkbox is
+disabled with a visible live capacity explanation. Day reports preserve exact
+payroll and add the applied role counts, reductions, remaining delays, and
+equipment-reliability contribution to the optional causal explanation list.
+The scene snapshot still carries one bounded list of ten scheduled roles into
+one queue and one active service. Stations, express priority, and parallel
+settlement remain exclusively Component 8.5.
+
+The registered team/equipment demand boundary now covers ten scheduled
+people-person traits plus commercial POS: Standard preserves the exact
+`1.05^10 × 1.07` baseline, while Hard applies the one direct configured `1.675`
+deviation inside the updated `2.3` clamp. No role code applies difficulty a
+second time.
+
+Two coordinator-approved current-v4 clarifications remain deliberately narrow.
+The retained operations journey now says it hires both cart-eligible roles,
+without weakening its payroll or equipment assertions. Strict canonical
+time-binding corrected the shared dense-rush fixture so multi-day workforces
+use their real active day; the WebGL journey derives only its import-day and
+day-bound customer identity assertions while retaining every world, save,
+reload, segment, walkaway, Canvas-removal, and WebGL check. Existing staff-name
+and report-history browser files required no mutation and passed unchanged.
+
+No schema/key bump, dependency, station, express lane, parallel service,
+physical-device access, Git mutation, merge, deployment, or publication belongs
+to this component. The approved title art remains byte-identical at SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.

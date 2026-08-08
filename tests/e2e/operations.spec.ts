@@ -4,7 +4,7 @@ import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { growthReadyEnvelope } from '../fixtures/campaignFixtures';
 
 test.describe('staff and investment operations', () => {
-  test('hires both roles, schedules service, settles payroll, and reaches equipment growth', async ({
+  test('hires both cart-eligible roles, schedules service, settles payroll, and reaches equipment growth', async ({
     page,
   }) => {
     test.setTimeout(90_000);

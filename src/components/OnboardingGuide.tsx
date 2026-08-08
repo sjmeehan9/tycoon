@@ -111,6 +111,10 @@ export function OnboardingGuide(): React.JSX.Element | null {
                 <strong>Grow</strong> through three equipment tiers and four venues by Day{' '}
                 {CAMPAIGN_RULES.durationDays}.
               </li>
+              <li>
+                <strong>Lead</strong> the department team with Managers for coordination and Runners
+                for stock handoffs; both roles unlock only at the final venue.
+              </li>
             </ol>
             <div className="ending-actions">
               <button

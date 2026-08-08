@@ -3,6 +3,7 @@ import {
   CAMPAIGN_RULES,
   CART_IMPROVEMENT_COST_CENTS,
   DAY_PLAN_LIMITS,
+  DEPARTMENT_WORKLOAD_DELAYS,
   DRINK_MAP,
   EQUIPMENT,
   EQUIPMENT_IDS,
@@ -16,11 +17,12 @@ import {
   RUSH_DURATION_TICKS,
   SCENARIO_DETAILS,
   SIZE_SURCHARGE_CENTS,
+  STAFF_ROLES,
+  STAFF_ROLE_DETAILS,
   TICKS_PER_SECOND,
   VENUE_DEMAND_FACTOR,
   VENUE_MENU_CAPACITY,
   VENUE_PROMOTIONS,
-  VENUE_STAFF_CAPACITY,
   VENUES,
   WEATHER_DETAILS,
   createDefaultPlan,
@@ -29,6 +31,8 @@ import {
   equipmentTierAtLevel,
   milkIngredient,
   venueMeetsRequirement,
+  workforceCapacityFor,
+  staffRoleAvailableAtVenue,
   weatherForDay,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
@@ -49,6 +53,7 @@ import {
   CANDIDATES_PER_DAY,
   LEGACY_STAFF_NAMES,
   MAX_STAFF_NAME_DAY,
+  candidateStaffId,
   candidateStaffName,
 } from './staffNames';
 import type {
@@ -77,11 +82,11 @@ import type {
   RushWalkawayReason,
   SimulationEvent,
   StaffMember,
+  StaffRoleOperationalEffect,
   StaffTrait,
   StepDirection,
 } from './types';
 
-const MAX_HIRED_STAFF = 8;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
 
 /** Registry identities consumed by the arrival-rate engine path. */
@@ -445,13 +450,21 @@ export function buyImprovement(state: GameState, improvementId: string): GameSta
 /** Hire one candidate from the current deterministic daily pool. */
 export function hireStaff(state: GameState, candidateId: string): GameState {
   requireManagementPhase(state);
-  if (state.staff.length >= MAX_HIRED_STAFF) {
-    throw new GameRuleError(`The business can employ at most ${MAX_HIRED_STAFF} people.`);
-  }
   const candidate = state.candidateStaff.find((member) => member.id === candidateId);
   if (!candidate) throw new GameRuleError('That candidate is no longer available today.');
   if (state.staff.some((member) => member.id === candidate.id)) {
     throw new GameRuleError('That candidate already works here.');
+  }
+  if (!staffRoleAvailableAtVenue(candidate.role, state.venueId)) {
+    throw new GameRuleError(
+      `${STAFF_ROLE_DETAILS[candidate.role].label} candidates require the Department Store Coffee Hall.`,
+    );
+  }
+  const rosterCapacity = workforceCapacityFor(state.venueId).rosterCapacity;
+  if (state.staff.length >= rosterCapacity) {
+    throw new GameRuleError(
+      `${VENUES[state.venueId].shortName} can employ at most ${rosterCapacity} people.`,
+    );
   }
   return {
     ...state,
@@ -612,6 +625,26 @@ export interface OperationalEffects {
   patienceMultiplier: number;
   queueBonus: number;
   operatingCostCents: number;
+  equipmentReliabilityDelayTicks: number;
+  managerReductionTicks: number;
+  runnerReductionTicks: number;
+  coordinationReliabilityDelayTicks: number;
+  handoffWorkloadDelayTicks: number;
+}
+
+/** Calculate one role's bounded workload reduction without reading or mutating game state. */
+export function staffRoleOperationalEffect(member: StaffMember): StaffRoleOperationalEffect {
+  const config = STAFF_ROLE_DETAILS[member.role];
+  const reduction = config.workloadReduction;
+  if (!reduction) return { operation: config.operation, reductionTicks: 0 };
+  const attribute = member[reduction.attribute];
+  const extraTicks = Math.floor(
+    Math.max(0, attribute - reduction.threshold) / reduction.pointsPerExtraTick,
+  );
+  return {
+    operation: config.operation,
+    reductionTicks: Math.min(reduction.maximumTicks, reduction.baseTicks + extraTicks),
+  };
 }
 
 /** Aggregate the exact staff, trait, equipment, and venue effects used by service. */
@@ -622,6 +655,8 @@ export function operationalEffects(state: GameState): OperationalEffects {
   let demandMultiplier = 1;
   let patienceMultiplier = 1;
   let queueBonus = 0;
+  let proposedManagerReductionTicks = 0;
+  let proposedRunnerReductionTicks = 0;
 
   for (const equipmentId of EQUIPMENT_IDS) {
     const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
@@ -634,13 +669,23 @@ export function operationalEffects(state: GameState): OperationalEffects {
   }
 
   for (const member of scheduledStaff(state)) {
-    if (member.role === 'barista') {
-      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.004, 0.78, 1);
-      qualityBonus += Math.round((member.skill - 48) / 11);
-    } else {
-      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.0015, 0.91, 1);
-      patienceMultiplier *= 1 + Math.max(0, member.skill - 45) / 500;
-      satisfactionBonus += Math.round((member.skill - 48) / 14);
+    const roleEffect = staffRoleOperationalEffect(member);
+    switch (roleEffect.operation) {
+      case 'coffeePreparation':
+        preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.004, 0.78, 1);
+        qualityBonus += Math.round((member.skill - 48) / 11);
+        break;
+      case 'guestFlow':
+        preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.0015, 0.91, 1);
+        patienceMultiplier *= 1 + Math.max(0, member.skill - 45) / 500;
+        satisfactionBonus += Math.round((member.skill - 48) / 14);
+        break;
+      case 'coordinationReliability':
+        proposedManagerReductionTicks += roleEffect.reductionTicks;
+        break;
+      case 'handoffWorkload':
+        proposedRunnerReductionTicks += roleEffect.reductionTicks;
+        break;
     }
     if (member.trait === 'quickHands') preparationMultiplier *= 0.9;
     if (member.trait === 'peoplePerson') {
@@ -660,6 +705,35 @@ export function operationalEffects(state: GameState): OperationalEffects {
     const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
     return total + (tier?.operatingCostCents ?? 0);
   }, 0);
+  const equipmentReliabilityDelayTicks =
+    state.venueId === 'departmentStore'
+      ? Math.ceil(
+          EQUIPMENT_IDS.reduce((total, equipmentId) => {
+            const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+            return total + (tier ? 100 - tier.reliabilityPercent : 0);
+          }, 0) / DEPARTMENT_WORKLOAD_DELAYS.reliabilityDeficitPointsPerTick,
+        )
+      : 0;
+  const coordinationWorkTicks =
+    state.venueId === 'departmentStore'
+      ? DEPARTMENT_WORKLOAD_DELAYS.coordinationBaseTicks + equipmentReliabilityDelayTicks
+      : 0;
+  const handoffWorkTicks =
+    state.venueId === 'departmentStore' ? DEPARTMENT_WORKLOAD_DELAYS.handoffBaseTicks : 0;
+  const coordinationReliabilityDelayTicks =
+    coordinationWorkTicks === 0
+      ? 0
+      : Math.max(
+          DEPARTMENT_WORKLOAD_DELAYS.minimumRemainingTicks,
+          coordinationWorkTicks - proposedManagerReductionTicks,
+        );
+  const handoffWorkloadDelayTicks =
+    handoffWorkTicks === 0
+      ? 0
+      : Math.max(
+          DEPARTMENT_WORKLOAD_DELAYS.minimumRemainingTicks,
+          handoffWorkTicks - proposedRunnerReductionTicks,
+        );
   return {
     preparationMultiplier,
     qualityBonus,
@@ -668,6 +742,11 @@ export function operationalEffects(state: GameState): OperationalEffects {
     patienceMultiplier,
     queueBonus,
     operatingCostCents: VENUES[state.venueId].operatingCostCents + equipmentOperatingCost,
+    equipmentReliabilityDelayTicks,
+    managerReductionTicks: coordinationWorkTicks - coordinationReliabilityDelayTicks,
+    runnerReductionTicks: handoffWorkTicks - handoffWorkloadDelayTicks,
+    coordinationReliabilityDelayTicks,
+    handoffWorkloadDelayTicks,
   };
 }
 
@@ -702,8 +781,8 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
   if (rngState === 0) rngState = 0x6d2b79f5;
   const candidates: StaffMember[] = [];
   for (let index = 0; index < CANDIDATES_PER_DAY; index += 1) {
-    // Retain the historical name draw so existing speed, skill, wage, and trait
-    // sequences remain byte-for-byte deterministic after names move to direct indexing.
+    // Retain the historical name draw so speed, skill, base-wage, and trait
+    // draws remain deterministic after names move to direct indexing.
     const legacyNameDraw = randomInt(rngState, 0, LEGACY_STAFF_NAMES.length - 1);
     rngState = legacyNameDraw.state;
     const speedDraw = randomInt(rngState, 52, 88);
@@ -712,10 +791,12 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
     rngState = skillDraw.state;
     const traitDraw = randomInt(rngState, 0, STAFF_TRAITS.length - 1);
     rngState = traitDraw.state;
-    const role = index % 2 === 0 ? 'barista' : 'frontOfHouse';
-    const wageCents = Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50;
+    const role = STAFF_ROLES[index] ?? 'barista';
+    const wageCents =
+      Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50 +
+      STAFF_ROLE_DETAILS[role].wagePremiumCents;
     candidates.push({
-      id: `staff-${normalizedSeed.toString(16)}-${day}-${index}`,
+      id: candidateStaffId(normalizedSeed, day, index),
       name: candidateStaffName(normalizedSeed, day, index),
       role,
       speed: speedDraw.value,
@@ -1085,17 +1166,20 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
       MILK_SURCHARGE_CENTS[milk] +
       (size === 'large' ? SIZE_SURCHARGE_CENTS : 0),
     ingredientAmounts: ingredients,
-    preparationTicks: Math.max(
-      5,
-      Math.round(
-        variant.preparationTicks *
-          dialMultiplier *
-          beanMultiplier *
-          signMultiplier *
-          effects.preparationMultiplier *
-          equipmentMultiplier,
-      ),
-    ),
+    preparationTicks:
+      Math.max(
+        5,
+        Math.round(
+          variant.preparationTicks *
+            dialMultiplier *
+            beanMultiplier *
+            signMultiplier *
+            effects.preparationMultiplier *
+            equipmentMultiplier,
+        ),
+      ) +
+      effects.coordinationReliabilityDelayTicks +
+      effects.handoffWorkloadDelayTicks,
   };
 }
 
@@ -1311,12 +1395,21 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
     `${WEATHER_DETAILS[state.weather].name} weather: ${WEATHER_DETAILS[state.weather].note}`,
     `${BEAN_DETAILS[state.plan.beanId].name} changed shot quality and preparation time.`,
     `${rush.stats.peakQueue} was the longest queue during the 75-second rush.`,
-    `${VENUES[state.venueId].shortName} supported ${VENUES[state.venueId].staffCapacity} scheduled staff and a ${serviceQueueCapacity(state)}-person queue.`,
+    `${VENUES[state.venueId].shortName} supported ${workforceCapacityFor(state.venueId).scheduleCapacity} scheduled staff and a ${serviceQueueCapacity(state)}-person queue.`,
   ];
   const scheduled = scheduledStaff(state);
   if (scheduled.length > 0) {
     explanations.push(
-      `${scheduled.length} scheduled team member${scheduled.length === 1 ? '' : 's'} cost ${formatCents(rush.wageCostCents ?? 0)} and changed service speed, quality, or patience.`,
+      `${scheduled.length} scheduled team member${scheduled.length === 1 ? '' : 's'} cost ${formatCents(rush.wageCostCents ?? 0)}; their role and trait effects were applied once to service.`,
+    );
+  }
+  if (state.venueId === 'departmentStore') {
+    const effects = operationalEffects(state);
+    const managers = scheduled.filter((member) => member.role === 'manager').length;
+    const runners = scheduled.filter((member) => member.role === 'runner').length;
+    explanations.push(
+      `Manager coverage: ${managers} scheduled; coordination and reliability delay fell ${effects.managerReductionTicks} ticks to ${effects.coordinationReliabilityDelayTicks} ticks per order, including ${effects.equipmentReliabilityDelayTicks} equipment-reliability ticks.`,
+      `Runner coverage: ${runners} scheduled; replenishment and handoff delay fell ${effects.runnerReductionTicks} ticks to ${effects.handoffWorkloadDelayTicks} ticks per order.`,
     );
   }
   const equipped = EQUIPMENT_IDS.filter((equipmentId) => state.equipment[equipmentId] > 0);
@@ -1485,13 +1578,21 @@ function validatePlan(state: GameState, plan: DayPlan): void {
   if (new Set(plan.scheduledStaffIds).size !== plan.scheduledStaffIds.length) {
     throw new GameRuleError('A team member can only be scheduled once per day.');
   }
-  if (plan.scheduledStaffIds.length > VENUE_STAFF_CAPACITY[state.venueId]) {
+  const scheduleCapacity = workforceCapacityFor(state.venueId).scheduleCapacity;
+  if (plan.scheduledStaffIds.length > scheduleCapacity) {
     throw new GameRuleError(
-      `${VENUES[state.venueId].shortName} can schedule ${VENUE_STAFF_CAPACITY[state.venueId]} staff.`,
+      `${VENUES[state.venueId].shortName} can schedule ${scheduleCapacity} staff.`,
     );
   }
   if (plan.scheduledStaffIds.some((id) => !state.staff.some((member) => member.id === id))) {
     throw new GameRuleError('Only hired staff can be scheduled.');
+  }
+  if (
+    scheduledStaff({ ...state, plan }).some(
+      (member) => !staffRoleAvailableAtVenue(member.role, state.venueId),
+    )
+  ) {
+    throw new GameRuleError('Every scheduled role must be eligible for the current venue.');
   }
 }
 

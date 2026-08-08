@@ -381,6 +381,11 @@ and hire Manager and Runner roles with visible, deterministic operational value.
 - `tests/unit/persistence.test.ts`, `tests/unit/campaign.test.ts`
 - `tests/components/game-loop.test.tsx`
 - `tests/e2e/department-workforce.spec.ts`
+- `tests/e2e/operations.spec.ts` (bounded title-only correction: the existing
+  journey hires both cart-eligible roles, not every expanded role)
+- `tests/e2e/webgl-service.spec.ts` (bounded fixture-derived import-day
+  assertion required by canonical staff time binding; all WebGL/save/reload
+  assertions remain unchanged)
 - `tests/fixtures/campaignFixtures.ts`
 - `docs/components/phase-8-component-8-4-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`

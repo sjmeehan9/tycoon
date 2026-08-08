@@ -16,11 +16,13 @@ import type {
   PurchasePackage,
   ScenarioId,
   StaffRole,
+  StaffRoleConfig,
   StaffTrait,
   VenueConfig,
   VenueId,
   VenuePromotion,
   WeatherId,
+  WorkforceCapacity,
 } from '../game/types';
 
 /** Fixed number of deterministic engine ticks in one simulated second. */
@@ -322,6 +324,92 @@ export const VENUE_IDS = [
   'departmentStore',
 ] as const satisfies readonly VenueId[];
 
+/** Exhaustive generation and presentation order for staff roles. */
+export const STAFF_ROLES = [
+  'barista',
+  'frontOfHouse',
+  'manager',
+  'runner',
+] as const satisfies readonly StaffRole[];
+
+/** Independent per-venue roster and daily scheduling authority. */
+export const VENUE_WORKFORCE_CAPACITY: Readonly<Record<VenueId, WorkforceCapacity>> = {
+  cart: { rosterCapacity: 8, scheduleCapacity: 2 },
+  kiosk: { rosterCapacity: 8, scheduleCapacity: 3 },
+  cafe: { rosterCapacity: 8, scheduleCapacity: 5 },
+  departmentStore: { rosterCapacity: 12, scheduleCapacity: 10 },
+};
+
+/** Bounded department-only work added once to each prepared order. */
+export const DEPARTMENT_WORKLOAD_DELAYS = {
+  coordinationBaseTicks: 3,
+  handoffBaseTicks: 4,
+  reliabilityDeficitPointsPerTick: 12,
+  minimumRemainingTicks: 1,
+} as const;
+
+/** Canonical eligibility, wage, value, and workload definition for every role. */
+export const STAFF_ROLE_DETAILS: Readonly<Record<StaffRole, StaffRoleConfig>> = {
+  barista: {
+    id: 'barista',
+    label: 'Barista',
+    description: 'Prepares drinks faster and contributes coffee skill.',
+    operation: 'coffeePreparation',
+    requiresVenue: 'cart',
+    wagePremiumCents: 0,
+    workloadReduction: null,
+  },
+  frontOfHouse: {
+    id: 'frontOfHouse',
+    label: 'Front of house',
+    description: 'Keeps guests patient and lifts service satisfaction.',
+    operation: 'guestFlow',
+    requiresVenue: 'cart',
+    wagePremiumCents: 0,
+    workloadReduction: null,
+  },
+  manager: {
+    id: 'manager',
+    label: 'Manager',
+    description: 'Reduces department coordination and equipment-reliability delay.',
+    operation: 'coordinationReliability',
+    requiresVenue: 'departmentStore',
+    wagePremiumCents: 800,
+    workloadReduction: {
+      attribute: 'skill',
+      baseTicks: 2,
+      pointsPerExtraTick: 20,
+      threshold: 50,
+      maximumTicks: 4,
+    },
+  },
+  runner: {
+    id: 'runner',
+    label: 'Runner',
+    description: 'Reduces department replenishment and handoff workload delay.',
+    operation: 'handoffWorkload',
+    requiresVenue: 'departmentStore',
+    wagePremiumCents: 350,
+    workloadReduction: {
+      attribute: 'speed',
+      baseTicks: 2,
+      pointsPerExtraTick: 18,
+      threshold: 52,
+      maximumTicks: 4,
+    },
+  },
+};
+
+/** Return the single workforce-capacity authority for a venue. */
+export function workforceCapacityFor(venueId: VenueId): WorkforceCapacity {
+  return VENUE_WORKFORCE_CAPACITY[venueId];
+}
+
+/** Return whether a role is unlocked at the current venue progression stage. */
+export function staffRoleAvailableAtVenue(role: StaffRole, venueId: VenueId): boolean {
+  return venueMeetsRequirement(venueId, STAFF_ROLE_DETAILS[role].requiresVenue);
+}
+
 /** Functional venue stages used by planning, service, settlement, and the scene. */
 export const VENUES: Record<VenueId, VenueConfig> = {
   cart: {
@@ -331,7 +419,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     actionName: 'cart',
     description: 'One compact bar, close conversation, and no spare elbow room.',
     menuCapacity: 3,
-    staffCapacity: 2,
+    staffCapacity: VENUE_WORKFORCE_CAPACITY.cart.scheduleCapacity,
     queueCapacity: 8,
     demandFactor: 1,
     operatingCostCents: 450,
@@ -343,7 +431,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     actionName: 'kiosk',
     description: 'A permanent counter with storage, shelter, and a faster service lane.',
     menuCapacity: 6,
-    staffCapacity: 3,
+    staffCapacity: VENUE_WORKFORCE_CAPACITY.kiosk.scheduleCapacity,
     queueCapacity: 11,
     demandFactor: 1.18,
     operatingCostCents: 700,
@@ -355,7 +443,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     actionName: 'cafe',
     description: 'A full neighbourhood cafe with room for every coffee on the board.',
     menuCapacity: 10,
-    staffCapacity: 5,
+    staffCapacity: VENUE_WORKFORCE_CAPACITY.cafe.scheduleCapacity,
     queueCapacity: 15,
     demandFactor: 1.38,
     operatingCostCents: 1_100,
@@ -368,7 +456,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     description:
       'A landmark coffee operation beneath a restored heritage dome, built for ten staff and the city crowd.',
     menuCapacity: ALL_DRINK_IDS.length,
-    staffCapacity: 10,
+    staffCapacity: VENUE_WORKFORCE_CAPACITY.departmentStore.scheduleCapacity,
     queueCapacity: 24,
     demandFactor: 1.62,
     operatingCostCents: 1_850,
@@ -376,7 +464,10 @@ export const VENUES: Record<VenueId, VenueConfig> = {
 };
 
 export const VENUE_MENU_CAPACITY = venueRecord(({ menuCapacity }) => menuCapacity);
-export const VENUE_STAFF_CAPACITY = venueRecord(({ staffCapacity }) => staffCapacity);
+/** @deprecated Use `VENUE_WORKFORCE_CAPACITY`; this is a derived schedule projection. */
+export const VENUE_STAFF_CAPACITY = venueRecord(
+  ({ id }) => VENUE_WORKFORCE_CAPACITY[id].scheduleCapacity,
+);
 export const VENUE_DEMAND_FACTOR = venueRecord(({ demandFactor }) => demandFactor);
 
 /** Three practical tiers for every required equipment family. */
@@ -550,10 +641,9 @@ export const VENUE_PROMOTIONS: Record<Exclude<VenueId, 'departmentStore'>, Venue
 
 validateEquipmentContent();
 
-export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
-  barista: 'Barista',
-  frontOfHouse: 'Front of house',
-};
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = Object.fromEntries(
+  STAFF_ROLES.map((role) => [role, STAFF_ROLE_DETAILS[role].label]),
+) as Record<StaffRole, string>;
 
 export const STAFF_TRAIT_DETAILS: Record<StaffTrait, { name: string; effect: string }> = {
   quickHands: { name: 'Quick hands', effect: 'Works 10% faster.' },

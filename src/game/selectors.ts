@@ -3,10 +3,11 @@ import {
   DRINK_MAP,
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
+  STAFF_ROLE_DETAILS,
   TICKS_PER_SECOND,
   VENUES,
 } from '../content/gameContent';
-import { purchaseCost } from './engine';
+import { operationalEffects, purchaseCost, staffRoleOperationalEffect } from './engine';
 import { ingredientQuantity } from './inventory';
 import type {
   CampaignRecord,
@@ -16,6 +17,7 @@ import type {
   MetaProgress,
   ReportChargeGroup,
   RushActivityEvent,
+  StaffMember,
   VenueId,
 } from './types';
 
@@ -54,6 +56,33 @@ export function formatMoney(cents: number): string {
 /** Return the configured player-facing venue name for records and status copy. */
 export function venueLabel(venueId: VenueId): string {
   return VENUES[venueId].shortName;
+}
+
+/** Describe the exact role value supplied by one candidate or hired team member. */
+export function staffRoleValue(member: StaffMember): string {
+  const config = STAFF_ROLE_DETAILS[member.role];
+  const effect = staffRoleOperationalEffect(member);
+  if (effect.operation === 'coordinationReliability') {
+    return `Cuts department coordination and reliability workload by ${effect.reductionTicks} ticks, subject to a one-tick minimum.`;
+  }
+  if (effect.operation === 'handoffWorkload') {
+    return `Cuts department replenishment and handoff workload by ${effect.reductionTicks} ticks without changing stock.`;
+  }
+  return config.description;
+}
+
+/** Return exact observable department-role effects for the current daily schedule. */
+export function workforceAppliedEffectLabels(state: GameState): string[] {
+  if (state.venueId !== 'departmentStore') return [];
+  const effects = operationalEffects(state);
+  const scheduledIds = new Set(state.plan.scheduledStaffIds);
+  const scheduled = state.staff.filter((member) => scheduledIds.has(member.id));
+  const managerCount = scheduled.filter((member) => member.role === 'manager').length;
+  const runnerCount = scheduled.filter((member) => member.role === 'runner').length;
+  return [
+    `${managerCount} Manager${managerCount === 1 ? '' : 's'}: ${effects.managerReductionTicks}-tick reduction; ${effects.coordinationReliabilityDelayTicks} coordination/reliability ticks remain per order.`,
+    `${runnerCount} Runner${runnerCount === 1 ? '' : 's'}: ${effects.runnerReductionTicks}-tick reduction; ${effects.handoffWorkloadDelayTicks} replenishment/handoff ticks remain per order.`,
+  ];
 }
 
 /** Return the selected morning supply cost. */

@@ -852,6 +852,21 @@ legend {
   border-left: 5px solid var(--green);
   background: #dfe9d8;
 }
+.team-summary small {
+  display: block;
+  margin-top: 0.2rem;
+  color: #4f443d;
+}
+.capacity-note,
+.workforce-effects {
+  margin: 0 0 0.65rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #8e7463;
+  background: #f5ead6;
+}
+.workforce-effects {
+  padding-left: 2rem;
+}
 .staff-grid,
 .candidate-grid,
 .equipment-grid {
@@ -875,6 +890,10 @@ legend {
   border-color: var(--green);
   background: #d8e7d2;
 }
+.staff-card:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
 .staff-card input {
   width: 22px;
   height: 22px;
@@ -894,6 +913,10 @@ legend {
   justify-content: space-between;
   flex-direction: column;
   gap: 0.65rem;
+}
+.candidate-restriction {
+  font-weight: 800;
+  color: #7b342f !important;
 }
 .empty-note {
   padding: 0.7rem;

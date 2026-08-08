@@ -148,8 +148,8 @@ export const DEMAND_INFLUENCES = {
     'positive-only',
     'factor',
     1,
-    2,
-    'Eight currently hireable people-person staff plus commercial POS remain inside the Hard clamp; the venue declares ten slots for Component 8.4.',
+    2.3,
+    'Ten scheduled people-person staff plus commercial POS produce a 1.7429 Standard baseline and a 2.2444 direct Hard deviation inside the clamp.',
     'engine.demandRate.operationalEffects(state).demandMultiplier',
   ),
   arrivalQueueWait: definition(

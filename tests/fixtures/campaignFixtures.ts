@@ -7,6 +7,7 @@ import {
   inventoryTotals,
   reservedStaffName,
   resolveEvent,
+  staffRoleAvailableAtVenue,
   startRush,
   type Customer,
   type DayReport,
@@ -34,6 +35,7 @@ export function nearVictoryEnvelope(difficulty: Difficulty = 'standard'): SaveEn
     cashCents: closingCashCents,
     reputation: 82,
     venueId: 'departmentStore',
+    candidateStaff: candidatePoolForDay(base.seed, CAMPAIGN_RULES.durationDays),
     lastSettledDay: CAMPAIGN_RULES.durationDays - 1,
     equipment: {
       grinder: 3,
@@ -59,6 +61,7 @@ export function nearBankruptcyEnvelope(): SaveEnvelope {
     cashCents: CAMPAIGN_RULES.overdraftFloorCents + 2_000,
     reputation: 31,
     lastSettledDay: 11,
+    candidateStaff: candidatePoolForDay(base.seed, 12),
     report: fixtureReport(base, 12, closingCashCents),
   };
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
@@ -74,6 +77,37 @@ export function growthReadyEnvelope(): SaveEnvelope {
     cashCents: 200_000,
     reputation: 80,
     lastSettledDay: 18,
+    candidateStaff: candidatePoolForDay(base.seed, 18),
+  };
+  return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
+}
+
+/** Day 3 department roster with ten scheduled staff and two role-diverse vacancies. */
+export function departmentWorkforceEnvelope(): SaveEnvelope {
+  const base = createCampaign({ seed: 8_404, difficulty: 'standard' });
+  const firstTwoDays = [1, 2].flatMap((day) =>
+    candidatePoolForDay(base.seed, day).map((member) => ({ ...member, hiredOnDay: day })),
+  );
+  const dayThreePool = candidatePoolForDay(base.seed, 3);
+  const dayThreeHires = dayThreePool.slice(0, 2).map((member) => ({ ...member, hiredOnDay: 3 }));
+  const staff = [...firstTwoDays, ...dayThreeHires];
+  const state: GameState = {
+    ...base,
+    day: 3,
+    cashCents: 200_000,
+    reputation: 82,
+    venueId: 'departmentStore',
+    staff,
+    candidateStaff: dayThreePool.slice(2),
+    plan: { ...base.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    equipment: {
+      grinder: 3,
+      espressoMachine: 3,
+      batchBrewer: 3,
+      refrigeration: 3,
+      pos: 3,
+      serviceCounter: 3,
+    },
   };
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
 }
@@ -84,6 +118,7 @@ export function stockLifecyclePlanningEnvelope(): SaveEnvelope {
   const state: GameState = {
     ...base,
     day: 3,
+    candidateStaff: candidatePoolForDay(base.seed, 3),
     inventory: {
       ...base.inventory,
       dairyMilk: [{ quantity: 500, acquiredDay: 1, expiresAfterDay: 3 }],
@@ -182,25 +217,37 @@ export interface LivingRushOptions {
 export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelope {
   const campaign = createCampaign({ seed: 6_303 });
   const scheduledStaffCount = options.scheduledStaffCount ?? 0;
-  const staff = [...campaign.candidateStaff, ...candidatePoolForDay(campaign.seed, 2)]
-    .slice(0, scheduledStaffCount)
-    .map((member) => ({ ...member, hiredOnDay: 1 }));
+  const venueId = options.venueId ?? campaign.venueId;
+  const staff: GameState['staff'] = [];
+  let fixtureDay = 1;
+  while (staff.length < scheduledStaffCount) {
+    const eligible = candidatePoolForDay(campaign.seed, fixtureDay).filter((member) =>
+      staffRoleAvailableAtVenue(member.role, venueId),
+    );
+    for (const member of eligible) {
+      if (staff.length >= scheduledStaffCount) break;
+      staff.push({ ...member, hiredOnDay: fixtureDay });
+    }
+    if (staff.length < scheduledStaffCount) fixtureDay += 1;
+  }
+  const dayPrefix = `d${fixtureDay}`;
   const started = startRush({
     ...campaign,
-    candidateStaff: campaign.candidateStaff.filter(
+    day: fixtureDay,
+    candidateStaff: candidatePoolForDay(campaign.seed, fixtureDay).filter(
       ({ id }) => !staff.some((member) => member.id === id),
     ),
     equipment: { ...campaign.equipment, ...options.equipment },
     plan: { ...campaign.plan, scheduledStaffIds: staff.map(({ id }) => id) },
     staff,
-    venueId: options.venueId ?? campaign.venueId,
+    venueId,
     weather: options.weather ?? campaign.weather,
   });
   if (!started.rush) throw new Error('Living-rush fixture requires an active rush.');
-  const activeCustomer = livingRushCustomer('d1-c1', 'enthusiast');
+  const activeCustomer = livingRushCustomer(`${dayPrefix}-c1`, 'enthusiast');
   const queue = Array.from({ length: options.queueCount ?? 12 }, (_, index) =>
     livingRushCustomer(
-      `d1-c${index + 2}`,
+      `${dayPrefix}-c${index + 2}`,
       (['commuter', 'student', 'enthusiast', 'regular'] as const)[index % 4] ?? 'regular',
     ),
   );
@@ -217,18 +264,18 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
     nextActivitySequence: 7,
     recentActivity: [
       {
-        id: 'd1-e0',
+        id: `${dayPrefix}-e0`,
         sequence: 0,
         tick: 20,
-        customerId: 'd1-c20',
+        customerId: `${dayPrefix}-c20`,
         segment: 'student' as const,
         type: 'arrival' as const,
       },
       {
-        id: 'd1-e1',
+        id: `${dayPrefix}-e1`,
         sequence: 1,
         tick: 21,
-        customerId: 'd1-c20',
+        customerId: `${dayPrefix}-c20`,
         segment: 'student' as const,
         type: 'serviceStarted' as const,
         drinkId: 'flatWhite' as const,
@@ -236,10 +283,10 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         milk: 'oat' as const,
       },
       {
-        id: 'd1-e2',
+        id: `${dayPrefix}-e2`,
         sequence: 2,
         tick: 40,
-        customerId: 'd1-c20',
+        customerId: `${dayPrefix}-c20`,
         segment: 'student' as const,
         type: 'sale' as const,
         drinkId: 'flatWhite' as const,
@@ -248,24 +295,24 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         priceCents: 725,
       },
       {
-        id: 'd1-e3',
+        id: `${dayPrefix}-e3`,
         sequence: 3,
         tick: 42,
-        customerId: 'd1-c21',
+        customerId: `${dayPrefix}-c21`,
         segment: 'commuter' as const,
         type: 'arrival' as const,
       },
       {
-        id: 'd1-e4',
+        id: `${dayPrefix}-e4`,
         sequence: 4,
         tick: 42,
-        customerId: 'd1-c21',
+        customerId: `${dayPrefix}-c21`,
         segment: 'commuter' as const,
         type: 'walkaway' as const,
         reason: 'stockout' as const,
       },
       {
-        id: 'd1-e5',
+        id: `${dayPrefix}-e5`,
         sequence: 5,
         tick: 45,
         customerId: activeCustomer.id,
@@ -273,7 +320,7 @@ export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelop
         type: 'arrival' as const,
       },
       {
-        id: 'd1-e6',
+        id: `${dayPrefix}-e6`,
         sequence: 6,
         tick: 46,
         customerId: activeCustomer.id,

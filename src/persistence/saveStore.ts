@@ -8,14 +8,19 @@ import {
   INGREDIENT_IDS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
   RUSH_ACTIVITY_LIMIT,
+  STAFF_ROLES,
   VENUE_IDS,
+  staffRoleAvailableAtVenue,
+  workforceCapacityFor,
 } from '../content/gameContent';
 import {
   MAX_REPORT_CHARGE_GROUPS,
   MAX_REPORT_CHARGE_PRICE_CENTS,
   MIN_REPORT_CHARGE_PRICE_CENTS,
+  candidatePoolForDay,
 } from '../game/engine';
 import { batchExpiryDay } from '../game/inventory';
+import { candidateStaffSlotFromId } from '../game/staffNames';
 import type {
   AchievementId,
   CampaignOutcome,
@@ -477,9 +482,22 @@ function validateGameState(value: unknown): asserts value is GameState {
   assertNumber(state.cashCents, 'activeRun.cashCents', -1_000_000_000, 1_000_000_000, true);
   assertNumber(state.reputation, 'activeRun.reputation', 0, 100, true);
   assertEnum(state.venueId, VENUE_IDS, 'activeRun.venueId');
+  const venueId = state.venueId;
   assertEnum(state.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], 'activeRun.weather');
   validateInventory(state.inventory, 'activeRun.inventory', state.day);
-  validatePlan(state.plan);
+  const workforceCapacity = workforceCapacityFor(venueId);
+  const staff = validateStaffArray(
+    state.staff,
+    'activeRun.staff',
+    workforceCapacity.rosterCapacity,
+  );
+  const candidateStaff = validateStaffArray(state.candidateStaff, 'activeRun.candidateStaff', 4);
+  validateStaffIdentities(staff, candidateStaff, state.seed, state.day);
+  assert(
+    staff.every((member) => staffRoleAvailableAtVenue(member.role, venueId)),
+    'Every hired role must be eligible for the active venue.',
+  );
+  validatePlan(state.plan, venueId, staff);
   if (state.rush !== null) validateRush(state.rush, state.day);
   if (state.report !== null) {
     validateReport(state.report, 'activeRun.report');
@@ -488,10 +506,23 @@ function validateGameState(value: unknown): asserts value is GameState {
       'activeRun.report difficulty must match its campaign.',
     );
   }
+  const scheduledIds = new Set(state.plan.scheduledStaffIds);
+  const expectedPayrollCents = staff
+    .filter((member) => scheduledIds.has(member.id))
+    .reduce((total, member) => total + member.wageCents, 0);
+  if (state.rush !== null) {
+    assert(
+      state.rush.wageCostCents === expectedPayrollCents,
+      'activeRun.rush.wageCostCents must equal the exact scheduled payroll.',
+    );
+  }
+  if (state.report !== null) {
+    assert(
+      state.report.wageCostCents === expectedPayrollCents,
+      'activeRun.report.wageCostCents must equal the exact scheduled payroll.',
+    );
+  }
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
-  const staff = validateStaffArray(state.staff, 'activeRun.staff', 8);
-  const candidateStaff = validateStaffArray(state.candidateStaff, 'activeRun.candidateStaff', 4);
-  validateStaffIdentities(staff, candidateStaff);
   validateEquipment(state.equipment);
   const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
   improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
@@ -507,7 +538,11 @@ function validateGameState(value: unknown): asserts value is GameState {
   if (state.outcome !== null) validateOutcome(state.outcome);
 }
 
-function validatePlan(value: unknown): asserts value is DayPlan {
+function validatePlan(
+  value: unknown,
+  venueId: GameState['venueId'],
+  staff: StaffMember[],
+): asserts value is DayPlan {
   const plan = expectRecord(value, 'activeRun.plan');
   assertEnumArray(plan.activeMenu, ALL_DRINK_IDS, 10, 'activeRun.plan.activeMenu', 1);
   const prices = expectRecord(plan.pricesCents, 'activeRun.plan.pricesCents');
@@ -520,9 +555,27 @@ function validatePlan(value: unknown): asserts value is DayPlan {
     ['houseBeans', 'singleOriginBeans', 'darkRoastBeans'],
     'activeRun.plan.beanId',
   );
-  const scheduled = expectArray(plan.scheduledStaffIds, 'activeRun.plan.scheduledStaffIds', 10);
-  scheduled.forEach((id, index) => assertSafeId(id, `scheduledStaffIds[${index}]`));
+  const scheduleCapacity = workforceCapacityFor(venueId).scheduleCapacity;
+  const scheduledValues = expectArray(
+    plan.scheduledStaffIds,
+    'activeRun.plan.scheduledStaffIds',
+    scheduleCapacity,
+  );
+  scheduledValues.forEach((id, index) => assertSafeId(id, `scheduledStaffIds[${index}]`));
+  const scheduled = scheduledValues as string[];
   assert(new Set(scheduled).size === scheduled.length, 'Scheduled staff IDs must be unique.');
+  const staffById = new Map(staff.map((member) => [member.id, member]));
+  assert(
+    scheduled.every((id) => staffById.has(id)),
+    'Every scheduled staff ID must identify a hired team member.',
+  );
+  assert(
+    scheduled.every((id) => {
+      const member = staffById.get(id);
+      return member !== undefined && staffRoleAvailableAtVenue(member.role, venueId);
+    }),
+    'Every scheduled role must be eligible for the active venue.',
+  );
 }
 
 function validateRush(value: unknown, day: number): asserts value is RushState {
@@ -863,7 +916,7 @@ function validateStaff(value: unknown, path: string): asserts value is StaffMemb
   const member = expectRecord(value, path);
   assertSafeId(member.id, `${path}.id`);
   assertString(member.name, `${path}.name`, 80);
-  assertEnum(member.role, ['barista', 'frontOfHouse'], `${path}.role`);
+  assertEnum(member.role, STAFF_ROLES, `${path}.role`);
   assertNumber(member.speed, `${path}.speed`, 0, 100, true);
   assertNumber(member.skill, `${path}.skill`, 0, 100, true);
   assertNumber(member.wageCents, `${path}.wageCents`, 0, 100_000, true);
@@ -882,7 +935,12 @@ function validateStaffArray(value: unknown, path: string, maximum: number): Staf
   });
 }
 
-function validateStaffIdentities(staff: StaffMember[], candidateStaff: StaffMember[]): void {
+function validateStaffIdentities(
+  staff: StaffMember[],
+  candidateStaff: StaffMember[],
+  seed: number,
+  currentDay: number,
+): void {
   const people = [...staff, ...candidateStaff];
   assert(
     new Set(people.map((member) => member.id)).size === people.length,
@@ -892,6 +950,51 @@ function validateStaffIdentities(staff: StaffMember[], candidateStaff: StaffMemb
     new Set(people.map((member) => member.name)).size === people.length,
     'Staff and candidate names must be unique after normalization.',
   );
+  staff.forEach((member, index) => {
+    assertNumber(member.hiredOnDay, `activeRun.staff[${index}].hiredOnDay`, 1, currentDay, true);
+    const slot = validateDeterministicStaffIdentity(member, seed, `activeRun.staff[${index}]`);
+    assert(
+      slot.day === member.hiredOnDay,
+      `activeRun.staff[${index}].hiredOnDay must match its candidate-pool day.`,
+    );
+  });
+  candidateStaff.forEach((member, index) => {
+    assert(member.hiredOnDay === 0, `activeRun.candidateStaff[${index}].hiredOnDay must be zero.`);
+    const slot = validateDeterministicStaffIdentity(
+      member,
+      seed,
+      `activeRun.candidateStaff[${index}]`,
+    );
+    assert(
+      slot.day === currentDay,
+      `activeRun.candidateStaff[${index}] must belong to the active day.`,
+    );
+  });
+  const currentDayPeople = [
+    ...candidateStaff,
+    ...staff.filter((member) => member.hiredOnDay === currentDay),
+  ];
+  const expectedCurrentDayIds = candidatePoolForDay(seed, currentDay).map(({ id }) => id);
+  assert(
+    currentDayPeople.length === expectedCurrentDayIds.length &&
+      expectedCurrentDayIds.every((id) => currentDayPeople.some((member) => member.id === id)),
+    'Current-day hires and candidates must account for the complete deterministic candidate pool.',
+  );
+}
+
+function validateDeterministicStaffIdentity(
+  member: StaffMember,
+  seed: number,
+  path: string,
+): { day: number; index: number } {
+  const slot = candidateStaffSlotFromId(member.id, seed);
+  assert(slot !== null, `${path}.id must be a canonical candidate identity for this campaign.`);
+  const expected = candidatePoolForDay(seed, slot.day)[slot.index];
+  assert(expected !== undefined, `${path}.id must resolve to a configured candidate slot.`);
+  for (const key of ['id', 'name', 'role', 'speed', 'skill', 'wageCents', 'trait'] as const) {
+    assert(member[key] === expected[key], `${path}.${key} must match its candidate identity.`);
+  }
+  return slot;
 }
 
 function validateEquipment(value: unknown): void {

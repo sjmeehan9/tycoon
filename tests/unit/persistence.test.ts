@@ -6,10 +6,13 @@ import {
 } from '../../src/content/gameContent';
 import {
   advanceTick,
+  candidatePoolForDay,
   createCampaign,
   prepareDay,
   resolveEvent,
+  setRushSpeed,
   startRush,
+  type GameState,
   type SaveEnvelope,
 } from '../../src/game';
 import {
@@ -111,6 +114,118 @@ describe('schema-v4 save envelope', () => {
       },
     });
     expect(parsed?.activeRun?.plan.scheduledStaffIds).toEqual([candidate.id]);
+  });
+
+  it('round-trips a ten-person department roster, all roles, schedule, and exact payroll', () => {
+    const state = departmentWorkforceState(4_205, 10);
+    const expectedPayroll = state.staff.reduce((total, member) => total + member.wageCents, 0);
+    const started = startRush(state);
+    const parsed = importEnvelope(serializeEnvelope(createSaveEnvelope(started)));
+
+    expect(parsed.activeRun?.staff).toEqual(state.staff);
+    expect(parsed.activeRun?.plan.scheduledStaffIds).toEqual(state.staff.map(({ id }) => id));
+    expect(parsed.activeRun?.rush?.wageCostCents).toBe(expectedPayroll);
+    expect(new Set(parsed.activeRun?.staff.map(({ role }) => role))).toEqual(
+      new Set(['barista', 'frontOfHouse', 'manager', 'runner']),
+    );
+  });
+
+  it('reconciles zero, one, duplicate-role, and ten-person reports across import', () => {
+    const scenarios: Array<[string, GameState]> = [
+      ['zero', departmentWorkforceState(4_214, 0)],
+      ['one', departmentWorkforceState(4_215, 1)],
+      ['duplicate-role', duplicateManagerState(4_216)],
+      ['ten', departmentWorkforceState(4_217, 10)],
+    ];
+    for (const [label, planned] of scenarios) {
+      const expectedPayroll = planned.staff
+        .filter(({ id }) => planned.plan.scheduledStaffIds.includes(id))
+        .reduce((total, member) => total + member.wageCents, 0);
+      const reported = runToReportState(startRush(planned));
+      const imported = importEnvelope(serializeEnvelope(createSaveEnvelope(reported))).activeRun;
+      expect(imported?.rush?.wageCostCents, `${label} rush payroll`).toBe(expectedPayroll);
+      expect(imported?.report?.wageCostCents, `${label} report payroll`).toBe(expectedPayroll);
+    }
+  });
+
+  it('rejects impossible roster, schedule, role, ID, candidate-day, and candidate-value imports', () => {
+    const oversizedRoster = createSaveEnvelope(departmentWorkforceState(4_206, 13));
+    expect(() => importEnvelope(JSON.stringify(oversizedRoster))).toThrow(
+      'activeRun.staff exceeds its 12-item limit',
+    );
+
+    const oversizedSchedule = createSaveEnvelope(departmentWorkforceState(4_207, 12));
+    if (!oversizedSchedule.activeRun) throw new Error('Expected department run.');
+    oversizedSchedule.activeRun.plan.scheduledStaffIds = oversizedSchedule.activeRun.staff
+      .slice(0, 11)
+      .map(({ id }) => id);
+    expect(() => importEnvelope(JSON.stringify(oversizedSchedule))).toThrow(
+      'scheduledStaffIds exceeds its 10-item limit',
+    );
+
+    const ineligibleRole = createSaveEnvelope(createCampaign({ seed: 4_208 }));
+    if (!ineligibleRole.activeRun) throw new Error('Expected cart run.');
+    const manager = ineligibleRole.activeRun.candidateStaff[2];
+    if (!manager) throw new Error('Expected Manager candidate.');
+    ineligibleRole.activeRun.staff = [{ ...manager, hiredOnDay: 1 }];
+    ineligibleRole.activeRun.candidateStaff = ineligibleRole.activeRun.candidateStaff.filter(
+      ({ id }) => id !== manager.id,
+    );
+    expect(() => importEnvelope(JSON.stringify(ineligibleRole))).toThrow(
+      'Every hired role must be eligible',
+    );
+
+    const unknownSchedule = createSaveEnvelope(departmentWorkforceState(4_209, 10));
+    if (!unknownSchedule.activeRun) throw new Error('Expected department run.');
+    unknownSchedule.activeRun.plan.scheduledStaffIds[0] = 'staff-forged-schedule';
+    expect(() => importEnvelope(JSON.stringify(unknownSchedule))).toThrow(
+      'Every scheduled staff ID must identify a hired team member',
+    );
+
+    const wrongDay = createSaveEnvelope(createCampaign({ seed: 4_210 }));
+    if (!wrongDay.activeRun) throw new Error('Expected active run.');
+    wrongDay.activeRun.candidateStaff = candidatePoolForDay(wrongDay.activeRun.seed, 2);
+    expect(() => importEnvelope(JSON.stringify(wrongDay))).toThrow('must belong to the active day');
+
+    const wrongIdentity = createSaveEnvelope(createCampaign({ seed: 4_211 }));
+    if (!wrongIdentity.activeRun) throw new Error('Expected active run.');
+    wrongIdentity.activeRun.candidateStaff[0]!.name = 'Forged Candidate';
+    expect(() => importEnvelope(JSON.stringify(wrongIdentity))).toThrow(
+      'name must match its candidate identity',
+    );
+
+    const wrongHireDay = createSaveEnvelope(departmentWorkforceState(4_212, 1));
+    if (!wrongHireDay.activeRun) throw new Error('Expected active run.');
+    wrongHireDay.activeRun.day = 2;
+    wrongHireDay.activeRun.candidateStaff = candidatePoolForDay(wrongHireDay.activeRun.seed, 2);
+    wrongHireDay.activeRun.staff[0]!.hiredOnDay = 2;
+    expect(() => importEnvelope(JSON.stringify(wrongHireDay))).toThrow(
+      'hiredOnDay must match its candidate-pool day',
+    );
+  });
+
+  it('rejects forged rush and report payroll while preserving exact reload outcomes', () => {
+    const planned = departmentWorkforceState(4_213, 10);
+    const started = setRushSpeed(startRush(planned), 4);
+    const midRush = advanceTick(started, 40);
+    const restored = importEnvelope(serializeEnvelope(createSaveEnvelope(midRush))).activeRun;
+    if (!restored) throw new Error('Expected restored department rush.');
+    expect(runToReportState(restored)).toEqual(runToReportState(midRush));
+
+    const forgedRush = createSaveEnvelope(midRush);
+    if (!forgedRush.activeRun?.rush) throw new Error('Expected active rush.');
+    forgedRush.activeRun.rush.wageCostCents += 1;
+    expect(() => importEnvelope(JSON.stringify(forgedRush))).toThrow(
+      'rush.wageCostCents must equal the exact scheduled payroll',
+    );
+
+    const reportState = runToReportState(startRush(planned));
+    const forgedReport = createSaveEnvelope(reportState);
+    if (!forgedReport.activeRun?.report) throw new Error('Expected report.');
+    forgedReport.activeRun.report.wageCostCents += 1;
+    expect(() => importEnvelope(JSON.stringify(forgedReport))).toThrow(
+      'report.wageCostCents must equal the exact scheduled payroll',
+    );
   });
 
   it('rejects unknown venues and equipment beyond the commercial third tier', () => {
@@ -352,6 +467,70 @@ function completeReport(seed: number, difficulty: 'standard' | 'hard'): SaveEnve
   }
   if (state.phase !== 'report') throw new Error('Expected report state.');
   return createSaveEnvelope(state);
+}
+
+function departmentWorkforceState(seed: number, staffCount: number): GameState {
+  const base = createCampaign({ seed });
+  const staff: GameState['staff'] = [];
+  let day = 1;
+  while (staff.length < staffCount) {
+    for (const candidate of candidatePoolForDay(seed, day)) {
+      if (staff.length >= staffCount) break;
+      staff.push({ ...candidate, hiredOnDay: day });
+    }
+    if (staff.length < staffCount) day += 1;
+  }
+  const currentPool = candidatePoolForDay(seed, day);
+  const hiredIds = new Set(staff.map(({ id }) => id));
+  return prepareDay(
+    {
+      ...base,
+      day,
+      venueId: 'departmentStore',
+      staff,
+      candidateStaff: currentPool.filter(({ id }) => !hiredIds.has(id)),
+    },
+    { scheduledStaffIds: staff.slice(0, 10).map(({ id }) => id) },
+  );
+}
+
+function duplicateManagerState(seed: number): GameState {
+  const base = createCampaign({ seed });
+  const dayOneManager = candidatePoolForDay(seed, 1)[2];
+  const dayTwoPool = candidatePoolForDay(seed, 2);
+  const dayTwoManager = dayTwoPool[2];
+  if (!dayOneManager || !dayTwoManager) throw new Error('Expected deterministic Managers.');
+  const staff = [
+    { ...dayOneManager, hiredOnDay: 1 },
+    { ...dayTwoManager, hiredOnDay: 2 },
+  ];
+  return prepareDay(
+    {
+      ...base,
+      day: 2,
+      venueId: 'departmentStore',
+      staff,
+      candidateStaff: dayTwoPool.filter(({ id }) => id !== dayTwoManager.id),
+    },
+    { scheduledStaffIds: staff.map(({ id }) => id) },
+  );
+}
+
+function runToReportState(initial: GameState): GameState {
+  let state = initial;
+  let safety = 0;
+  while (state.phase !== 'report' && safety < 1_000) {
+    if (state.phase === 'event') {
+      const choiceId = state.rush?.pendingEvent?.choices[0]?.id;
+      if (!choiceId) throw new Error('Expected event choice.');
+      state = resolveEvent(state, choiceId);
+    } else {
+      state = advanceTick(state);
+    }
+    safety += 1;
+  }
+  if (state.phase !== 'report') throw new Error('Expected report state.');
+  return state;
 }
 
 class InterruptingStorage implements Storage {

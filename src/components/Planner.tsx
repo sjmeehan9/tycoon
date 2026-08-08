@@ -9,6 +9,7 @@ import {
   VENUES,
   VENUE_MENU_CAPACITY,
   WEATHER_DETAILS,
+  workforceCapacityFor,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import {
@@ -279,9 +280,17 @@ export function Planner(): React.JSX.Element {
           <li>Reputation {game.reputation}/100 currently supports passing demand.</li>
           <li>{BEAN_DETAILS[game.plan.beanId].description}</li>
           <li>
-            {VENUES[game.venueId].shortName} supports {VENUES[game.venueId].staffCapacity} scheduled
-            staff and {VENUES[game.venueId].menuCapacity} menu items.
+            {VENUES[game.venueId].shortName} supports{' '}
+            {workforceCapacityFor(game.venueId).scheduleCapacity} scheduled staff from a{' '}
+            {workforceCapacityFor(game.venueId).rosterCapacity}-person roster and{' '}
+            {VENUES[game.venueId].menuCapacity} menu items.
           </li>
+          {game.venueId === 'departmentStore' ? (
+            <li>
+              Managers reduce coordination and reliability delay; Runners reduce replenishment and
+              handoff delay without creating stock.
+            </li>
+          ) : null}
           <li>Visible queues and unavailable recipes turn customers away.</li>
         </ul>
       </aside>

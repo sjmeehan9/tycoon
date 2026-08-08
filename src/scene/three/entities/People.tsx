@@ -30,6 +30,8 @@ const SEGMENT_COLOURS: Readonly<Record<CustomerSegment, string>> = Object.freeze
 const STAFF_COLOURS: Readonly<Record<StaffRole, string>> = Object.freeze({
   barista: '#d58a42',
   frontOfHouse: '#d6b74f',
+  manager: '#546c99',
+  runner: '#4f8a73',
 });
 
 /** Instanced customers and staff whose animation changes transforms only. */
