@@ -66,6 +66,7 @@ import type {
   MilkChoice,
   Order,
   PlanPatch,
+  ReportChargeGroup,
   RushSpeed,
   RushActivityEvent,
   RushState,
@@ -81,6 +82,21 @@ import type {
 const MAX_HIRED_STAFF = 8;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
 const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
+
+/** Maximum distinct drink/size/milk variants a single configured rush can charge. */
+export const MAX_REPORT_CHARGE_GROUPS = [...DRINK_MAP.values()].reduce(
+  (total, drink) => total + drink.variants.length * drink.allowedMilks.length,
+  0,
+);
+
+/** Highest canonical order charge reachable from bounded plan and modifier values. */
+export const MAX_REPORT_CHARGE_PRICE_CENTS =
+  DAY_PLAN_LIMITS.priceCents.maximum +
+  SIZE_SURCHARGE_CENTS +
+  Math.max(...Object.values(MILK_SURCHARGE_CENTS));
+
+/** Lowest canonical order charge reachable from the bounded morning plan. */
+export const MIN_REPORT_CHARGE_PRICE_CENTS = DAY_PLAN_LIMITS.priceCents.minimum;
 
 const LANEWAY_EVENT: SimulationEvent = {
   id: 'office-coffee-run',
@@ -256,6 +272,7 @@ export function startRush(state: GameState): GameState {
     purchasedInventory,
     nextActivitySequence: 0,
     recentActivity: [],
+    chargeGroups: [],
     stats: emptyRushStats(),
   };
   return {
@@ -765,7 +782,16 @@ function progressService(state: GameState): GameState {
   };
   return {
     ...state,
-    rush: appendSaleActivity({ ...rush, activeService: null, stats }, state.day, customer),
+    rush: appendSaleActivity(
+      {
+        ...rush,
+        activeService: null,
+        chargeGroups: recordCanonicalCharge(rush, customer.order),
+        stats,
+      },
+      state.day,
+      customer,
+    ),
   };
 }
 
@@ -936,6 +962,44 @@ function appendSaleActivity(rush: RushState, day: number, customer: Customer): R
     milk: customer.order.milk,
     priceCents: customer.order.priceCents,
   });
+}
+
+function recordCanonicalCharge(rush: RushState, order: Order): ReportChargeGroup[] | undefined {
+  const existingGroups = rush.chargeGroups;
+  if (existingGroups === undefined && rush.stats.served > 0) return undefined;
+  const groups = existingGroups ?? [];
+  const groupIndex = groups.findIndex(
+    (group) =>
+      group.drinkId === order.drinkId &&
+      group.size === order.size &&
+      group.milk === order.milk &&
+      group.priceCents === order.priceCents,
+  );
+  if (groupIndex >= 0) {
+    return groups.map((group, index) =>
+      index === groupIndex
+        ? {
+            ...group,
+            quantity: group.quantity + 1,
+            revenueCents: group.revenueCents + order.priceCents,
+          }
+        : group,
+    );
+  }
+  if (groups.length >= MAX_REPORT_CHARGE_GROUPS) {
+    throw new GameRuleError('Canonical sale charge variants exceeded their configured bound.');
+  }
+  return [
+    ...groups,
+    {
+      drinkId: order.drinkId,
+      size: order.size,
+      milk: order.milk,
+      priceCents: order.priceCents,
+      quantity: 1,
+      revenueCents: order.priceCents,
+    },
+  ];
 }
 
 function appendWalkawayActivity(
@@ -1144,6 +1208,7 @@ function finishRush(state: GameState): GameState {
       `Expiry waste after the Day ${state.day} rush: ${expiredNames.join(', ')}; older stock stayed usable through this rush before expiring.`,
     );
   }
+  const chargeGroups = finalizedChargeGroups(rush);
   const report: DayReport = {
     day: state.day,
     weather: state.weather,
@@ -1180,9 +1245,25 @@ function finishRush(state: GameState): GameState {
     servedBySegment: rush.stats.servedBySegment,
     bottleneck: determineBottleneck(state, rush),
     explanations,
+    ...(chargeGroups === undefined ? {} : { chargeGroups }),
     settled: false,
   };
   return { ...state, phase: 'report', inventory, rush: observedRush, report };
+}
+
+function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined {
+  if (rush.chargeGroups === undefined) return undefined;
+  const totals = rush.chargeGroups.reduce(
+    (result, group) => ({
+      quantity: result.quantity + group.quantity,
+      revenueCents: result.revenueCents + group.revenueCents,
+    }),
+    { quantity: 0, revenueCents: 0 },
+  );
+  if (totals.quantity !== rush.stats.served || totals.revenueCents !== rush.stats.revenueCents) {
+    throw new GameRuleError('Canonical sale charges do not reconcile with rush revenue.');
+  }
+  return rush.chargeGroups.map((group) => ({ ...group }));
 }
 
 function nonZeroIngredientTotals(

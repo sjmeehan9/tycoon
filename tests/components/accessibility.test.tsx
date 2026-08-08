@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
 import { BrowserSaveStore, SAVE_KEY, parseEnvelope } from '../../src/persistence/saveStore';
-import { livingRushEnvelope } from '../fixtures/campaignFixtures';
+import { livingRushEnvelope, reportHistoryEnvelope } from '../fixtures/campaignFixtures';
 
 describe('onboarding and accessible interaction', () => {
   it('follows real first-day phases and supports skip/replay', async () => {
@@ -48,8 +48,34 @@ describe('onboarding and accessible interaction', () => {
     const settings = screen.getByRole('tab', { name: 'Settings' });
     settings.focus();
     await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveFocus();
     expect(screen.getByRole('tab', { name: 'Records' })).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Escape}');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('keeps read-only report selection and modal focus keyboard reachable', async () => {
+    new BrowserSaveStore(window.localStorage).save(reportHistoryEnvelope());
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const trigger = screen.getByRole('button', { name: 'Game menu' });
+    trigger.focus();
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('tab', { name: 'Reports' }));
+    const olderReport = screen.getByRole('button', { name: /Day 1/ });
+    olderReport.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('heading', { name: 'Day 1 trading report' })).toBeVisible();
+    const disclosure = screen.getByText('View full Day 1 report');
+    disclosure.focus();
+    expect(disclosure).toHaveFocus();
+    await user.click(disclosure);
+    expect(screen.getByText('Charge breakdown unavailable for this older report.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Settle & reinvest' })).toBeNull();
     await user.keyboard('{Escape}');
     expect(trigger).toHaveFocus();
   });
@@ -66,7 +92,11 @@ describe('onboarding and accessible interaction', () => {
     expect(screen.getByRole('tabpanel', { name: 'Supplies' })).toBeInTheDocument();
     expect(screen.getByText('Day 1 planning at the Coffee Cart.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open the cart' }));
-    expect(screen.getByText('Service rush active at the Coffee Cart.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Service rush active at the Coffee Cart. Scene, dashboard and controls, live activity, then stock.',
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Making |Calling the next order|rare quiet second/),
     ).not.toHaveAttribute('aria-live');
@@ -88,7 +118,10 @@ describe('onboarding and accessible interaction', () => {
     expect(screen.getByRole('list', { name: 'Recent rush activity' })).toHaveTextContent(
       'started large oat Flat White service',
     );
-    expect(scene).toHaveAttribute('data-animation', 'still');
+    expect(scene.closest('figure')).toHaveAttribute('data-animation', 'still');
+    expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
+    expect(screen.getByRole('button', { name: 'Resume' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: 'Service speed' })).toBeVisible();
   });
 });
 

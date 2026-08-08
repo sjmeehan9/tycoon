@@ -10,7 +10,7 @@ test.describe('campaign outcomes through production import', () => {
     await page.goto('./');
     await importSave(page, serializeEnvelope(nearVictoryEnvelope()), 'near-victory.json');
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
-    await page.getByRole('button', { name: 'Settle the day' }).click();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).click();
     await expect(page.getByRole('heading', { name: /local institution/ })).toBeVisible();
     await expect(page.getByText(/Unlocked: endless mode/)).toBeVisible();
     await page.getByRole('button', { name: 'Continue in endless mode' }).click();
@@ -27,7 +27,7 @@ test.describe('campaign outcomes through production import', () => {
   test('settles below the floor into bankruptcy with no endless action', async ({ page }) => {
     await page.goto('./');
     await importSave(page, serializeEnvelope(nearBankruptcyEnvelope()), 'near-bankruptcy.json');
-    await page.getByRole('button', { name: 'Settle the day' }).click();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).click();
     await expect(page.getByRole('heading', { name: /till can’t stretch/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Start fresh campaign' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continue in endless mode' })).toHaveCount(0);

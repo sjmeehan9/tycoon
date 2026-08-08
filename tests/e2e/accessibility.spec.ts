@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+import { SERVICE_DASHBOARD_FIELDS } from '../../src/components/RushPanel';
+
 test.describe('accessible primary flow', () => {
   test('completes a reduced-motion day with keyboard focus and semantic dialogs', async ({
     page,
@@ -21,6 +23,8 @@ test.describe('accessible primary flow', () => {
     const settings = page.getByRole('tab', { name: 'Settings' });
     await settings.focus();
     await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Reports' })).toBeFocused();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('tab', { name: 'Records' })).toBeFocused();
     await page.keyboard.press('Home');
     await expect(settings).toBeFocused();
@@ -38,13 +42,14 @@ test.describe('accessible primary flow', () => {
       'data-animation',
       'still',
     );
+    await expectCompleteServiceDashboard(page);
     await activateWithKeyboard(page, page.getByRole('button', { name: '4×' }));
     await finishRushWithKeyboard(page);
 
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await expect(page.getByText(/Day 1 report\. Served/)).toBeAttached();
     await expectNoSeriousViolations(page);
-    await activateWithKeyboard(page, page.getByRole('button', { name: 'Settle the day' }));
+    await activateWithKeyboard(page, page.getByRole('button', { name: 'Settle & reinvest' }));
     await expect(page.getByText('First-day guide · step 4/4')).toBeVisible();
   });
 
@@ -74,11 +79,13 @@ test.describe('accessible primary flow', () => {
     );
 
     await page.getByRole('button', { name: 'Open the cart' }).tap();
+    await expectCompleteServiceDashboard(page);
+    await assertVisibleTouchTargets(page.locator('[data-service-section="dashboard"]'));
     await page.getByRole('button', { name: '4×' }).tap();
     await finishRushByTouch(page);
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await expect(page.getByText(/Day 1 report\. Served/)).toBeAttached();
-    await page.getByRole('button', { name: 'Settle the day' }).tap();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).tap();
     await expect(page.getByRole('heading', { name: 'Equipment workshop' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => window.innerWidth),
@@ -114,8 +121,8 @@ async function finishRushByTouch(page: Page): Promise<void> {
   }
 }
 
-async function assertVisibleTouchTargets(page: Page): Promise<void> {
-  const undersized = await page
+async function assertVisibleTouchTargets(root: Page | Locator): Promise<void> {
+  const undersized = await root
     .locator('button:visible, select:visible, input[type="number"]:visible')
     .evaluateAll((elements) =>
       elements
@@ -130,6 +137,12 @@ async function assertVisibleTouchTargets(page: Page): Promise<void> {
         .filter(({ height, width }) => height < 44 || width < 44),
     );
   expect(undersized).toEqual([]);
+}
+
+async function expectCompleteServiceDashboard(page: Page): Promise<void> {
+  for (const field of SERVICE_DASHBOARD_FIELDS) {
+    await expect(page.locator(`[data-dashboard-field="${field}"]`)).toBeVisible();
+  }
 }
 
 async function expectNoSeriousViolations(page: Page): Promise<void> {

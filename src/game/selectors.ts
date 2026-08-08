@@ -7,7 +7,12 @@ import {
 } from '../content/gameContent';
 import { purchaseCost } from './engine';
 import { ingredientQuantity } from './inventory';
-import type { CompletedSaleActivity, GameState, RushActivityEvent } from './types';
+import type {
+  CompletedSaleActivity,
+  GameState,
+  ReportChargeGroup,
+  RushActivityEvent,
+} from './types';
 
 /** Format integer cents as Australian dollars. */
 export function formatMoney(cents: number): string {
@@ -38,7 +43,9 @@ export function canOpen(state: GameState): boolean {
 }
 
 /** Format the configured drink, size, and milk represented by an actual sale. */
-export function completedSaleLabel(sale: CompletedSaleActivity): string {
+export function completedSaleLabel(
+  sale: Pick<CompletedSaleActivity | ReportChargeGroup, 'drinkId' | 'size' | 'milk'>,
+): string {
   const drink = DRINK_MAP.get(sale.drinkId);
   const size = sale.size === 'large' ? 'Large' : 'Regular';
   const milk = sale.milk === 'none' ? '' : ` ${sale.milk}`;

@@ -1,11 +1,18 @@
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  advanceTick,
   createCampaign,
   describeRushActivity,
+  setRushSpeed,
   startRush,
   type Customer,
   type RushActivityEvent,
+  type VenueId,
 } from '../../src/game';
 import {
   LOGICAL_SCENE_SIZE,
@@ -23,6 +30,24 @@ import {
   syncScenePlayback,
   walkawayVisualLabel,
 } from '../../src/scene/scenePlayback';
+import {
+  ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+  orthographicProjection,
+} from '../../src/scene/three/camera';
+import { MAX_DEVICE_PIXEL_RATIO, boundedDevicePixelRatio } from '../../src/scene/three/materials';
+import {
+  MAX_RENDER_ACTIVITY_EVENTS,
+  MAX_RENDER_QUEUE_CUSTOMERS,
+  createRenderSnapshot,
+} from '../../src/scene/three/renderSnapshot';
+import {
+  MAX_WORLD_LIGHTS,
+  MAX_WORLD_SHADOW_LIGHTS,
+  MAX_WORLD_VISIBLE_CUSTOMERS,
+  MAX_WORLD_VISIBLE_STAFF,
+  VENUE_LAYOUTS,
+  venueLayoutFor,
+} from '../../src/scene/three/venues/venueLayout';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 describe('snapshot-driven pixel scene', () => {
@@ -296,6 +321,236 @@ describe('snapshot-driven pixel scene', () => {
     expect(settled.queueMotions.every((motion) => motion.fromIndex === motion.toIndex)).toBe(true);
   });
 });
+
+describe('snapshot-only WebGL contract', () => {
+  it('pins the audited MIT renderer stack and its React 19 peer contract exactly', () => {
+    const application = packageManifest('package.json');
+    const fiber = packageManifest('node_modules/@react-three/fiber/package.json');
+    const three = packageManifest('node_modules/three/package.json');
+    const threeTypes = packageManifest('node_modules/@types/three/package.json');
+
+    expect(application.dependencies).toMatchObject({
+      '@react-three/fiber': '9.7.0',
+      react: '19.2.7',
+      'react-dom': '19.2.7',
+      three: '0.185.1',
+    });
+    expect(application.devDependencies).toMatchObject({ '@types/three': '0.185.4' });
+    expect(fiber).toMatchObject({
+      license: 'MIT',
+      peerDependencies: {
+        react: '>=19 <19.3',
+        'react-dom': '>=19 <19.3',
+        three: '>=0.156',
+      },
+      version: '9.7.0',
+    });
+    expect(three).toMatchObject({ license: 'MIT', version: '0.185.1' });
+    expect(threeTypes).toMatchObject({ license: 'MIT', version: '0.185.4' });
+    expect(readFileSync('node_modules/three/LICENSE', 'utf8')).toContain('MIT License');
+    expect(readFileSync('node_modules/@types/three/LICENSE', 'utf8')).toContain('MIT License');
+
+    const lockfile = readFileSync('pnpm-lock.yaml', 'utf8');
+    expect(lockfile).toContain("'@react-three/fiber@9.7.0'");
+    expect(lockfile).toContain("'@types/three@0.185.4'");
+    expect(lockfile).toContain('three@0.185.1');
+  });
+
+  it('keeps the complete 3D renderer graph free of gameplay and persistence authorities', () => {
+    const sourceFiles = walkFiles('src/scene/three').filter((path) => /\.tsx?$/.test(path));
+    const source = sourceFiles.map((path) => readFileSync(path, 'utf8')).join('\n');
+    const serviceWorld = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+
+    expect(sourceFiles.length).toBeGreaterThanOrEqual(9);
+    expect(serviceWorld).toContain('const { game, meta, preferences } = useGame();');
+    expect(source).not.toMatch(
+      /\b(?:advanceTick|createCampaign|startRush|resolveEvent|closeDay|continueEndless|adjustPlanPrice|adjustPlanPurchase|dispatch)\b/,
+    );
+    expect(source).not.toMatch(
+      /(?:localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\s*\(|Math\.random|Date\.now)/,
+    );
+    expect(source).not.toMatch(/from ['"][^'"]*(?:persistence|components)[^'"]*['"]/);
+  });
+
+  it('provides immutable bounded and venue-distinct layouts for every service VenueId', () => {
+    const venueIds: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
+    expect(Object.keys(VENUE_LAYOUTS)).toEqual(venueIds);
+    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(3);
+    for (const venueId of venueIds) {
+      const layout = venueLayoutFor(venueId);
+      expect(layout.venueId).toBe(venueId);
+      expect(layout.queueAnchors).toHaveLength(MAX_WORLD_VISIBLE_CUSTOMERS);
+      expect(layout.staffAnchors).toHaveLength(MAX_WORLD_VISIBLE_STAFF);
+      expect(layout.performance).toMatchObject({
+        maxVisibleCustomers: MAX_WORLD_VISIBLE_CUSTOMERS,
+        maxVisibleStaff: MAX_WORLD_VISIBLE_STAFF,
+        lightCount: MAX_WORLD_LIGHTS,
+        shadowLightCount: MAX_WORLD_SHADOW_LIGHTS,
+      });
+      expect(layout.performance.maxRepeatedFurnishings).toBeGreaterThan(0);
+      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(32);
+      expect(layout.queueAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
+      expect(layout.staffAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
+      expect(deeplyFrozen(layout)).toBe(true);
+    }
+  });
+
+  it.each([
+    { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const },
+    { venueId: 'kiosk' as const, staffCount: 3, weather: 'rainy' as const },
+    { venueId: 'cafe' as const, staffCount: 5, weather: 'coldSnap' as const },
+  ])('keeps exact $venueId operation truth in the shared renderer snapshot', (fixture) => {
+    const game = livingRushEnvelope({
+      equipment: {
+        grinder: 2,
+        espressoMachine: 2,
+        batchBrewer: 2,
+        refrigeration: 2,
+        pos: 2,
+        serviceCounter: 2,
+      },
+      queueCount: 16,
+      scheduledStaffCount: fixture.staffCount,
+      venueId: fixture.venueId,
+      weather: fixture.weather,
+    }).activeRun;
+    if (!game?.rush) throw new Error('Expected venue rush fixture.');
+    const snapshot = createRenderSnapshot(game, false, ['wattleAwning']);
+    expect(snapshot.identity).toMatchObject({
+      venueId: fixture.venueId,
+      weather: fixture.weather,
+      phase: 'rush',
+    });
+    expect(snapshot.service.queueCount).toBe(16);
+    expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
+    expect(snapshot.operation.scheduledRoles).toHaveLength(fixture.staffCount);
+    expect(snapshot.operation.equipment).toEqual(game.equipment);
+    expect(snapshot.operation.stock).toHaveLength(9);
+    expect(snapshot.description).toContain(`${fixture.staffCount} staff scheduled`);
+    expect(deeplyFrozen(snapshot)).toBe(true);
+  });
+
+  it('copies, bounds, and deeply freezes every renderer-facing branch', () => {
+    const game = livingRushEnvelope({ paused: true, reducedMotion: true }).activeRun;
+    if (!game?.rush) throw new Error('Expected living-rush fixture.');
+    const snapshot = createRenderSnapshot(game, true, ['classicAwning']);
+    expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
+    expect(snapshot.service.activity.length).toBeLessThanOrEqual(MAX_RENDER_ACTIVITY_EVENTS);
+    expect(snapshot.service.queueCount).toBe(12);
+    expect(snapshot.service.active).toMatchObject({ id: 'd1-c1', progress: 0.4 });
+    expect(snapshot.presentation).toEqual({ reducedMotion: true, animate: false });
+    expect(snapshot.operation.stock).toHaveLength(9);
+    expect(deeplyFrozen(snapshot)).toBe(true);
+
+    const capturedCustomer = snapshot.service.queue[0]?.id;
+    game.rush.queue[0]!.id = 'mutated-after-snapshot';
+    expect(snapshot.service.queue[0]?.id).toBe(capturedCustomer);
+    expect(() => {
+      (snapshot.operation.stock[0] as { quantity: number }).quantity = 999_999;
+    }).toThrow(TypeError);
+  });
+
+  it.each(
+    (['cart', 'kiosk', 'cafe'] as const).flatMap((venueId) =>
+      ([1, 2, 4] as const).map((speed) => ({ speed, venueId })),
+    ),
+  )(
+    'cannot alter $venueId engine truth while mounted at $speed× or reduced motion',
+    ({ speed, venueId }) => {
+      const base = livingRushEnvelope({ paused: false, venueId }).activeRun;
+      if (!base?.rush) throw new Error('Expected living-rush fixture.');
+      let observed = setRushSpeed(base, speed);
+      let control = setRushSpeed(base, speed);
+      let ticks = 0;
+      while (observed.phase === 'rush' && ticks < 400) {
+        createRenderSnapshot(observed, false, ['classicAwning']);
+        createRenderSnapshot(observed, true, ['classicAwning']);
+        observed = advanceTick(observed);
+        ticks += 1;
+      }
+      let controlTicks = 0;
+      while (control.phase === 'rush' && controlTicks < 400) {
+        control = advanceTick(control);
+        controlTicks += 1;
+      }
+      expect(ticks).toBeLessThan(400);
+      expect(controlTicks).toBe(ticks);
+      expect(observed.phase).toBe('report');
+      expect(observed).toEqual(control);
+      expect(observed).toMatchObject({
+        cashCents: control.cashCents,
+        inventory: control.inventory,
+        reputation: control.reputation,
+        report: control.report,
+      });
+    },
+  );
+
+  it('keeps a fixed orthographic scale and caps invalid or dense displays', () => {
+    expect(orthographicProjection(1_600, 900)).toEqual({
+      left: -(ORTHOGRAPHIC_VERTICAL_HALF_EXTENT * 1_600) / 900,
+      right: (ORTHOGRAPHIC_VERTICAL_HALF_EXTENT * 1_600) / 900,
+      top: ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+      bottom: -ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+      near: 0.1,
+      far: 100,
+    });
+    expect(orthographicProjection(320, 180).top).toBe(orthographicProjection(1_600, 900).top);
+    expect(boundedDevicePixelRatio(3)).toBe(MAX_DEVICE_PIXEL_RATIO);
+    expect(boundedDevicePixelRatio(0)).toBe(1);
+    expect(boundedDevicePixelRatio(Number.NaN)).toBe(1);
+  });
+
+  it('keeps the approved title art byte-identical', () => {
+    const digest = createHash('sha256')
+      .update(readFileSync('public/assets/art/laneway-title.webp'))
+      .digest('hex');
+    expect(digest).toBe('5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37');
+  });
+
+  it('keeps Canvas lazy and unreachable from every service venue branch', () => {
+    const appSource = readFileSync('src/App.tsx', 'utf8');
+    const serviceSource = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+    expect(appSource).not.toContain('temporary-kiosk-cafe');
+    expect(appSource).not.toContain('import { CanvasScene }');
+    expect(serviceSource).not.toContain('CanvasScene');
+    for (const venueId of ['cart', 'kiosk', 'cafe'] as const) {
+      expect(serviceSource).toContain(`case '${venueId}'`);
+    }
+  });
+});
+
+function deeplyFrozen(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return true;
+  return Object.isFrozen(value) && Object.values(value).every((nested) => deeplyFrozen(nested));
+}
+
+interface PackageManifest {
+  readonly dependencies?: Readonly<Record<string, string>>;
+  readonly devDependencies?: Readonly<Record<string, string>>;
+  readonly license?: string;
+  readonly peerDependencies?: Readonly<Record<string, string>>;
+  readonly version?: string;
+}
+
+function packageManifest(path: string): PackageManifest {
+  return JSON.parse(readFileSync(path, 'utf8')) as PackageManifest;
+}
+
+function walkFiles(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry);
+    return statSync(path).isDirectory() ? walkFiles(path) : [path];
+  });
+}
+
+function withinFloor(
+  x: number,
+  z: number,
+  floor: Readonly<{ width: number; depth: number }>,
+): boolean {
+  return Math.abs(x) <= floor.width / 2 && Math.abs(z) <= floor.depth / 2;
+}
 
 function sceneCustomer(id: string): Customer {
   return {

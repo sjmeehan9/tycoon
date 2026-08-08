@@ -10,6 +10,7 @@ import {
 } from '../../src/content/gameContent';
 import {
   GameRuleError,
+  MAX_REPORT_CHARGE_GROUPS,
   advanceTick,
   adjustPlanPrice,
   adjustPlanPurchase,
@@ -84,6 +85,58 @@ describe('seeded cart engine', () => {
     expect(accelerated.rngState).toBe(baseline.rngState);
     expect(accelerated.rush?.recentActivity).toEqual(baseline.rush?.recentActivity);
     expect(accelerated.rush?.nextActivitySequence).toBe(baseline.rush?.nextActivitySequence);
+  });
+
+  it('retains complete canonical charges after the mixed activity feed truncates', () => {
+    const planning = prepareDay(createCampaign({ seed: 7_505 }), {
+      activeMenu: ['espresso'],
+      purchases: { ...emptyPurchases(), houseBeans: 15 },
+    });
+    const started = startRush(planning);
+    if (!started.rush) throw new Error('Expected a rush.');
+    const queue = Array.from({ length: 45 }, (_, index) => {
+      const customer = testCustomer(`high-volume-${index + 1}`);
+      return {
+        ...customer,
+        order: { ...customer.order, preparationTicks: 5 },
+      };
+    });
+    const completed = runToReport({
+      ...started,
+      rush: {
+        ...started.rush,
+        durationTicks: 280,
+        eventTriggerTicks: [],
+        demandMultiplier: 0,
+        queue,
+        stats: {
+          ...started.rush.stats,
+          arrivals: queue.length,
+          arrivalsBySegment: { commuter: queue.length },
+          peakQueue: queue.length,
+        },
+      },
+    });
+    const report = completed.report;
+    if (!report?.chargeGroups) throw new Error('Expected complete canonical charges.');
+    const retainedSales =
+      completed.rush?.recentActivity.filter((event) => event.type === 'sale') ?? [];
+    expect(completed.rush?.nextActivitySequence).toBeGreaterThan(RUSH_ACTIVITY_LIMIT);
+    expect(completed.rush?.recentActivity).toHaveLength(RUSH_ACTIVITY_LIMIT);
+    expect(retainedSales.length).toBeLessThan(report.served);
+    expect(report.chargeGroups.length).toBeLessThanOrEqual(MAX_REPORT_CHARGE_GROUPS);
+    expect(report.chargeGroups.reduce((total, group) => total + group.quantity, 0)).toBe(
+      report.served,
+    );
+    expect(report.chargeGroups.reduce((total, group) => total + group.revenueCents, 0)).toBe(
+      report.revenueCents,
+    );
+
+    const settled = closeDay(completed);
+    const repeated = closeDay(settled);
+    expect(repeated).toBe(settled);
+    expect(repeated.history).toHaveLength(1);
+    expect(repeated.history[0]?.chargeGroups).toEqual(report.chargeGroups);
   });
 
   it('emits ordered customer transitions with all four locked walkaway reasons', () => {

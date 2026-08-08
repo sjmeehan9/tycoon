@@ -1,12 +1,18 @@
 import {
   ALL_DRINK_IDS,
   CAMPAIGN_RULES,
+  DRINK_MAP,
   INGREDIENT_DETAILS,
   INGREDIENT_IDS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
   PURCHASE_PACKAGES,
   RUSH_ACTIVITY_LIMIT,
 } from '../content/gameContent';
+import {
+  MAX_REPORT_CHARGE_GROUPS,
+  MAX_REPORT_CHARGE_PRICE_CENTS,
+  MIN_REPORT_CHARGE_PRICE_CENTS,
+} from '../game/engine';
 import { batchExpiryDay } from '../game/inventory';
 import { RESERVED_STAFF_NAME_COUNT, reservedStaffName } from '../game/staffNames';
 import type {
@@ -760,6 +766,15 @@ function validateRush(value: unknown, day: number): asserts value is RushState {
     },
   );
   validateRushStats(rush.stats);
+  if (rush.chargeGroups !== undefined) {
+    const stats = rush.stats as Record<string, unknown>;
+    validateChargeGroups(
+      rush.chargeGroups,
+      'rush.chargeGroups',
+      stats.served as number,
+      stats.revenueCents as number,
+    );
+  }
 }
 
 function validateRushActivityEvent(
@@ -926,7 +941,64 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
   expectArray(report.explanations, `${path}.explanations`, 30).forEach((item, index) =>
     assertString(item, `${path}.explanations[${index}]`, 500),
   );
+  if (report.chargeGroups !== undefined) {
+    validateChargeGroups(
+      report.chargeGroups,
+      `${path}.chargeGroups`,
+      report.served as number,
+      report.revenueCents as number,
+    );
+  }
   assert(typeof report.settled === 'boolean', `${path}.settled must be boolean.`);
+}
+
+function validateChargeGroups(
+  value: unknown,
+  path: string,
+  expectedQuantity: number,
+  expectedRevenueCents: number,
+): void {
+  const groups = expectArray(value, path, MAX_REPORT_CHARGE_GROUPS);
+  const identities = new Set<string>();
+  let quantity = 0;
+  let revenueCents = 0;
+  groups.forEach((value, index) => {
+    const groupPath = `${path}[${index}]`;
+    const group = expectRecord(value, groupPath);
+    assertEnum(group.drinkId, ALL_DRINK_IDS, `${groupPath}.drinkId`);
+    const drink = DRINK_MAP.get(group.drinkId);
+    assert(drink !== undefined, `${groupPath}.drinkId must be configured.`);
+    assertEnum(group.size, ['regular', 'large'], `${groupPath}.size`);
+    assert(
+      drink.variants.some((variant) => variant.size === group.size),
+      `${groupPath}.size must be configured for its drink.`,
+    );
+    assertEnum(group.milk, ['none', 'dairy', 'oat', 'soy'], `${groupPath}.milk`);
+    assert(
+      drink.allowedMilks.some((milk) => milk === group.milk),
+      `${groupPath}.milk must be configured for its drink.`,
+    );
+    assertNumber(
+      group.priceCents,
+      `${groupPath}.priceCents`,
+      MIN_REPORT_CHARGE_PRICE_CENTS,
+      MAX_REPORT_CHARGE_PRICE_CENTS,
+      true,
+    );
+    assertNumber(group.quantity, `${groupPath}.quantity`, 1, 1_000_000_000, true);
+    assertNumber(group.revenueCents, `${groupPath}.revenueCents`, 0, 1_000_000_000, true);
+    assert(
+      group.revenueCents === group.quantity * group.priceCents,
+      `${groupPath}.revenueCents must equal quantity × priceCents.`,
+    );
+    const identity = [group.drinkId, group.size, group.milk].join(':');
+    assert(!identities.has(identity), `${path} must not contain duplicate charge variants.`);
+    identities.add(identity);
+    quantity += group.quantity;
+    revenueCents += group.revenueCents;
+  });
+  assert(quantity === expectedQuantity, `${path} quantity must match served sales.`);
+  assert(revenueCents === expectedRevenueCents, `${path} revenue must match report revenue.`);
 }
 
 function validateInventory(value: unknown, path: string, currentDay: number): void {

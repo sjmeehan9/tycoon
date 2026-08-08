@@ -32,10 +32,12 @@ test.describe('complete seeded cart day', () => {
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible({
       timeout: 30_000,
     });
+    await expect(page.getByRole('table', { name: 'Cash reconciliation' })).toBeHidden();
+    await page.getByText('View full Day 1 report').click();
     await expect(page.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
     await expect(page.getByText('Bottleneck', { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Settle the day' }).click();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).click();
     await expect(page.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
     const buySign = page.getByRole('button', { name: 'Buy sign' });
     if (await buySign.isEnabled()) await buySign.click();

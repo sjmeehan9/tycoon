@@ -18,7 +18,7 @@ export function GameAnnouncer(): React.JSX.Element {
     } else if (game.phase === 'victory' || game.phase === 'defeat') {
       announcement = game.outcome?.message ?? 'Campaign complete.';
     } else {
-      announcement = `Service rush active at the ${VENUES[game.venueId].shortName}.`;
+      announcement = `Service rush active at the ${VENUES[game.venueId].shortName}. Scene, dashboard and controls, live activity, then stock.`;
     }
   }
   return (

@@ -17,6 +17,7 @@ import {
   setRushSpeed,
   startRush,
   togglePause,
+  MAX_REPORT_CHARGE_GROUPS,
   type StaffMember,
 } from '../../src/game';
 import {
@@ -32,7 +33,11 @@ import {
   parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
-import { duplicateStaffNamesEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
+import {
+  duplicateStaffNamesEnvelope,
+  nearVictoryEnvelope,
+  reportHistoryEnvelope,
+} from '../fixtures/campaignFixtures';
 
 interface MutableLegacyEnvelope {
   schemaVersion: number;
@@ -307,6 +312,57 @@ describe('versioned save envelope', () => {
       expect(parsed?.activeRun).toEqual(state);
     }
     expect(rush.rush).toMatchObject({ speed: 4, isPaused: true, tick: 0 });
+  });
+
+  it('round-trips canonical report charges while preserving older v3 absence exactly', () => {
+    const source = reportHistoryEnvelope();
+    const parsed = importEnvelope(serializeEnvelope(source));
+    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.activeRun?.history).toEqual(source.activeRun?.history);
+    expect(parsed.activeRun?.history[0]?.chargeGroups).toBeUndefined();
+    expect(parsed.activeRun?.history[1]?.chargeGroups).toEqual(
+      source.activeRun?.history[1]?.chargeGroups,
+    );
+
+    const legacyActive = structuredClone(
+      createSaveEnvelope(startRush(createCampaign({ seed: 7_503 }))),
+    );
+    if (!legacyActive.activeRun?.rush) throw new Error('Expected an active rush.');
+    delete legacyActive.activeRun.rush.chargeGroups;
+    const restoredLegacy = importEnvelope(JSON.stringify(legacyActive));
+    expect(restoredLegacy.activeRun?.rush?.chargeGroups).toBeUndefined();
+  });
+
+  it('rejects unbounded, impossible, and unreconciled canonical charge groups', () => {
+    const unbounded = structuredClone(reportHistoryEnvelope());
+    const unboundedReport = unbounded.activeRun?.history[1];
+    const sourceGroup = unboundedReport?.chargeGroups?.[0];
+    if (!unboundedReport || !sourceGroup) throw new Error('Expected canonical report charges.');
+    unboundedReport.chargeGroups = Array.from({ length: MAX_REPORT_CHARGE_GROUPS + 1 }, () => ({
+      ...sourceGroup,
+    }));
+    expect(() => importEnvelope(JSON.stringify(unbounded))).toThrow(
+      `${MAX_REPORT_CHARGE_GROUPS}-item limit`,
+    );
+
+    const impossible = structuredClone(reportHistoryEnvelope());
+    const impossibleGroup = impossible.activeRun?.history[1]?.chargeGroups?.[0];
+    if (!impossibleGroup) throw new Error('Expected canonical report charges.');
+    impossibleGroup.drinkId = 'espresso';
+    impossibleGroup.size = 'large';
+    impossibleGroup.milk = 'none';
+    expect(() => importEnvelope(JSON.stringify(impossible))).toThrow(
+      'size must be configured for its drink',
+    );
+
+    const unreconciled = structuredClone(reportHistoryEnvelope());
+    const unreconciledGroup = unreconciled.activeRun?.history[1]?.chargeGroups?.[0];
+    if (!unreconciledGroup) throw new Error('Expected canonical report charges.');
+    unreconciledGroup.quantity += 1;
+    unreconciledGroup.revenueCents += unreconciledGroup.priceCents;
+    expect(() => importEnvelope(JSON.stringify(unreconciled))).toThrow(
+      'quantity must match served sales',
+    );
   });
 
   it('normalizes sale-only v3/v2 activity and validates the bounded event union', () => {

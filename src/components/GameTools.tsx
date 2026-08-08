@@ -5,13 +5,15 @@ import { useModalFocus } from '../accessibility/useModalFocus';
 import { CAMPAIGN_RULES } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import { ACHIEVEMENT_DETAILS, formatMoney, type Preferences } from '../game';
+import { ReportView } from './ReportPanel';
 
-type ToolSection = 'settings' | 'records' | 'help' | 'save';
+type ToolSection = 'settings' | 'reports' | 'records' | 'help' | 'save';
 
-/** Reachable settings, records, help, save transfer, and recovery dialog. */
+/** Reachable reports, settings, records, help, save transfer, and recovery dialog. */
 export function GameTools(): React.JSX.Element {
   const {
     exportSave,
+    game,
     importSave,
     meta,
     preferences,
@@ -22,9 +24,13 @@ export function GameTools(): React.JSX.Element {
   } = useGame();
   const [isOpen, setIsOpen] = useState(false);
   const [section, setSection] = useState<ToolSection>('settings');
+  const [selectedReportDay, setSelectedReportDay] = useState<number | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const closeDialog = useCallback(() => setIsOpen(false), []);
   const dialogRef = useModalFocus<HTMLElement>({ active: isOpen, onEscape: closeDialog });
+  const history = game?.history ?? [];
+  const selectedReport =
+    history.find((report) => report.day === selectedReportDay) ?? history.at(-1) ?? null;
 
   const downloadSave = (): void => {
     const exported = exportSave();
@@ -85,6 +91,7 @@ export function GameTools(): React.JSX.Element {
               {(
                 [
                   ['settings', 'Settings'],
+                  ['reports', 'Reports'],
                   ['records', 'Records'],
                   ['help', 'Help'],
                   ['save', 'Save transfer'],
@@ -130,6 +137,42 @@ export function GameTools(): React.JSX.Element {
                   Audio starts off and uses only bundled local files after you enable it. Settings
                   autosave without changing the active simulation.
                 </p>
+              </ToolSectionPanel>
+            ) : null}
+
+            {section === 'reports' ? (
+              <ToolSectionPanel id="reports" title="Settled day reports">
+                <p className="field-help">
+                  Reopen any settled result retained in this campaign. Historical reports are
+                  read-only and never settle the current day.
+                </p>
+                {history.length > 0 && selectedReport ? (
+                  <div className="report-history-layout">
+                    <nav aria-label="Campaign report history" className="report-history-list">
+                      {[...history].reverse().map((report) => (
+                        <button
+                          aria-pressed={selectedReport.day === report.day}
+                          className="button report-history-button"
+                          key={report.day}
+                          onClick={() => setSelectedReportDay(report.day)}
+                          type="button"
+                        >
+                          <strong>Day {report.day}</strong>
+                          <span>{formatMoney(report.revenueCents)} revenue</span>
+                        </button>
+                      ))}
+                    </nav>
+                    <ReportView
+                      key={selectedReport.day}
+                      mode="historical"
+                      report={selectedReport}
+                    />
+                  </div>
+                ) : (
+                  <p className="empty-note">
+                    No settled reports yet. Finish a day to save it here.
+                  </p>
+                )}
               </ToolSectionPanel>
             ) : null}
 

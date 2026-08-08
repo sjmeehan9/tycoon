@@ -8,7 +8,10 @@ export function GameHeader(): React.JSX.Element {
   if (!game) return <></>;
   const phaseLabel = game.phase === 'event' ? 'Rush decision' : game.phase;
   return (
-    <header className="game-header">
+    <header
+      className={`game-header ${game.phase === 'rush' || game.phase === 'event' ? 'is-service-header' : ''}`}
+      data-phase={game.phase}
+    >
       <div>
         <p className="eyebrow">Laneway Tycoon</p>
         <h1>

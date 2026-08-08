@@ -19,7 +19,9 @@ offline-capable web experience.
 - Deliver a satisfying planning, rush, results, and reinvestment loop.
 - Make coffee, staffing, inventory, pricing, upgrades, and demand interact in
   understandable ways with multiple viable strategies.
-- Support a complete 30-day campaign, bankruptcy, victory, and endless play.
+- Preserve the complete 30-day campaign, bankruptcy, victory, and endless play
+  through the Phase 7 presentation upgrade; the approved Phase 8 expansion
+  replaces this with a 40-day campaign.
 - Pass every automated and human-readable criterion in `requirements.md` and
   the project profile on desktop and touch-mobile layouts.
 - Publish a free MIT-licensed game and source repository on GitHub Pages.
@@ -34,16 +36,19 @@ readable strategic depth, replayability, and Australian cafe authenticity.
 The binding inventory is `docs/requirements.md`: daily planning, deterministic
 service simulation, ten-drink menu, ingredients, quality, four customer
 segments, staff roles/traits, equipment, weather/events, cart-to-cafe
-progression, day reports, victory/bankruptcy, endless unlocks, local saves,
-export/import, responsive pixel presentation, PWA/offline support, and public
-GitHub Pages distribution.
+progression, compact and reopenable day reports, victory/bankruptcy, endless
+unlocks, local saves, export/import, a responsive fixed-isometric WebGL service
+world, PWA/offline support, and public GitHub Pages distribution.
 
 ## Application logic and user flows
 
-New/continue campaign → morning plan → service rush and event choices → day
-report → upgrades → next day → victory or bankruptcy. Victory unlocks endless
-mode and non-power progression. Settings, save import/export, records, and help
-remain reachable without disrupting an active run.
+New/continue campaign → full-width morning plan with no scene preview → service
+rush and event choices → compact day result with optional full report →
+reinvestment → next day → victory or bankruptcy. During service, information
+is ordered 3D scene → complete rush dashboard → live activity → stock. Settled
+reports can be reopened from the Game menu. Victory unlocks endless mode and
+non-power progression. Settings, save import/export, records, and help remain
+reachable without disrupting an active run.
 
 ## Platform, constraints, and non-functional requirements
 
@@ -57,16 +62,24 @@ cost. Full required behavior outranks documentation breadth and cosmetic polish.
 - **Economy balance:** keep all numbers configurable and run deterministic
   scripted campaigns over multiple seeds.
 - **Mobile density:** use progressive disclosure and large tabbed controls.
-- **Simulation/render coupling:** keep a pure engine independent of React and
-  Canvas frame timing.
-- **Pixel-asset consistency:** use a constrained palette, logical resolution,
-  documented prompts/source assets, and visual verification.
+- **Simulation/render coupling:** keep a pure engine independent of React,
+  Three.js, and render-frame timing; WebGL consumes detached immutable
+  snapshots only.
+- **3D consistency and performance:** use a constrained warm low-poly palette,
+  procedural geometry, instancing, fixed orthographic framing, capped DPR, and
+  automated desktop/exact-touch visual verification. Any physical validation is
+  owner-led later against the exact approved candidate at the public game URL
+  and remains unclaimed until performed.
 - **PWA stale state:** prompt for updates and version/migrate saves.
 
 ## Assumptions and out of scope
 
-The choices and exclusions in `docs/requirements.md` are approved. There is one
-balanced launch difficulty. No unresolved product decisions remain.
+The choices and exclusions in `docs/requirements.md` are approved. The current
+Phase 7 candidate retains the existing single balanced mode, 30-day campaign,
+schema-v3 saves, and three venues. The approved but not-yet-implemented Phase 8
+boundary introduces Standard/Hard modes, a one-time v4 progress reset, a
+40-day campaign, and a department-store coffee operation. No Phase 8 behavior
+may be represented as current before that phase passes its own gate.
 
 ## Approval
 

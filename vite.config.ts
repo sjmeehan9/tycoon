@@ -58,6 +58,20 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     build: {
+      manifest: true,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'three-webgl',
+                priority: 20,
+                test: /node_modules[\\/]three[\\/]/,
+              },
+            ],
+          },
+        },
+      },
       target: 'baseline-widely-available',
     },
   };

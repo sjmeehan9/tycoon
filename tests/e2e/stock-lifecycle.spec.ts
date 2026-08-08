@@ -126,6 +126,7 @@ test.describe('stock lifecycle and capacity intelligence', () => {
     await expect(page.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
     await activate(page.getByRole('button', { name: 'Resume' }), touch);
     await finishRush(page, touch);
+    await activate(page.getByText('View full Day 3 report'), touch);
 
     const lifecycle = page.getByRole('table', { name: 'Inventory lifecycle reconciliation' });
     await expect(lifecycle).toBeVisible();
