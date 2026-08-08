@@ -89,7 +89,7 @@
       "phase": 7,
       "phaseId": 7,
       "phaseName": "Fixed-Isometric Service World",
-      "status": "post-merge-remediation-committed-awaiting-ci",
+      "status": "second-post-merge-stabilization-committed-awaiting-ci",
       "branch": "phase-7",
       "baseSha": "1f54d612f0e34b779dc83c76ba5ce50d3f720fa4",
       "approvedOn": "2026-08-08",
@@ -103,17 +103,46 @@
         "status": "merged-pr-7",
         "componentHead": "dc34856e76c44c1ec78550d249848f757e2b724c",
         "mergeCommit": "4e489198394cb716724652978b116f1e12810972",
+        "remediationMerges": [
+          {
+            "pullRequest": 8,
+            "componentHead": "82a28d31cc1f4bbca8e2e3721546f142bd18848e",
+            "mergeCommit": "cae94763ff173cd5e20741226994fea59b580a3c"
+          }
+        ],
         "owner": "Human-approved",
         "publicationRequiredForDeviceCheck": true
       },
       "postMergeCi": {
-        "runId": 31244688241,
-        "mergedHead": "4e489198394cb716724652978b116f1e12810972",
-        "status": "failed-unit-test-async-race",
-        "passedBeforeFailure": ["checkout", "setup", "install", "build", "lint"],
-        "skippedAfterFailure": ["e2e", "artifact-upload", "pages-deploy"],
-        "remediationBranch": "phase-7-ci-remediation",
-        "remediationFingerprint": "88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f",
+        "hostedPass": false,
+        "attempts": [
+          {
+            "runId": 31244688241,
+            "mergedHead": "4e489198394cb716724652978b116f1e12810972",
+            "status": "failed-unit-test-async-race",
+            "passedBeforeFailure": ["checkout", "setup", "install", "build", "lint"],
+            "skippedAfterFailure": ["e2e", "artifact-upload", "pages-deploy"]
+          },
+          {
+            "runId": 31245312235,
+            "mergedHead": "cae94763ff173cd5e20741226994fea59b580a3c",
+            "status": "failed-e2e-ci-stabilization",
+            "passedBeforeFailure": [
+              "checkout",
+              "setup",
+              "install",
+              "build",
+              "lint",
+              "148-unit-component-tests",
+              "64-e2e-cases"
+            ],
+            "intentionalE2eSkips": 7,
+            "failedE2eCases": 3,
+            "skippedAfterFailure": ["artifact-upload", "pages-deploy"]
+          }
+        ],
+        "currentRemediationBranch": "phase-7-ci-remediation-2",
+        "currentRemediationFingerprint": "5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096",
         "localTier3": "pass",
         "cleanRerunAndDeployment": "pending"
       },
@@ -317,18 +346,19 @@
           "assuranceReasons": [
             "Phase-final component owns cumulative automated Tier 3 validation, documentation reconciliation, phase report, and self-review under the approved lean override.",
             "The user override routes physical Safari/mobile-GPU/FPS validation to the repository owner against the exact hosted candidate after separate merge/publication approval; Implement performs no device access, push, merge, or publication.",
-            "The post-merge Linux async test race changed executable identity, so the smallest outcome-preserving test correction owns a fresh focused proof and complete Tier 3 gate."
+            "The post-merge Linux async test race changed executable identity, so the smallest outcome-preserving test correction owns a fresh focused proof and complete Tier 3 gate.",
+            "The second hosted attempt retained 64 E2E passes but exposed two constrained-runner state ceilings and one touch PWA overlay interception; the outcome-preserving stabilization owns focused browser proof and a fresh complete Tier 3 gate."
           ],
           "validationTier": "phase",
           "validationOwner": "Implement",
           "commitOwner": "Implement",
           "fingerprintScope": ["."],
-          "evidenceFingerprint": "88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f",
+          "evidenceFingerprint": "5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096",
           "validationEvidence": "docs/phase-7-test-report.md",
           "authorRepairUsed": true,
-          "remediationCycles": 3,
-          "disposition": "local-remediation-tier-3-pass-awaiting-clean-ci",
-          "status": "post-merge-remediation-committed-awaiting-clean-ci"
+          "remediationCycles": 4,
+          "disposition": "second-local-stabilization-tier-3-pass-awaiting-clean-ci",
+          "status": "second-post-merge-stabilization-committed-awaiting-clean-ci"
         }
       ]
     }

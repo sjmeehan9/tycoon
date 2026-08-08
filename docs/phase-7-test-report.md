@@ -4,7 +4,7 @@
 
 **AUTOMATED PASS.** The complete profiled Tier 3 sequence and every automatable
 Phase 7 validation target passed against global fingerprint
-`88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`.
+`5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`.
 The fingerprint was identical before and after the final gate.
 
 Physical Safari/mobile-GPU/FPS validation is **PENDING / UNCLAIMED**. By the
@@ -16,14 +16,18 @@ Chromium emulation, screenshots, or desktop WebGL.
 
 ## Candidate and environment
 
-- Remediation branch: `phase-7-ci-remediation`
+- Current remediation branch: `phase-7-ci-remediation-2`
 - Phase 7 validated component head: `dc34856e76c44c1ec78550d249848f757e2b724c`
 - Human-approved PR #7 merge: `4e489198394cb716724652978b116f1e12810972`
+- First remediation commit: `82a28d31cc1f4bbca8e2e3721546f142bd18848e`
+- PR #8 remediation merge: `cae94763ff173cd5e20741226994fea59b580a3c`
 - Completed dependency head before Component 7.6: `385bfe2`
 - Original merged candidate fingerprint:
   `10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`
-- Current remediated candidate fingerprint:
+- First remediation fingerprint:
   `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`
+- Current stabilized candidate fingerprint:
+  `5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`
 - Fingerprint command: `python3 scripts/worktree-fingerprint.py`
 - Runtime: Node.js `v24.18.0` (satisfies the Node 22.12+ profile), pnpm
   `10.15.0`
@@ -32,10 +36,13 @@ Chromium emulation, screenshots, or desktop WebGL.
 - Browser projects: desktop Chromium at 1280×800 and touch-mobile Chromium at
   exactly 360×780 with touch, mobile mode, and device scale factor 2
 - Public URL: `https://sjmeehan9.github.io/tycoon/` remains the prior validated
-  release. The PR #7 merge-triggered run failed before artifact upload and
-  deployment, so neither that run nor this local remediation replaced it.
+  release. Both merge-triggered attempts failed before artifact upload and
+  deployment, so neither hosted attempt nor this local stabilization replaced
+  it.
 
-## Post-merge CI failure and remediation
+## Post-merge CI failures and remediations
+
+### Attempt 1 — lazy component-test readiness
 
 GitHub Pages run
 [`31244688241`](https://github.com/sjmeehan9/tycoon/actions/runs/31244688241)
@@ -57,8 +64,47 @@ runtime source. Focused proof:
 | ---------------------------------------------------------- | ---: | -------: | ------------------------ |
 | `pnpm exec vitest run tests/components/game-loop.test.tsx` |    0 |    5.05s | PASS — 1 file / 18 tests |
 
-A clean GitHub rerun and deployment of the remediated commit are **PENDING**.
-This report claims only the local gate below.
+PR #8 normally merged the audited remediation at
+`cae94763ff173cd5e20741226994fea59b580a3c` and triggered a second clean hosted
+attempt.
+
+### Attempt 2 — constrained-runner state waits and touch overlay
+
+GitHub Pages run
+[`31245312235`](https://github.com/sjmeehan9/tycoon/actions/runs/31245312235)
+passed frozen install, build, lint, and all 148 unit/component tests. Its E2E
+step retained **64 PASS and 7 intentional skips**, with three failures after
+9.1 minutes:
+
+1. desktop cart-day exceeded its accidental 20-second event-dialog wall-time
+   ceiling on the constrained runner;
+2. desktop persistence resolved the event but exceeded its accidental
+   30-second report wall-time ceiling; and
+3. touch-mobile WebGL unsupported/retry kept every unsupported, no-Canvas, and
+   save-safe assertion green, but the visible PWA **Got it** notice intercepted
+   the semantic retry tap.
+
+No product or device failure was established. The stabilizations preserve every
+gameplay outcome:
+
+- cart-day and persistence still wait on the same event/report states, but use
+  bounded 60-second condition waits and 180-second enclosing test budgets for
+  shared hosted CPU/GPU contention; comments explicitly reject any performance
+  interpretation;
+- the unsupported touch path uses the existing semantic PWA dismissal helper
+  before retry, with no forced click; and
+- no sleep, skip, retry-policy/config change, runtime change, or assertion
+  removal was introduced.
+
+Focused real-browser proof:
+
+| Command / target                                                                                                       | Exit | Duration | Result |
+| ---------------------------------------------------------------------------------------------------------------------- | ---: | -------: | ------ |
+| desktop `cart-day.spec.ts` + `persistence.spec.ts`                                                                     |    0 |    28.7s | 2 PASS |
+| touch-mobile `webgl-service.spec.ts` — **shows save-safe WebGL2 guidance and never falls back to the Canvas renderer** |    0 |     5.8s | 1 PASS |
+
+A clean GitHub rerun and deployment of the current stabilized commit are
+**PENDING**. This report claims only the local gate below.
 
 ## Exact Tier 3 evidence
 
@@ -66,10 +112,10 @@ The final unchanged candidate ran the profile sequence in order:
 
 | Command                          | Exit | Duration | Result                                                                      |
 | -------------------------------- | ---: | -------: | --------------------------------------------------------------------------- |
-| `pnpm install --frozen-lockfile` |    0 |    0.20s | PASS — lockfile current; already up to date                                 |
-| `pnpm build`                     |    0 |    4.81s | PASS — strict TypeScript and production Vite/PWA build                      |
-| `pnpm lint`                      |    0 |    8.40s | PASS — zero ESLint warnings; source/test/config formatting clean            |
-| `pnpm test`                      |    0 |    6.33s | PASS — 16 files, 148 tests                                                  |
+| `pnpm install --frozen-lockfile` |    0 |    0.19s | PASS — lockfile current; already up to date                                 |
+| `pnpm build`                     |    0 |    4.12s | PASS — strict TypeScript and production Vite/PWA build                      |
+| `pnpm lint`                      |    0 |    8.21s | PASS — zero ESLint warnings; source/test/config formatting clean            |
+| `pnpm test`                      |    0 |    6.34s | PASS — 16 files, 148 tests                                                  |
 | `pnpm test:e2e`                  |    0 |     2.5m | PASS — 67 applicable cases, 7 intentional project-routing skips, 0 failures |
 
 The 74 Playwright project cases use explicit routing rather than hidden
@@ -112,8 +158,11 @@ persistence projects green, and all six living-rush project cases green before
 the final fingerprint was frozen. Two invalidated candidates were discarded;
 only the original pre-merge fingerprint's complete gate was used for the PR #7
 candidate. The later Linux lazy-import race changed the test file and therefore
-invalidated that executable identity. The current remediated fingerprint owns
-its own focused proof and one complete Tier 3 PASS recorded above.
+invalidated that executable identity. The first remediation then reached 64
+hosted E2E passes before the three CI-only stabilization failures above. Those
+test changes invalidated its identity in turn. The current stabilized
+fingerprint owns its focused browser proof and one complete Tier 3 PASS recorded
+above.
 
 ## Phase 7 validation-target map
 
@@ -271,11 +320,11 @@ or visual result is asserted by Component 7.6.
   unknown until the owner performs the exact-hosted-candidate checklist above.
 - The lazy Three.js vendor chunk triggers Vite's advisory 500 kB warning but is
   275,487 bytes below the enforced 1 MB/file Workbox ceiling.
-- The public URL still serves the prior approved release. The remediation PR,
-  clean GitHub CI, artifact deployment, hosted identity capture, and owner-led
-  physical validation remain pending.
+- The public URL still serves the prior approved release. The second remediation
+  PR, clean GitHub CI, artifact deployment, hosted identity capture, and
+  owner-led physical validation remain pending.
 
-The Phase 7 post-merge remediation is independently audited and committed on
-its narrow branch, ready for the normal PR/check workflow. This report grants
-no push, merge, publication, hosted PASS, physical PASS, or Phase 8
-authorization.
+The second Phase 7 post-merge stabilization is independently audited and
+committed on its narrow branch, ready for the normal PR/check workflow. This
+report grants no push, merge, publication, hosted PASS, physical PASS, or
+Phase 8 authorization.

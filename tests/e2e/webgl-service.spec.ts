@@ -152,6 +152,7 @@ test.describe('snapshot-only WebGL service worlds', () => {
     await expect(page.getByRole('button', { name: 'Reload saved game' })).toBeVisible();
     await expect(page.locator('.webgl-stage canvas')).toHaveCount(0);
     await expect(page.locator('[data-renderer-bridge]')).toHaveCount(0);
+    await dismissPwaPrompt(page, touch);
     await activate(page.getByRole('button', { name: 'Retry 3D scene' }), touch);
     await expect(scene).toHaveAttribute('data-webgl-status', 'unsupported');
   });
