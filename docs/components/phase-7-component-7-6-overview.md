@@ -35,8 +35,8 @@ contracts:
 - schema/state version remain 3, one balanced 30-day cart→kiosk→cafe campaign
   remains current, and all Phase 8 campaign/difficulty/reset behavior remains
   planned only;
-- the automated phase verdict is identified by global fingerprint
-  `10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`;
+- the remediated automated verdict is identified by global fingerprint
+  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`;
   hosted physical validation is a separate owner-owned record.
 
 ## Files owned
@@ -48,6 +48,7 @@ Created:
 
 Modified validation tests:
 
+- `tests/components/game-loop.test.tsx`
 - `tests/unit/scene.test.ts`
 - `tests/e2e/accessibility.spec.ts`
 - `tests/e2e/campaign-outcomes.spec.ts`
@@ -75,6 +76,11 @@ Modified documentation/state:
 - `docs/phase-progress.json`
 - `docs/agent-team-state.md`
 
+The post-merge remediation diff is strictly limited to
+`tests/components/game-loop.test.tsx`, this overview, the Phase 7 test report,
+phase progress, and team state. The other paths above remain the historical
+Component 7.6 delivery manifest and are not restaged by this remediation.
+
 No application runtime source, package manifest, lockfile, Vite configuration,
 Playwright configuration, public asset, deployment workflow, or release was
 changed by Component 7.6.
@@ -91,7 +97,7 @@ pnpm test:e2e
 ```
 
 The fingerprint must be
-`10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`
+`88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`
 before and after the unchanged candidate gate. Chromium needs the project's
 outside-sandbox browser-launch fallback in this macOS environment.
 
@@ -104,6 +110,11 @@ hosted physical checklist.
 - Do not reinterpret the automated 360×780 Chromium project as physical-device
   proof. Model/OS/Safari/WebGL identity, real DPR/orientation, physical FPS, and
   on-device visual findings remain pending.
+- PR #7 merged component head `dc34856e` at main merge `4e489198`, but its Pages
+  run `31244688241` failed at one synchronous component-test query while the
+  lazy WebGL scene was still loading. Build/lint passed; E2E/upload/deploy were
+  skipped. The current local remediation is PASS; clean CI/deployment remains
+  pending.
 - The public URL still serves the prior approved release. Publish only the exact
   audited/approved candidate; never publish an intermediate build for device
   validation.
@@ -126,7 +137,8 @@ hosted physical checklist.
 | Acceptance criterion                            | Runtime behavior / owned evidence                                                                           | Proof                                                                  |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Complete automated Phase 7 target coverage      | Cumulative unit/component/E2E suite covers every plan target                                                | 148 Vitest + 67 applicable Playwright PASS                             |
-| Final global identity                           | Unscoped fingerprint before and after Tier 3 is identical                                                   | `10555250…1186`                                                        |
+| Final global identity                           | Unscoped fingerprint before and after remediated Tier 3 is identical                                        | `88dbdaf3…a2247f`                                                      |
+| Post-merge Linux scene readiness                | Both paused dense-rush mounts await the lazy scene before checking unchanged current truth                  | Focused 18/18 plus cumulative 148/148 Vitest PASS                      |
 | WebGL stack and license compatibility           | Exact installed pins, peers, lock entries, and MIT license files audited                                    | `tests/unit/scene.test.ts`; production build                           |
 | Snapshot-only renderer authority                | Recursive renderer graph excludes commands, persistence, storage, network, PRNG, and wall clock             | Unit static audit plus mounted/unmounted/context/speed equality tests  |
 | Three distinct fixed-isometric worlds           | Cart, kiosk, and cafe dispatch distinct bounded layouts and captures                                        | `webgl-service.spec.ts` in both projects; visual audit                 |
@@ -158,9 +170,9 @@ Under the approved lean override, Implement owns the cumulative gate,
 self-review, remediation, evidence, and commit candidate; the Lead Coordinator
 independently audits and commits.
 
-The lane was not downgraded. Two changed candidates invalidated their prior
-evidence and were fully rerun; the recorded completion gate belongs only to the
-final unchanged fingerprint.
+The lane was not downgraded. The post-merge test correction changed executable
+identity, so the recorded completion gate belongs only to the final unchanged
+remediation fingerprint.
 
 ## Deviations and decisions
 
@@ -179,6 +191,10 @@ final unchanged fingerprint.
   desktop or physical performance claim.
 - The macOS Chromium launch sandbox failed before tests ran; the profile's
   outside-sandbox fallback supplied the real browser completion gate.
+- Merge-triggered Pages run `31244688241` exposed a Linux async test race, not
+  a product or device failure. Both scene queries now await lazy WebGL readiness
+  before asserting the unchanged queue/current-truth/reduced-motion outcomes;
+  no arbitrary sleep or runtime change was introduced.
 
 ## Validation evidence
 
@@ -186,15 +202,16 @@ final unchanged fingerprint.
 - Targeted WebGL route: 2/2 desktop/touch cases PASS before cumulative freeze.
 - Remediation: all original cumulative failures green; persistence 2/2 PASS;
   living rush 6/6 PASS.
-- Final Tier 3:
+- Post-merge focused remediation: `game-loop.test.tsx` 18/18 PASS in 5.05s.
+- Remediated Tier 3:
   - `pnpm install --frozen-lockfile` — exit 0, 0.20s
-  - `pnpm build` — exit 0, 4.06s
-  - `pnpm lint` — exit 0, 7.82s
-  - `pnpm test` — exit 0, 6.20s, 16 files / 148 tests
+  - `pnpm build` — exit 0, 4.81s
+  - `pnpm lint` — exit 0, 8.40s
+  - `pnpm test` — exit 0, 6.33s, 16 files / 148 tests
   - `pnpm test:e2e` — exit 0, 2.5m, 67 PASS / 7 intentional skips
 - Fingerprint command/hash before and after:
   `python3 scripts/worktree-fingerprint.py` →
-  `10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`.
+  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`.
 
 ## Manual tests automated
 
@@ -213,8 +230,10 @@ it is pending for the repository owner after exact-candidate publication.
 No account, credential, secret, paid asset, or backend task exists. The pending
 human workflow is:
 
-1. Lead Coordinator independently audits and commits the exact candidate.
-2. Repository owner explicitly approves or rejects merge and publication.
-3. If approved, publish only the exact candidate at the existing public URL.
-4. Repository owner completes the physical checklist in the phase report and
-   supplies the result; no agent accesses the device.
+1. Lead Coordinator raises the remediation PR from the independently audited,
+   committed exact candidate.
+2. Confirm a clean GitHub rerun and exact Pages deployment; neither is yet
+   claimed.
+3. Repository owner completes the optional physical checklist only against the
+   exact final hosted build after separate approval and supplies the result; no
+   agent accesses the device.

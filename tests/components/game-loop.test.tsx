@@ -111,14 +111,14 @@ describe('playable cart UI', () => {
     const user = userEvent.setup();
     const firstView = renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
-    const firstScene = screen.getByRole('img', { name: /12 customers waiting/ });
+    const firstScene = await screen.findByRole('img', { name: /12 customers waiting/ });
     expect(firstScene).toHaveAttribute('data-last-event', 'd1-e6');
     expect(firstScene).toHaveAttribute('data-animation', 'still');
     firstView.unmount();
 
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
-    const restoredScene = screen.getByRole('img', { name: /12 customers waiting/ });
+    const restoredScene = await screen.findByRole('img', { name: /12 customers waiting/ });
     expect(restoredScene).toHaveAttribute('data-last-event', 'd1-e6');
     expect(restoredScene).toHaveAttribute('data-animation', 'still');
     expect(screen.getByText('SALE +$7.25')).toBeVisible();
