@@ -241,12 +241,12 @@
             "tests/e2e/accessibility.spec.ts",
             "tests/e2e/webgl-service.spec.ts"
           ],
-          "evidenceFingerprint": null,
-          "validationEvidence": null,
+          "evidenceFingerprint": "8b454480fd409f29f3f56bb20722bd4ea944a39ae946dbc189eb19c5e71db700",
+          "validationEvidence": "docs/components/phase-7-component-7-4-overview.md",
           "authorRepairUsed": false,
           "remediationCycles": 0,
-          "disposition": null,
-          "status": "spec-validated"
+          "disposition": "tier-2-pass",
+          "status": "committed"
         },
         {
           "id": "7.5",

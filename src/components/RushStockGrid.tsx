@@ -16,7 +16,7 @@ export function RushStockGrid(): React.JSX.Element {
     .map(({ capacity }) => capacity);
 
   return (
-    <section className="rush-stock" aria-labelledby="rush-stock-title">
+    <section className="rush-stock" aria-labelledby="rush-stock-title" data-service-section="stock">
       <div className="rush-stock-heading">
         <div>
           <p className="eyebrow">Live stock</p>

@@ -72,6 +72,8 @@ describe('playable cart UI', () => {
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
     expect(await screen.findByRole('heading', { name: 'Set up the cart' })).toBeVisible();
+    expect(document.querySelector('[data-game-layout="management"]')).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     await user.click(screen.getByRole('checkbox', { name: /Long Black/ }));
     await user.click(screen.getByRole('checkbox', { name: /Flat White/ }));
     expect(await screen.findByText('Choose between 1 and 3 cart drinks.')).toBeVisible();
@@ -199,6 +201,7 @@ describe('playable cart UI', () => {
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
     expect(screen.getByRole('list', { name: 'Recent actual sale charges' })).toBeVisible();
@@ -210,6 +213,7 @@ describe('playable cart UI', () => {
     expect(
       await screen.findByRole('heading', { name: 'Reinvest or call it a night' }),
     ).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Plan Day 2' })).toBeEnabled();
   });
 
@@ -303,7 +307,9 @@ describe('playable cart UI', () => {
     expect(cafePromotion).toBeEnabled();
     await user.click(cafePromotion);
     expect(screen.getByRole('heading', { name: /Day 1\/30 · Specialty Cafe/ })).toBeVisible();
-    expect(screen.getByText('Laneway Specialty Cafe')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
+    expect(document.querySelector('[data-game-layout="management"]')).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
   });
 
   it('imports a validated near-victory file, unlocks meta, and enters endless mode', async () => {
@@ -321,6 +327,7 @@ describe('playable cart UI', () => {
     expect(screen.getByText(/Lifecycle detail is unavailable for this older save/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle the day' }));
     expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Continue in endless mode' }));
     expect(

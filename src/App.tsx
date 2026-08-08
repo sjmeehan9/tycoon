@@ -14,12 +14,8 @@ import { ReportPanel } from './components/ReportPanel';
 import { RushPanel } from './components/RushPanel';
 import { RushStockGrid } from './components/RushStockGrid';
 import { TitleScreen } from './components/TitleScreen';
-import { VENUES } from './content/gameContent';
 import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
-const LazyCanvasScene = lazy(() =>
-  import('./scene/CanvasScene').then(({ CanvasScene }) => ({ default: CanvasScene })),
-);
 const LazyServiceWorld = lazy(() =>
   import('./scene/three/ServiceWorld').then(({ ServiceWorld }) => ({ default: ServiceWorld })),
 );
@@ -47,47 +43,46 @@ export default function App(): React.JSX.Element {
       <AudioDirector />
       <GameAnnouncer />
       <PwaUpdatePrompt />
-      <div className="app-shell">
+      <div
+        className={`app-shell ${serviceActive ? 'is-service' : 'is-management'}`}
+        data-phase={game.phase}
+      >
         <GameHeader />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
-        <main className="game-layout">
-          <div className="scene-column">
-            {serviceActive ? (
+        {serviceActive ? (
+          <main className="game-layout service-layout" data-game-layout="service">
+            <div className="service-flow">
               <Suspense
                 fallback={
-                  <div className="scene-frame scene-loading" role="status">
+                  <div
+                    className="scene-frame scene-loading"
+                    data-service-section="scene"
+                    role="status"
+                  >
                     Preparing the 3D service world…
                   </div>
                 }
               >
                 <LazyServiceWorld />
               </Suspense>
-            ) : (
-              <Suspense
-                fallback={
-                  <div className="scene-frame scene-loading" role="status">
-                    Preparing the venue overview…
-                  </div>
-                }
-              >
-                <LazyCanvasScene />
-              </Suspense>
-            )}
-            <section className="scene-caption" aria-label="Current venue">
-              <strong>{VENUES[game.venueId].name}</strong>
-              <span>{VENUES[game.venueId].description}</span>
-            </section>
-            {serviceActive ? <RushStockGrid /> : null}
-          </div>
-          <div className="control-column" tabIndex={-1}>
-            <OnboardingGuide />
-            {game.phase === 'planning' ? <Planner /> : null}
-            {serviceActive ? <RushPanel /> : null}
-            {game.phase === 'report' ? <ReportPanel /> : null}
-            {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
-            {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
-          </div>
-        </main>
+              <RushPanel />
+              <RushStockGrid />
+              <div className="control-column service-guide" tabIndex={-1}>
+                <OnboardingGuide />
+              </div>
+            </div>
+          </main>
+        ) : (
+          <main className="game-layout management-layout" data-game-layout="management">
+            <div className="control-column management-flow" tabIndex={-1}>
+              <OnboardingGuide />
+              {game.phase === 'planning' ? <Planner /> : null}
+              {game.phase === 'report' ? <ReportPanel /> : null}
+              {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
+              {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
+            </div>
+          </main>
+        )}
         <footer className="game-footer">
           Autosaved locally · no account · deterministic seed {game.seed}
         </footer>

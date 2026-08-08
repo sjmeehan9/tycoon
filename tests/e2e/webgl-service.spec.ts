@@ -265,13 +265,11 @@ test.describe('snapshot-only WebGL service worlds', () => {
       }
     >;
     const service = manifest['src/scene/three/ServiceWorld.tsx'];
-    const canvas = manifest['src/scene/CanvasScene.tsx'];
     const index = manifest['index.html'];
     expect(service?.isDynamicEntry).toBe(true);
-    expect(canvas?.isDynamicEntry).toBe(true);
-    expect(index?.dynamicImports).toEqual(
-      expect.arrayContaining(['src/scene/CanvasScene.tsx', 'src/scene/three/ServiceWorld.tsx']),
-    );
+    expect(manifest['src/scene/CanvasScene.tsx']).toBeUndefined();
+    expect(index?.dynamicImports).toContain('src/scene/three/ServiceWorld.tsx');
+    expect(index?.dynamicImports).not.toContain('src/scene/CanvasScene.tsx');
     expect(service?.imports?.some((entry) => entry.includes('CanvasScene'))).toBe(false);
     expect(readFileSync('dist/index.html', 'utf8')).not.toMatch(
       /ServiceWorld|CanvasScene|three-webgl/,
@@ -283,7 +281,8 @@ test.describe('snapshot-only WebGL service worlds', () => {
     }
     const serviceWorker = readFileSync('dist/sw.js', 'utf8');
     expect(serviceWorker).toContain(service?.file ?? 'missing-service-world');
-    expect(serviceWorker).toContain(canvas?.file ?? 'missing-canvas-scene');
+    expect(serviceWorker).not.toMatch(/CanvasScene-/);
+    expect(readFileSync('src/App.tsx', 'utf8')).not.toContain('CanvasScene');
   });
 });
 

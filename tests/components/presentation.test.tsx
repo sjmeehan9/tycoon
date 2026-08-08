@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
+import { SERVICE_DASHBOARD_FIELDS } from '../../src/components/RushPanel';
 import { BrowserSaveStore, parseEnvelope, SAVE_KEY } from '../../src/persistence/saveStore';
 import { WebGLBoundary } from '../../src/scene/three/WebGLBoundary';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
@@ -19,14 +20,14 @@ describe('snapshot presentation and audio consent', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
   });
 
-  it('renders a fixed-resolution textual scene and stops animation for reduced motion', async () => {
+  it('keeps planning scene-free and stops the service world for reduced motion', async () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
-    const planningScene = await screen.findByRole('img', { name: /Coffee Cart in/ });
-    expect(planningScene).toHaveAttribute('width', '320');
-    expect(planningScene).toHaveAttribute('height', '180');
-    expect(planningScene).toHaveAttribute('data-animation', 'still');
+    expect(await screen.findByRole('heading', { name: 'Set up the cart' })).toBeVisible();
+    expect(document.querySelector('[data-game-layout="management"]')).toBeVisible();
+    expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
+    expect(document.querySelector('canvas')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Open the cart' }));
     const serviceScene = await screen.findByRole('img', { name: /Coffee Cart in/ });
@@ -37,6 +38,29 @@ describe('snapshot presentation and audio consent', () => {
     await user.click(screen.getByRole('tab', { name: 'Settings' }));
     await user.click(screen.getByRole('checkbox', { name: 'Reduce motion' }));
     expect(serviceScene.closest('figure')).toHaveAttribute('data-animation', 'still');
+  });
+
+  it('renders a complete service dashboard in the required document order', async () => {
+    new BrowserSaveStore(window.localStorage).save(livingRushEnvelope({ paused: true }));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+
+    expect(
+      [...document.querySelectorAll('[data-service-section]')].map((element) =>
+        element.getAttribute('data-service-section'),
+      ),
+    ).toEqual(['scene', 'dashboard', 'activity', 'stock']);
+    for (const field of SERVICE_DASHBOARD_FIELDS) {
+      expect(document.querySelector(`[data-dashboard-field="${field}"]`)).toBeVisible();
+    }
+    const dashboard = document.querySelector('[data-service-section="dashboard"]');
+    if (!(dashboard instanceof HTMLElement)) throw new Error('Service dashboard is missing.');
+    expect(within(dashboard).getByText('Cash')).toBeVisible();
+    expect(within(dashboard).getByText('Revenue')).toBeVisible();
+    expect(within(dashboard).getByText('Satisfaction')).toBeVisible();
+    expect(within(dashboard).getByText('No active service decision')).toBeVisible();
+    expect(document.querySelector('canvas[width="320"]')).not.toBeInTheDocument();
   });
 
   it('keeps audio off initially, then persists independent consent controls', async () => {

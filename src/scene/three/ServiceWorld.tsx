@@ -47,6 +47,7 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-animation={snapshot.presentation.animate ? 'active' : 'still'}
       data-camera="orthographic-isometric"
       data-dpr-max={MAX_DEVICE_PIXEL_RATIO}
+      data-service-section="scene"
       data-equipment={equipmentLabel}
       data-active-customer={snapshot.service.active?.id ?? 'none'}
       data-instanced-people="true"

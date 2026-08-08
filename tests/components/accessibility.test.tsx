@@ -66,7 +66,11 @@ describe('onboarding and accessible interaction', () => {
     expect(screen.getByRole('tabpanel', { name: 'Supplies' })).toBeInTheDocument();
     expect(screen.getByText('Day 1 planning at the Coffee Cart.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open the cart' }));
-    expect(screen.getByText('Service rush active at the Coffee Cart.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Service rush active at the Coffee Cart. Scene, dashboard and controls, live activity, then stock.',
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Making |Calling the next order|rare quiet second/),
     ).not.toHaveAttribute('aria-live');
@@ -90,6 +94,8 @@ describe('onboarding and accessible interaction', () => {
     );
     expect(scene.closest('figure')).toHaveAttribute('data-animation', 'still');
     expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
+    expect(screen.getByRole('button', { name: 'Resume' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: 'Service speed' })).toBeVisible();
   });
 });
 

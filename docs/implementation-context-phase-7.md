@@ -63,16 +63,16 @@ capability spike, manifest inspection, and cache-size proof remain Component
 7.2 work and must be repeated against the chosen exact versions immediately
 before installation.
 
-| Assumption | Primary evidence | Component 7.1 disposition |
-|---|---|---|
-| React Three Fiber major compatibility | The official [R3F repository](https://github.com/pmndrs/react-three-fiber) states that `@react-three/fiber@9` pairs with React 19. The official [release history](https://github.com/pmndrs/react-three-fiber/releases) records React 19.0–19.2 compatibility from v9.5.0 and identifies v9.7.0 as the latest stable release visible on the check date; v10 remains prerelease. | Architecture remains viable. Do not infer an exact pin from this record; Component 7.2 must select and build-test exact compatible stable versions. |
-| WebGL requirement and capability path | Current [Three.js WebGLRenderer documentation](https://threejs.org/docs/pages/WebGLRenderer.html) states that the renderer uses WebGL2 and that WebGL1 has been unsupported since r163. The official [WebGL capability helper](https://threejs.org/docs/pages/WebGL.html) exposes WebGL2 availability and an unsupported message. | Require WebGL2 before mounting the production scene. Unsupported capability receives semantic React guidance, never Canvas gameplay. Runtime/context-loss proof is reserved for 7.2 and 7.6. |
-| Fixed-isometric camera | The official [OrthographicCamera contract](https://threejs.org/docs/pages/OrthographicCamera.html) keeps rendered object size independent of camera distance. | Use a responsive orthographic frustum and fixed isometric orientation; executable resize/framing proof belongs to 7.2. |
-| Repeated geometry budget | The official [InstancedMesh contract](https://threejs.org/docs/pages/InstancedMesh.html) identifies reduced draw calls as its purpose for repeated geometry/materials. | Repeated people/furnishings use bounded instancing; draw-call evidence belongs to runtime components and the phase gate. |
-| High-density mobile rendering | The official [Three.js responsive-rendering guide](https://threejs.org/manual/en/responsive.html) warns that unrestricted device-pixel ratio multiplies GPU work and documents limiting the drawing buffer. | Cap DPR/internal pixel count. Physical mid-tier evidence remains reserved for 7.6. |
-| Lazy production chunks | Current [Vite feature documentation](https://vite.dev/guide/features.html) documents dynamic-import code splitting, and [Vite production-build guidance](https://vite.dev/guide/build) exposes chunk strategy configuration. | The service route must be dynamically imported and its emitted graph inspected in 7.2; no chunk claim is made in 7.1. |
-| Workbox file ceiling | The official [Workbox build reference](https://developer.chrome.com/docs/workbox/modules/workbox-build) supports `maximumFileSizeToCacheInBytes`. | Retain the stricter project limit of `1_000_000` bytes per precached file and prove the emitted manifest after production builds. |
-| Dependency licensing | The official [React Three Fiber license](https://github.com/pmndrs/react-three-fiber/blob/master/LICENSE) and [Three.js license](https://github.com/mrdoob/three.js/blob/dev/LICENSE) are MIT. | Compatible with the repository's MIT release model. Exact installed-package license files must be re-audited in 7.2/7.6. |
+| Assumption                            | Primary evidence                                                                                                                                                                                                                                                                                                                                                                | Component 7.1 disposition                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React Three Fiber major compatibility | The official [R3F repository](https://github.com/pmndrs/react-three-fiber) states that `@react-three/fiber@9` pairs with React 19. The official [release history](https://github.com/pmndrs/react-three-fiber/releases) records React 19.0–19.2 compatibility from v9.5.0 and identifies v9.7.0 as the latest stable release visible on the check date; v10 remains prerelease. | Architecture remains viable. Do not infer an exact pin from this record; Component 7.2 must select and build-test exact compatible stable versions.                                          |
+| WebGL requirement and capability path | Current [Three.js WebGLRenderer documentation](https://threejs.org/docs/pages/WebGLRenderer.html) states that the renderer uses WebGL2 and that WebGL1 has been unsupported since r163. The official [WebGL capability helper](https://threejs.org/docs/pages/WebGL.html) exposes WebGL2 availability and an unsupported message.                                               | Require WebGL2 before mounting the production scene. Unsupported capability receives semantic React guidance, never Canvas gameplay. Runtime/context-loss proof is reserved for 7.2 and 7.6. |
+| Fixed-isometric camera                | The official [OrthographicCamera contract](https://threejs.org/docs/pages/OrthographicCamera.html) keeps rendered object size independent of camera distance.                                                                                                                                                                                                                   | Use a responsive orthographic frustum and fixed isometric orientation; executable resize/framing proof belongs to 7.2.                                                                       |
+| Repeated geometry budget              | The official [InstancedMesh contract](https://threejs.org/docs/pages/InstancedMesh.html) identifies reduced draw calls as its purpose for repeated geometry/materials.                                                                                                                                                                                                          | Repeated people/furnishings use bounded instancing; draw-call evidence belongs to runtime components and the phase gate.                                                                     |
+| High-density mobile rendering         | The official [Three.js responsive-rendering guide](https://threejs.org/manual/en/responsive.html) warns that unrestricted device-pixel ratio multiplies GPU work and documents limiting the drawing buffer.                                                                                                                                                                     | Cap DPR/internal pixel count. Physical mid-tier evidence remains reserved for 7.6.                                                                                                           |
+| Lazy production chunks                | Current [Vite feature documentation](https://vite.dev/guide/features.html) documents dynamic-import code splitting, and [Vite production-build guidance](https://vite.dev/guide/build) exposes chunk strategy configuration.                                                                                                                                                    | The service route must be dynamically imported and its emitted graph inspected in 7.2; no chunk claim is made in 7.1.                                                                        |
+| Workbox file ceiling                  | The official [Workbox build reference](https://developer.chrome.com/docs/workbox/modules/workbox-build) supports `maximumFileSizeToCacheInBytes`.                                                                                                                                                                                                                               | Retain the stricter project limit of `1_000_000` bytes per precached file and prove the emitted manifest after production builds.                                                            |
+| Dependency licensing                  | The official [React Three Fiber license](https://github.com/pmndrs/react-three-fiber/blob/master/LICENSE) and [Three.js license](https://github.com/mrdoob/three.js/blob/dev/LICENSE) are MIT.                                                                                                                                                                                  | Compatible with the repository's MIT release model. Exact installed-package license files must be re-audited in 7.2/7.6.                                                                     |
 
 No capability assumption failed. The only time-sensitive change from the
 planning research is that the official R3F release page now presents v9.7.0 as
@@ -94,7 +94,7 @@ version and does not change the approved architecture.
 4. **Post-7.6 human gate:** request explicit approval before merging
    `phase-7`; no hosted publication is part of Phase 7.
 
-## Phase 7 delivery state after Component 7.3
+## Phase 7 delivery state after Component 7.4
 
 - Component 7.1: documentary Tier 1 gate complete and committed on `phase-7`.
 - Component 7.2: Tier 2 PASS at scoped fingerprint
@@ -102,11 +102,14 @@ version and does not change the approved architecture.
   committed on `phase-7` at `8060579`.
 - Component 7.3: Tier 2 PASS at scoped fingerprint
   `6003451b87c5474f8fce64f80d3bf1368d72f271eee9e3d7309a3487ae136733`;
-  commit is owned by Implement. All three service venues are WebGL-only and the
-  temporary service bridge is gone.
-- Component 7.4: next. It owns the approved service information ordering and
-  removal of the non-service morning preview.
-- Components 7.5–7.6: queued in approved dependency order.
+  committed on `phase-7` at `f73900c`. All three service venues are WebGL-only
+  and the temporary service bridge is gone.
+- Component 7.4: Tier 2 PASS at scoped fingerprint
+  `8b454480fd409f29f3f56bb20722bd4ea944a39ae946dbc189eb19c5e71db700`;
+  commit is owned by Implement. Planning is scene-free and service now reads
+  scene → dashboard/controls → live activity → stock.
+- Component 7.5: next. It owns compact day completion and reopenable report
+  history. Component 7.6 remains queued behind it.
 
 ## Component 7.2 — Snapshot-Only WebGL Cart Service
 
@@ -170,7 +173,7 @@ version and does not change the approved architecture.
 ### Complete venue registry and worlds
 
 - `VENUE_LAYOUTS` is a deeply frozen compiler-exhaustive `Record<VenueId,
-  VenueLayout>`. It defines bounded customer/staff/service/activity/stock
+VenueLayout>`. It defines bounded customer/staff/service/activity/stock
   anchors, floor extents, and inspectable performance limits for cart, kiosk,
   and cafe.
 - Kiosk service now uses a permanent sheltered counter, pickup rail, stock
@@ -216,3 +219,56 @@ version and does not change the approved architecture.
 - Full interfaces, source/test ownership, screenshots, exact commands,
   durations, manifest/cache evidence, and acceptance mapping are in
   `docs/components/phase-7-component-7-3-overview.md`.
+
+## Component 7.4 — Immersive Service Information Flow
+
+### Scene-free management and ordered service composition
+
+- `App` no longer imports or mounts `CanvasScene`. Planning, report,
+  reinvestment, victory, and defeat use one full-width management flow with no
+  preview, placeholder, caption, or reserved scene column.
+- Rush and event phases use one service flow whose direct regions are exactly
+  scene, dashboard, activity, and stock. Onboarding follows those regions so it
+  cannot break their reading or focus order.
+- `SERVICE_DASHBOARD_FIELDS` is the shared visible completeness contract for
+  time, cash, revenue, served, lost, queue, satisfaction, reputation, event,
+  pause, and speed. The dashboard exposes every field and every current service
+  command in DOM-native controls.
+- Live activity retains exact canonical sale/walkaway descriptions and the
+  bounded recent stream. Exact live stock remains immediately after activity.
+
+### Responsive and accessible service boundary
+
+- At exact 360×780, compact service header treatment, 2:1 WebGL framing,
+  compact complete metrics, and 44px controls keep the full scene and complete
+  dashboard visible at `scrollY === 0`. No truth or command is hidden.
+- Safe-area insets cover header, service layout, and the fixed Game Tools
+  trigger. The isometric camera continues to reframe through R3F resize; a
+  bounded landscape treatment is exercised at 780×360.
+- DOM-native pause/speed controls retain keyboard and touch operation. Event
+  state is explicit text and the modal focus contract is unchanged. The phase
+  announcer speaks the service reading order without adding per-tick chatter.
+- Reduced motion retains the same 3D world and complete dashboard/activity
+  text with animation stopped. Unsupported/context-lost WebGL remains
+  save-safe semantic recovery, never Canvas gameplay.
+
+### Production and validation evidence
+
+- Scoped fingerprint:
+  `8b454480fd409f29f3f56bb20722bd4ea944a39ae946dbc189eb19c5e71db700`.
+- Tier 2 PASS: build in 3.153462 seconds, lint in 7.122089 seconds, 141/141
+  Vitest assertions in 5.564851 seconds, and exact service-layout,
+  accessibility, and WebGL Playwright journeys in 28.384557 seconds with 18
+  PASS and two intentional project skips.
+- Desktop and exact 360×780 browser assertions cover every current venue,
+  management preview absence, direct region order, every dashboard field,
+  scroll position/bounding boxes, 44px controls, activity/stock reachability,
+  resize/orientation, event focus/resolution, keyboard/touch, and reduced
+  motion.
+- Production emits only `ServiceWorld` as the App scene dynamic entry;
+  `CanvasScene` has no manifest entry or runtime resource. All 19 Workbox
+  entries remain below the 1,000,000-byte ceiling. Approved title SHA-256 is
+  unchanged.
+- Full contracts, source/test ownership, exact commands, durations, decisions,
+  and acceptance mapping are in
+  `docs/components/phase-7-component-7-4-overview.md`.

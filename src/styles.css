@@ -278,15 +278,27 @@ small {
   font-size: 1.5rem;
 }
 .game-layout {
-  display: grid;
-  grid-template-columns: minmax(420px, 1.05fr) minmax(440px, 0.95fr);
-  gap: 1rem;
-  width: min(1440px, 100%);
+  width: min(1280px, 100%);
   margin: auto;
   padding: 1rem;
 }
-.scene-column {
+.management-layout,
+.management-flow,
+.service-flow {
   min-width: 0;
+}
+.management-flow {
+  width: 100%;
+}
+.service-layout {
+  width: min(1080px, 100%);
+}
+.service-flow {
+  display: grid;
+  gap: 0.75rem;
+}
+.service-guide:empty {
+  display: none;
 }
 .scene-frame {
   position: relative;
@@ -443,7 +455,7 @@ small {
   text-align: right;
 }
 .rush-stock {
-  margin-top: 0.8rem;
+  margin: 0;
   padding: 0.9rem;
   border: 3px solid var(--ink);
   background: var(--cream);
@@ -848,9 +860,9 @@ legend {
 }
 .rush-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 0.5rem;
-  margin: 1rem 0;
+  margin: 0.8rem 0;
 }
 .rush-metrics div {
   padding: 0.7rem;
@@ -866,13 +878,23 @@ legend {
 }
 .rush-metrics dd {
   margin: 0.2rem 0 0;
-  font-size: 1.3rem;
+  overflow-wrap: anywhere;
+  font-size: clamp(0.82rem, 1.55vw, 1.15rem);
   font-weight: 900;
+}
+.rush-event-status dd {
+  font-size: clamp(0.68rem, 1.15vw, 0.86rem);
+  line-height: 1.25;
 }
 .rush-controls {
   display: flex;
+  align-items: stretch;
   justify-content: space-between;
   gap: 0.7rem;
+}
+.rush-controls > .button,
+.speed-controls button {
+  min-height: 44px;
 }
 .speed-controls {
   display: flex;
@@ -894,7 +916,7 @@ legend {
   background: var(--green);
 }
 .service-note {
-  margin: 1rem 0 0;
+  margin: 0.65rem 0 0;
   padding: 0.7rem;
   border-left: 5px solid var(--gold);
   background: #faedca;
@@ -913,6 +935,9 @@ legend {
   background: #f7d2bd;
   font-weight: 800;
 }
+.rush-activity-heading h2 {
+  font-size: 1.25rem;
+}
 .dialog-backdrop {
   position: fixed;
   z-index: 20;
@@ -925,8 +950,8 @@ legend {
 .game-tools-button {
   position: fixed;
   z-index: 100;
-  right: 1rem;
-  bottom: 1rem;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
   background: #f7d98e;
 }
 
@@ -1405,11 +1430,8 @@ legend {
 }
 
 @media (max-width: 920px) {
-  .game-layout {
-    grid-template-columns: 1fr;
-  }
-  .scene-column {
-    position: relative;
+  .service-layout {
+    width: 100%;
   }
 }
 
@@ -1444,7 +1466,6 @@ legend {
     min-width: auto;
   }
   .game-layout {
-    gap: 0.7rem;
     padding: 0.65rem;
   }
   .scene-caption {
@@ -1478,7 +1499,7 @@ legend {
   }
   .webgl-recovery .button,
   .webgl-recovery .button-secondary {
-    min-height: 34px;
+    min-height: 44px;
     font-size: 0.7rem;
   }
   .rush-stock-heading {
@@ -1564,7 +1585,7 @@ legend {
     text-align: left;
   }
   .rush-metrics {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .rush-controls {
     align-items: stretch;
@@ -1614,6 +1635,138 @@ legend {
   .record-list article {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-shell.is-service .game-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.35rem;
+    padding: max(0.35rem, env(safe-area-inset-top)) max(0.45rem, env(safe-area-inset-right)) 0.35rem
+      max(0.45rem, env(safe-area-inset-left));
+  }
+  .app-shell.is-service .game-header .eyebrow {
+    font-size: 0.55rem;
+    line-height: 1;
+  }
+  .app-shell.is-service .game-header h1 {
+    overflow: hidden;
+    font-size: 0.92rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-shell.is-service .status-strip {
+    gap: 0.4rem;
+    margin: 0;
+  }
+  .app-shell.is-service .status-strip div {
+    min-width: 0;
+  }
+  .app-shell.is-service .status-strip dt {
+    font-size: 0.5rem;
+  }
+  .app-shell.is-service .status-strip dd {
+    font-size: 0.68rem;
+    line-height: 1.05;
+  }
+  .service-layout {
+    padding: 0.35rem max(0.35rem, env(safe-area-inset-right))
+      max(0.6rem, env(safe-area-inset-bottom)) max(0.35rem, env(safe-area-inset-left));
+  }
+  .service-flow {
+    gap: 0.4rem;
+  }
+  .service-flow .scene-loading,
+  .service-flow .webgl-stage {
+    aspect-ratio: 2 / 1;
+  }
+  .service-flow .scene-loading {
+    min-height: 0;
+  }
+  .service-flow .rush-dashboard {
+    padding: 0.42rem;
+    box-shadow: 2px 2px 0 rgba(72, 44, 31, 0.22);
+  }
+  .rush-dashboard-heading {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.28rem;
+  }
+  .rush-dashboard-heading .eyebrow {
+    font-size: 0.53rem;
+    line-height: 1;
+  }
+  .rush-dashboard-heading h2 {
+    font-size: 0.96rem;
+    line-height: 1.05;
+  }
+  .rush-dashboard-heading .rush-clock {
+    margin: 0;
+    padding: 0.2rem 0.32rem;
+    font-size: 0.68rem;
+  }
+  .rush-dashboard .progress-track {
+    height: 8px;
+    border-width: 1px;
+  }
+  .rush-dashboard .rush-metrics {
+    gap: 0.2rem;
+    margin: 0.28rem 0;
+  }
+  .rush-dashboard .rush-metrics div {
+    min-width: 0;
+    padding: 0.22rem 0.15rem;
+    border-width: 1px;
+  }
+  .rush-dashboard .rush-metrics dt {
+    font-size: 0.5rem;
+    line-height: 1;
+  }
+  .rush-dashboard .rush-metrics dd {
+    margin-top: 0.1rem;
+    font-size: 0.7rem;
+    line-height: 1.05;
+  }
+  .rush-dashboard .rush-event-status {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+  .rush-dashboard .rush-event-status dd {
+    font-size: 0.62rem;
+    line-height: 1.1;
+  }
+  .rush-dashboard .rush-controls {
+    flex-direction: row;
+    gap: 0.35rem;
+  }
+  .rush-dashboard .rush-controls > .button {
+    flex: 1 1 42%;
+    min-width: 0;
+    padding: 0.35rem;
+    font-size: 0.78rem;
+  }
+  .rush-dashboard .speed-controls {
+    flex: 1 1 58%;
+  }
+  .rush-dashboard .speed-controls button {
+    min-width: 44px;
+    padding: 0.2rem;
+    font-size: 0.76rem;
+  }
+  .rush-activity {
+    padding: 0.75rem;
+  }
+  .rush-stock {
+    padding: 0.75rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .service-flow .scene-loading,
+  .service-flow .webgl-stage {
+    aspect-ratio: 4 / 1;
   }
 }
 
