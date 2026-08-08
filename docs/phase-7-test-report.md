@@ -4,7 +4,7 @@
 
 **AUTOMATED PASS.** The complete profiled Tier 3 sequence and every automatable
 Phase 7 validation target passed against global fingerprint
-`10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`.
+`88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`.
 The fingerprint was identical before and after the final gate.
 
 Physical Safari/mobile-GPU/FPS validation is **PENDING / UNCLAIMED**. By the
@@ -16,10 +16,14 @@ Chromium emulation, screenshots, or desktop WebGL.
 
 ## Candidate and environment
 
-- Branch: `phase-7`
+- Remediation branch: `phase-7-ci-remediation`
+- Phase 7 validated component head: `dc34856e76c44c1ec78550d249848f757e2b724c`
+- Human-approved PR #7 merge: `4e489198394cb716724652978b116f1e12810972`
 - Completed dependency head before Component 7.6: `385bfe2`
-- Component 7.6 candidate identity: global fingerprint
+- Original merged candidate fingerprint:
   `10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186`
+- Current remediated candidate fingerprint:
+  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`
 - Fingerprint command: `python3 scripts/worktree-fingerprint.py`
 - Runtime: Node.js `v24.18.0` (satisfies the Node 22.12+ profile), pnpm
   `10.15.0`
@@ -28,8 +32,33 @@ Chromium emulation, screenshots, or desktop WebGL.
 - Browser projects: desktop Chromium at 1280×800 and touch-mobile Chromium at
   exactly 360×780 with touch, mobile mode, and device scale factor 2
 - Public URL: `https://sjmeehan9.github.io/tycoon/` remains the prior validated
-  release until a separate post-gate merge/publication approval. Component 7.6
-  did not push, merge, publish, or replace it.
+  release. The PR #7 merge-triggered run failed before artifact upload and
+  deployment, so neither that run nor this local remediation replaced it.
+
+## Post-merge CI failure and remediation
+
+GitHub Pages run
+[`31244688241`](https://github.com/sjmeehan9/tycoon/actions/runs/31244688241)
+targeted merge commit `4e489198394cb716724652978b116f1e12810972`. Checkout,
+setup, frozen install, build, and lint passed. The **Run unit and component
+tests** step then failed in `tests/components/game-loop.test.tsx` at
+**reloads a paused dense rush at current truth without presenting old evidence
+as motion**. The test synchronously queried the accessible WebGL scene while
+Linux still rendered the lazy `scene-loading` fallback. E2E, Pages artifact
+upload, and deployment were consequently skipped.
+
+No product failure or device issue was established. The smallest correction
+awaits the scene's accessible `img` on both initial mount and reload, then keeps
+the exact `12 customers waiting`, `d1-e6` current-event, `still` animation,
+`SALE +$7.25`, and `OUT OF STOCK` assertions. It adds no sleep and changes no
+runtime source. Focused proof:
+
+| Command                                                    | Exit | Duration | Result                   |
+| ---------------------------------------------------------- | ---: | -------: | ------------------------ |
+| `pnpm exec vitest run tests/components/game-loop.test.tsx` |    0 |    5.05s | PASS — 1 file / 18 tests |
+
+A clean GitHub rerun and deployment of the remediated commit are **PENDING**.
+This report claims only the local gate below.
 
 ## Exact Tier 3 evidence
 
@@ -38,9 +67,9 @@ The final unchanged candidate ran the profile sequence in order:
 | Command                          | Exit | Duration | Result                                                                      |
 | -------------------------------- | ---: | -------: | --------------------------------------------------------------------------- |
 | `pnpm install --frozen-lockfile` |    0 |    0.20s | PASS — lockfile current; already up to date                                 |
-| `pnpm build`                     |    0 |    4.06s | PASS — strict TypeScript and production Vite/PWA build                      |
-| `pnpm lint`                      |    0 |    7.82s | PASS — zero ESLint warnings; source/test/config formatting clean            |
-| `pnpm test`                      |    0 |    6.20s | PASS — 16 files, 148 tests                                                  |
+| `pnpm build`                     |    0 |    4.81s | PASS — strict TypeScript and production Vite/PWA build                      |
+| `pnpm lint`                      |    0 |    8.40s | PASS — zero ESLint warnings; source/test/config formatting clean            |
+| `pnpm test`                      |    0 |    6.33s | PASS — 16 files, 148 tests                                                  |
 | `pnpm test:e2e`                  |    0 |     2.5m | PASS — 67 applicable cases, 7 intentional project-routing skips, 0 failures |
 
 The 74 Playwright project cases use explicit routing rather than hidden
@@ -81,8 +110,10 @@ enduring outcomes:
 Focused remediation finished with the original 25 failures green, both
 persistence projects green, and all six living-rush project cases green before
 the final fingerprint was frozen. Two invalidated candidates were discarded;
-only the final fingerprint and its one complete Tier 3 PASS are the completion
-evidence.
+only the original pre-merge fingerprint's complete gate was used for the PR #7
+candidate. The later Linux lazy-import race changed the test file and therefore
+invalidated that executable identity. The current remediated fingerprint owns
+its own focused proof and one complete Tier 3 PASS recorded above.
 
 ## Phase 7 validation-target map
 
@@ -240,10 +271,11 @@ or visual result is asserted by Component 7.6.
   unknown until the owner performs the exact-hosted-candidate checklist above.
 - The lazy Three.js vendor chunk triggers Vite's advisory 500 kB warning but is
   275,487 bytes below the enforced 1 MB/file Workbox ceiling.
-- The public URL still serves the prior approved release. Push, protected merge,
-  publication, hosted identity capture, and owner-led physical validation all
-  require the coordinator's separate post-gate human-approval workflow.
+- The public URL still serves the prior approved release. The remediation PR,
+  clean GitHub CI, artifact deployment, hosted identity capture, and owner-led
+  physical validation remain pending.
 
-Automated Phase 7 is ready for independent evidence audit and the scoped
-Component 7.6 commit. This report grants no push, merge, publication, hosted
-PASS, physical PASS, or Phase 8 authorization.
+The Phase 7 post-merge remediation is independently audited and committed on
+its narrow branch, ready for the normal PR/check workflow. This report grants
+no push, merge, publication, hosted PASS, physical PASS, or Phase 8
+authorization.

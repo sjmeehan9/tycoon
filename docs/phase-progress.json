@@ -89,7 +89,7 @@
       "phase": 7,
       "phaseId": 7,
       "phaseName": "Fixed-Isometric Service World",
-      "status": "automated-pass-awaiting-human-handoff",
+      "status": "post-merge-remediation-committed-awaiting-ci",
       "branch": "phase-7",
       "baseSha": "1f54d612f0e34b779dc83c76ba5ce50d3f720fa4",
       "approvedOn": "2026-08-08",
@@ -100,10 +100,22 @@
         "description": "Automated Tier 3 passed; physical Safari/mobile-GPU/FPS validation is pending and unclaimed. It may be performed only by the repository owner against the exact hosted candidate after separate merge/publication approval."
       },
       "mergeGate": {
-        "status": "awaiting-explicit-approval",
-        "after": "7.6 automated Tier 3 PASS",
-        "owner": "Human",
+        "status": "merged-pr-7",
+        "componentHead": "dc34856e76c44c1ec78550d249848f757e2b724c",
+        "mergeCommit": "4e489198394cb716724652978b116f1e12810972",
+        "owner": "Human-approved",
         "publicationRequiredForDeviceCheck": true
+      },
+      "postMergeCi": {
+        "runId": 31244688241,
+        "mergedHead": "4e489198394cb716724652978b116f1e12810972",
+        "status": "failed-unit-test-async-race",
+        "passedBeforeFailure": ["checkout", "setup", "install", "build", "lint"],
+        "skippedAfterFailure": ["e2e", "artifact-upload", "pages-deploy"],
+        "remediationBranch": "phase-7-ci-remediation",
+        "remediationFingerprint": "88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f",
+        "localTier3": "pass",
+        "cleanRerunAndDeployment": "pending"
       },
       "components": [
         {
@@ -304,18 +316,19 @@
           "assuranceLane": "phase-gate (lean override)",
           "assuranceReasons": [
             "Phase-final component owns cumulative automated Tier 3 validation, documentation reconciliation, phase report, and self-review under the approved lean override.",
-            "The user override routes physical Safari/mobile-GPU/FPS validation to the repository owner against the exact hosted candidate after separate merge/publication approval; Implement performs no device access, push, merge, or publication."
+            "The user override routes physical Safari/mobile-GPU/FPS validation to the repository owner against the exact hosted candidate after separate merge/publication approval; Implement performs no device access, push, merge, or publication.",
+            "The post-merge Linux async test race changed executable identity, so the smallest outcome-preserving test correction owns a fresh focused proof and complete Tier 3 gate."
           ],
           "validationTier": "phase",
           "validationOwner": "Implement",
           "commitOwner": "Implement",
           "fingerprintScope": ["."],
-          "evidenceFingerprint": "10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186",
+          "evidenceFingerprint": "88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f",
           "validationEvidence": "docs/phase-7-test-report.md",
           "authorRepairUsed": true,
-          "remediationCycles": 2,
-          "disposition": "automated-tier-3-pass",
-          "status": "committed"
+          "remediationCycles": 3,
+          "disposition": "local-remediation-tier-3-pass-awaiting-clean-ci",
+          "status": "post-merge-remediation-committed-awaiting-clean-ci"
         }
       ]
     }
