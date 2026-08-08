@@ -6,6 +6,7 @@ import {
   PURCHASE_PACKAGES,
   emptyIngredientTotals,
   emptyInventory,
+  equipmentTierAtLevel,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
 import type {
@@ -28,9 +29,9 @@ export function refrigerationExtensionDays(
   refrigerationTier: number,
 ): number {
   if (!INGREDIENT_DETAILS[ingredientId].chilled) return 0;
-  if (refrigerationTier >= 2) return 2;
-  if (refrigerationTier === 1) return 1;
-  return 0;
+  return (
+    equipmentTierAtLevel('refrigeration', refrigerationTier)?.effects.chilledShelfLifeDays ?? 0
+  );
 }
 
 /** Return the inclusive last usable day for a newly acquired ingredient batch. */
@@ -195,7 +196,11 @@ export function extendInventoryRefrigeration(
   previousTier: number,
   nextTier: number,
 ): IngredientInventory {
-  const delta = Math.max(0, Math.min(2, nextTier) - Math.min(2, previousTier));
+  const delta = Math.max(
+    0,
+    refrigerationExtensionDays('dairyMilk', nextTier) -
+      refrigerationExtensionDays('dairyMilk', previousTier),
+  );
   if (delta === 0) return inventory;
   const updated = cloneInventory(inventory);
   for (const ingredientId of INGREDIENT_IDS) {

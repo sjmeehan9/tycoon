@@ -1,13 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { SERVICE_DASHBOARD_FIELDS } from '../../src/components/RushPanel';
+import { VENUE_IDS } from '../../src/content/gameContent';
 import {
   advanceTick,
   createCampaign,
   startRush,
   type GameState,
   type SaveEnvelope,
-  type VenueId,
 } from '../../src/game';
 import {
   createDefaultPreferences,
@@ -15,8 +15,6 @@ import {
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
-
-const VENUES: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
 
 test.describe('immersive service information flow', () => {
   test('keeps every venue planning screen full width and entirely scene-free', async ({
@@ -26,8 +24,8 @@ test.describe('immersive service information flow', () => {
     await page.goto('./');
     await dismissPwaPrompt(page, touch);
 
-    for (const venueId of VENUES) {
-      const state = { ...createCampaign({ seed: 7_400 + VENUES.indexOf(venueId) }), venueId };
+    for (const [venueIndex, venueId] of VENUE_IDS.entries()) {
+      const state = { ...createCampaign({ seed: 7_400 + venueIndex }), venueId };
       await importEnvelope(page, touch, completeOnboarding(createSaveEnvelope(state)), venueId);
 
       const management = page.locator('[data-game-layout="management"]');
@@ -62,7 +60,7 @@ test.describe('immersive service information flow', () => {
     await page.goto('./');
     await dismissPwaPrompt(page, touch);
 
-    for (const venueId of VENUES) {
+    for (const venueId of VENUE_IDS) {
       await importEnvelope(
         page,
         touch,

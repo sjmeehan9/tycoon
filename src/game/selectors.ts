@@ -4,6 +4,7 @@ import {
   PURCHASE_PACKAGES,
   RUSH_DURATION_TICKS,
   TICKS_PER_SECOND,
+  VENUES,
 } from '../content/gameContent';
 import { purchaseCost } from './engine';
 import { ingredientQuantity } from './inventory';
@@ -15,6 +16,7 @@ import type {
   MetaProgress,
   ReportChargeGroup,
   RushActivityEvent,
+  VenueId,
 } from './types';
 
 /** Player-facing immutable difficulty names. */
@@ -47,6 +49,11 @@ export function formatMoney(cents: number): string {
     currency: 'AUD',
     minimumFractionDigits: 2,
   }).format(cents / 100);
+}
+
+/** Return the configured player-facing venue name for records and status copy. */
+export function venueLabel(venueId: VenueId): string {
+  return VENUES[venueId].shortName;
 }
 
 /** Return the selected morning supply cost. */

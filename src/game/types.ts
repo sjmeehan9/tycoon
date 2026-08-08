@@ -32,7 +32,7 @@ export type GamePhase =
 export type GameMode = 'campaign' | 'endless';
 /** Immutable demand policy selected when a campaign is created. */
 export type Difficulty = 'standard' | 'hard';
-export type VenueId = 'cart' | 'kiosk' | 'cafe';
+export type VenueId = 'cart' | 'kiosk' | 'cafe' | 'departmentStore';
 export type CustomerSegment = 'commuter' | 'student' | 'enthusiast' | 'regular';
 export type StaffRole = 'barista' | 'frontOfHouse';
 export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'steady';
@@ -271,26 +271,40 @@ export interface EquipmentState {
 
 export type EquipmentId = keyof EquipmentState;
 
+/** Numeric service effects applied by an installed equipment tier. */
+export interface EquipmentTierEffects {
+  preparationMultiplier?: number;
+  qualityBonus?: number;
+  demandMultiplier?: number;
+  queueCapacityBonus?: number;
+  espressoPreparationMultiplier?: number;
+  batchBrewPreparationMultiplier?: number;
+  chilledShelfLifeDays?: number;
+}
+
 export interface EquipmentTierConfig {
-  level: 1 | 2;
+  level: 1 | 2 | 3;
   name: string;
   costCents: number;
   operatingCostCents: number;
+  reliabilityPercent: number;
   requiresVenue: VenueId;
   effect: string;
+  effects: Readonly<EquipmentTierEffects>;
 }
 
 export interface EquipmentConfig {
   id: EquipmentId;
   name: string;
   description: string;
-  tiers: [EquipmentTierConfig, EquipmentTierConfig];
+  tiers: readonly [EquipmentTierConfig, EquipmentTierConfig, EquipmentTierConfig];
 }
 
 export interface VenueConfig {
   id: VenueId;
   name: string;
   shortName: string;
+  actionName: string;
   description: string;
   menuCapacity: number;
   staffCapacity: number;
@@ -300,7 +314,7 @@ export interface VenueConfig {
 }
 
 export interface VenuePromotion {
-  from: Exclude<VenueId, 'cafe'>;
+  from: Exclude<VenueId, 'departmentStore'>;
   to: Exclude<VenueId, 'cart'>;
   costCents: number;
   reputationRequired: number;

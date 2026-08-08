@@ -4,8 +4,14 @@ import {
   ALL_DRINK_IDS,
   DRINKS,
   DRINK_MAP,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
   INGREDIENT_IDS,
   PURCHASE_PACKAGES,
+  VENUES,
+  VENUE_IDS,
+  VENUE_PROMOTIONS,
+  validateEquipmentContent,
   weatherForDay,
 } from '../../src/content/gameContent';
 
@@ -58,5 +64,43 @@ describe('complete coffee content', () => {
     );
     expect(first).toEqual(second);
     expect(new Set(first)).toEqual(new Set(['mild', 'sunny', 'rainy', 'coldSnap']));
+  });
+
+  it('configures one exhaustive four-venue progression without adding menu content', () => {
+    expect(Object.keys(VENUES)).toEqual(VENUE_IDS);
+    expect(VENUE_IDS).toEqual(['cart', 'kiosk', 'cafe', 'departmentStore']);
+    expect(VENUES.departmentStore).toMatchObject({
+      menuCapacity: 10,
+      staffCapacity: 10,
+      queueCapacity: 24,
+      demandFactor: 1.62,
+    });
+    expect(VENUES.departmentStore.description).toMatch(/heritage dome/i);
+    expect(VENUE_PROMOTIONS.cafe).toMatchObject({
+      from: 'cafe',
+      to: 'departmentStore',
+      reputationRequired: 70,
+    });
+    expect(DRINKS).toHaveLength(10);
+    expect(INGREDIENT_IDS).toHaveLength(9);
+  });
+
+  it('validates three increasing, costly, venue-bound, operational tiers in every category', () => {
+    expect(() => validateEquipmentContent()).not.toThrow();
+    expect(Object.keys(EQUIPMENT)).toEqual(EQUIPMENT_IDS);
+    for (const equipmentId of EQUIPMENT_IDS) {
+      const tiers = EQUIPMENT[equipmentId].tiers;
+      expect(tiers.map(({ level }) => level)).toEqual([1, 2, 3]);
+      expect(tiers.every(({ costCents }) => costCents > 0)).toBe(true);
+      expect(tiers.every(({ operatingCostCents }) => operatingCostCents > 0)).toBe(true);
+      expect(tiers.every(({ reliabilityPercent }) => reliabilityPercent >= 90)).toBe(true);
+      expect(tiers.every(({ requiresVenue }) => VENUE_IDS.includes(requiresVenue))).toBe(true);
+      expect(tiers.every(({ effects }) => Object.keys(effects).length > 0)).toBe(true);
+      expect(tiers[2].requiresVenue).toBe('departmentStore');
+    }
+
+    const invalid = structuredClone(EQUIPMENT);
+    Object.assign(invalid.grinder.tiers[2], { costCents: 0 });
+    expect(() => validateEquipmentContent(invalid)).toThrow('costs must be positive');
   });
 });

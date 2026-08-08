@@ -35,14 +35,16 @@ test.describe('portable save controls', () => {
     await page.getByRole('tab', { name: 'Save transfer' }).click();
     await page.getByLabel('Import save JSON file').setInputFiles(path);
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Day 30/30 · Specialty Cafe' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Day 40/40 · Department Store Coffee Hall' }),
+    ).toBeVisible();
     await expect(page.locator('html')).toHaveAttribute('data-reduced-motion', 'true');
     await dismissOptionalPwaPrompt(page);
     await page.getByRole('button', { name: 'Close game menu' }).click();
     await expect(
       page.getByText('Charge breakdown unavailable for this older report.'),
     ).toBeHidden();
-    await page.getByText('View full Day 30 report').click();
+    await page.getByText('View full Day 40 report').click();
     await expect(
       page.getByText('Charge breakdown unavailable for this older report.'),
     ).toBeVisible();

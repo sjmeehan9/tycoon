@@ -40,8 +40,14 @@ const CAFE_QUEUE = Array.from({ length: MAX_WORLD_VISIBLE_CUSTOMERS }, (_, index
   const serpentineColumn = row % 2 === 0 ? column : 3 - column;
   return point(1.45 + serpentineColumn * 0.82, 0, 1.85 + row * 0.78);
 });
+const DEPARTMENT_STORE_QUEUE = Array.from({ length: MAX_WORLD_VISIBLE_CUSTOMERS }, (_, index) => {
+  const row = Math.floor(index / 6);
+  const column = index % 6;
+  const serpentineColumn = row % 2 === 0 ? column : 5 - column;
+  return point(1.2 + serpentineColumn * 0.78, 0, 1.8 + row * 0.88);
+});
 
-/** Complete presentation-only placement registry for every Phase 7 venue. */
+/** Complete presentation-only placement registry for every campaign venue. */
 export const VENUE_LAYOUTS: Readonly<Record<VenueId, VenueLayout>> = deepFreeze({
   cart: {
     venueId: 'cart',
@@ -84,6 +90,20 @@ export const VENUE_LAYOUTS: Readonly<Record<VenueId, VenueLayout>> = deepFreeze(
     activityAnchor: point(6.0, 0, 0.55),
     stockAnchor: point(-3.65, 0.2, -1.25),
     performance: performanceBudget(32),
+  },
+  departmentStore: {
+    venueId: 'departmentStore',
+    worldName: 'heritage-department-store-coffee-hall',
+    floor: { width: 22, depth: 15 },
+    activeCustomerAnchor: point(1.05, 0, 0.62),
+    ownerAnchor: point(0.15, 0, -0.58),
+    staffAnchors: staffLine(-3.2, -0.6, 0.76, 0.52),
+    queueAnchors: DEPARTMENT_STORE_QUEUE,
+    overflowAnchor: point(5.55, 0, 3.65),
+    serviceAnchor: point(0.82, 1.55, -0.02),
+    activityAnchor: point(6.05, 0, 0.4),
+    stockAnchor: point(-4.35, 0.2, -1.4),
+    performance: performanceBudget(36),
   },
 } satisfies Record<VenueId, VenueLayout>);
 

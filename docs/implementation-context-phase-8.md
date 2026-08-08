@@ -200,3 +200,57 @@ equipment tiers, expanded workforce, multi-station service, dense department-
 store world, or forty-day content. Those remain sequential Components 8.3–8.7.
 Automated desktop Chromium and touch-mobile checks are browser evidence only;
 no physical device was accessed or claimed.
+
+## Component 8.3 fourth venue and commercial equipment boundary
+
+The active v4 runtime now has one canonical progression order: cart, kiosk,
+cafe, then the Merriweather Department Store Coffee Hall. The new venue keeps
+the existing ten-drink catalogue, declares ten scheduled-team slots, supports a
+24-person base queue, carries higher demand and operating cost, and requires a
+funded, reputable cafe promotion. The campaign closes on Day 40; victory now
+requires this fourth venue, configured cash, and configured reputation.
+Bankruptcy still resolves first at day close, target equality is safe, and a
+victory can continue into Day 41 endless play.
+
+Every one of the six existing equipment categories now has three validated
+tiers. Tier data owns purchase price, daily maintenance, reliability, venue
+requirement, readable effect, and bounded numeric service effects. Engine and
+inventory consumers look up the installed tier rather than branching on a
+fixed level. The commercial grinder, espresso line, brewer, chilled store, POS,
+and collection island therefore change real quality, throughput, chilled-stock
+life, demand, or queue capacity. Refrigeration level three extends only live
+chilled batches by the configured delta and preserves exact inventory
+conservation through expiry.
+
+The demand registry remains the sole Standard/Hard authority. Its venue clamp
+now admits the department-store factor and exact Hard deviation; its
+team/equipment clamp and source metadata admit the current eight-person roster
+plus commercial POS. Component 8.4 still owns the expanded ten-person roster,
+Manager/Runner roles, and the next team-bound update.
+
+The department service scene is a bounded snapshot-only WebGL heritage hall.
+It exposes the exact engine queue count and 24-plus-equipment capacity, one
+service counter, current staff/equipment/stock/activity truth, overflow, and
+reduced-motion behavior. It deliberately contains no station or express-lane
+authority; those remain Component 8.5. Automated desktop Chromium and exact
+360×780 touch evidence verifies promotion, reload, ten-item planning, all six
+commercial tiers, the department hall, and the Day-40 outcome path. No physical
+device, hosted release, deployment, merge, new dependency, account, credential,
+secret, or external service was used or claimed.
+
+### Component 8.3 coordinator-audit reconciliation
+
+The coordinator's first Component 8.3 audit found three retained current-v4
+browser contracts that had not advanced with the runtime. The repaired
+operations journey now proves the complete cart → kiosk → cafe → department
+promotion chain and recognizes only the department hall as the completed
+flagship. Save transfer restores the exact Day-40 department fixture while
+retaining its older-report detail assertions. Service-layout coverage now
+iterates canonical `VENUE_IDS`, so scene-free planning and desktop/touch service
+composition automatically cover all four venues.
+
+An exhaustive current-v4 E2E source audit found no other genuine `/30`, Day
+30/31, cafe-final, or hard-coded all-three-venue contract. The deliberately
+scoped kiosk/cafe recovery case remains a kiosk/cafe case, and legacy schema
+fixtures/docs remain historical evidence. No Canvas route, runtime behavior,
+fixture migration, dependency, or later Component 8.4 behavior was added.

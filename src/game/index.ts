@@ -95,5 +95,6 @@ export {
   rushClock,
   selectedSupplyCost,
   stockedInventory,
+  venueLabel,
 } from './selectors';
 export type * from './types';

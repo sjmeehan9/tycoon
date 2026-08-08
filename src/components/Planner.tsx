@@ -56,7 +56,7 @@ export function Planner(): React.JSX.Element {
         <div>
           <p className="eyebrow">Morning planning</p>
           <h2 id="planner-title" tabIndex={-1}>
-            Set up the {game.venueId}
+            Set up the {VENUES[game.venueId].actionName}
           </h2>
         </div>
         <p className="forecast-badge">
@@ -298,7 +298,7 @@ export function Planner(): React.JSX.Element {
           onClick={() => command({ type: 'startRush' })}
           type="button"
         >
-          Open the {game.venueId}
+          Open the {VENUES[game.venueId].actionName}
         </button>
       </div>
     </section>

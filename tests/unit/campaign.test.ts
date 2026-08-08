@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CAMPAIGN_RULES, EQUIPMENT } from '../../src/content/gameContent';
+import { CAMPAIGN_RULES, EQUIPMENT, VENUE_IDS } from '../../src/content/gameContent';
 import {
   advanceTick,
   buyEquipment,
@@ -70,23 +70,29 @@ describe('campaign outcome boundaries', () => {
     expect(startRush(hard).difficulty).toBe('hard');
   });
 
-  it('wins only at Day 30 with cafe, cash, and reputation targets', () => {
+  it('wins exactly at the Day 40 department-store boundary, including target equality', () => {
     const fixture = nearVictoryEnvelope().activeRun;
     if (!fixture) throw new Error('Expected victory fixture.');
-    const day29 = closeDay({
+    const day39 = closeDay({
       ...fixture,
-      day: 29,
-      lastSettledDay: 28,
-      report: { ...fixture.report!, day: 29 },
+      day: CAMPAIGN_RULES.durationDays - 1,
+      lastSettledDay: CAMPAIGN_RULES.durationDays - 2,
+      report: { ...fixture.report!, day: CAMPAIGN_RULES.durationDays - 1 },
     });
-    expect(day29.phase).toBe('reinvest');
+    expect(day39.phase).toBe('reinvest');
 
-    const victory = closeDay(fixture);
+    const equality = closeReady(
+      { ...fixture, reputation: CAMPAIGN_RULES.victoryReputation },
+      CAMPAIGN_RULES.victoryCashCents,
+    );
+    const victory = closeDay(equality);
     expect(victory.phase).toBe('victory');
     expect(victory.outcome?.type).toBe('victory');
 
     for (const changed of [
+      { venueId: 'cart' as const },
       { venueId: 'kiosk' as const },
+      { venueId: 'cafe' as const },
       { cashCents: CAMPAIGN_RULES.victoryCashCents - 1 },
       { reputation: CAMPAIGN_RULES.victoryReputation - 1 },
     ]) {
@@ -109,19 +115,19 @@ describe('campaign outcome boundaries', () => {
     expect(crossed.outcome?.type).toBe('bankruptcy');
   });
 
-  it('orders bankruptcy before Day 30 target evaluation', () => {
+  it('orders bankruptcy before Day 40 target evaluation', () => {
     const fixture = nearVictoryEnvelope().activeRun;
     if (!fixture) throw new Error('Expected victory fixture.');
     const bankrupt = closeDay(closeReady(fixture, CAMPAIGN_RULES.overdraftFloorCents - 1));
     expect(bankrupt.outcome?.type).toBe('bankruptcy');
   });
 
-  it('continues a victory into Day 31 endless planning without a Day 30 ending', () => {
+  it('continues a victory into Day 41 endless planning without another campaign ending', () => {
     const fixture = nearVictoryEnvelope().activeRun;
     if (!fixture) throw new Error('Expected victory fixture.');
     const victory = closeDay(fixture);
     const endless = continueEndless(victory);
-    expect(endless).toMatchObject({ phase: 'planning', mode: 'endless', day: 31, outcome: null });
+    expect(endless).toMatchObject({ phase: 'planning', mode: 'endless', day: 41, outcome: null });
     expect(endless.candidateStaff).toHaveLength(4);
   });
 
@@ -208,14 +214,16 @@ describe('cosmetic-only meta progress', () => {
 
 describe('seeded full-campaign balance', () => {
   it.each([
-    ['careful quality', 7_301, 'quality', 0],
-    ['value-focused quality', 9_909, 'quality', -30],
-  ] satisfies ReadonlyArray<readonly [string, number, DialIn, number]>)(
-    '%s strategy reaches a viable victory',
-    (_name, seed, dialIn, priceOffset) => {
-      const final = simulateCampaign(seed, dialIn, priceOffset);
+    ['Standard careful quality', 'standard', 7_301, 'quality', 0],
+    ['Hard value-focused quality', 'hard', 9_909, 'quality', -30],
+  ] satisfies ReadonlyArray<readonly [string, GameState['difficulty'], number, DialIn, number]>)(
+    '%s strategy reaches the department store and a viable victory',
+    (_name, difficulty, seed, dialIn, priceOffset) => {
+      const { departmentDay, final } = simulateCampaign(seed, difficulty, dialIn, priceOffset);
       expect(final.outcome?.type).toBe('victory');
-      expect(final.venueId).toBe('cafe');
+      expect(final.venueId).toBe('departmentStore');
+      expect(departmentDay).not.toBeNull();
+      expect(departmentDay).toBeLessThanOrEqual(CAMPAIGN_RULES.durationDays);
       expect(final.cashCents).toBeGreaterThanOrEqual(CAMPAIGN_RULES.victoryCashCents);
       expect(final.reputation).toBeGreaterThanOrEqual(CAMPAIGN_RULES.victoryReputation);
     },
@@ -225,7 +233,7 @@ describe('seeded full-campaign balance', () => {
     let state = createCampaign({ seed: 606 });
     const hiredIds = state.candidateStaff.slice(0, 2).map((candidate) => candidate.id);
     for (const id of hiredIds) state = hireStaff(state, id);
-    for (let day = 1; day <= 30 && state.phase === 'planning'; day += 1) {
+    for (let day = 1; day <= CAMPAIGN_RULES.durationDays && state.phase === 'planning'; day += 1) {
       state = prepareDay(state, {
         activeMenu: ['espresso'],
         pricesCents: { espresso: 250 },
@@ -243,8 +251,14 @@ describe('seeded full-campaign balance', () => {
   });
 });
 
-function simulateCampaign(seed: number, dialIn: DialIn, priceOffset: number): GameState {
-  let state = createCampaign({ seed });
+function simulateCampaign(
+  seed: number,
+  difficulty: GameState['difficulty'],
+  dialIn: DialIn,
+  priceOffset: number,
+): { final: GameState; departmentDay: number | null } {
+  let state = createCampaign({ seed, difficulty });
+  let departmentDay: number | null = null;
   while (state.phase === 'planning') {
     state = prepareDay(state, {
       activeMenu: ['espresso', 'longBlack', 'batchBrew'],
@@ -263,9 +277,10 @@ function simulateCampaign(seed: number, dialIn: DialIn, priceOffset: number): Ga
     state = closeDay(runRush(startRush(state)));
     if (state.phase !== 'reinvest') break;
     state = investForGrowth(state);
+    if (state.venueId === 'departmentStore' && departmentDay === null) departmentDay = state.day;
     state = startNextDay(state);
   }
-  return state;
+  return { final: state, departmentDay };
 }
 
 function investForGrowth(initial: GameState): GameState {
@@ -273,10 +288,9 @@ function investForGrowth(initial: GameState): GameState {
   const reserve = 3_000;
   const buyIfReady = (equipmentId: keyof GameState['equipment']): void => {
     const current = state.equipment[equipmentId];
-    const tier = EQUIPMENT[equipmentId].tiers[current];
-    const venueRank = state.venueId === 'cart' ? 0 : state.venueId === 'kiosk' ? 1 : 2;
-    const requiredRank =
-      tier?.requiresVenue === 'cart' ? 0 : tier?.requiresVenue === 'kiosk' ? 1 : 2;
+    const tier = EQUIPMENT[equipmentId].tiers.find((candidate) => candidate.level === current + 1);
+    const venueRank = VENUE_IDS.indexOf(state.venueId);
+    const requiredRank = tier ? VENUE_IDS.indexOf(tier.requiresVenue) : Number.POSITIVE_INFINITY;
     if (tier && venueRank >= requiredRank && state.cashCents >= tier.costCents + reserve)
       state = buyEquipment(state, equipmentId);
   };
@@ -306,6 +320,8 @@ function investForGrowth(initial: GameState): GameState {
     ) {
       state = promoteVenue(state);
     }
+  } else if (state.venueId === 'cafe' && state.reputation >= 70 && state.cashCents >= 23_000) {
+    state = promoteVenue(state);
   }
   return state;
 }

@@ -17,7 +17,16 @@ typed exhaustive demand-influence authority at repaired fingerprint
 `9434536ff79e7807134246cb4beb5073d61d61b9048cb97824294848fbb2b2b8`.
 Physical Safari/mobile-GPU/FPS validation remains pending and unclaimed for
 optional owner-only testing against the exact final Phase 8 hosted build.
-Component 8.3 is next and has not started.
+Component 8.3 has completed its unchanged-candidate Tier 2 gate at fingerprint
+`3f9f94858ea0aef70bb5e83243a854ea1837efaded2d5aecda9e91e408253067`
+after one coordinator-audit repair. Retained operations, save-transfer, and
+service-layout journeys now match the 40-day/fourth-venue contract and passed
+18/18 across desktop/touch before the fresh completion gate.
+It delivers the fourth venue, all six commercial tier-three upgrades, a
+reachable 40-day Standard/Hard campaign, and a truthful single-queue department
+WebGL shell. The Lead Coordinator independently reproduced the fingerprint and
+128-test focused gate, audited, staged, and committed the repaired candidate.
+Component 8.4 is next and has not started.
 
 ## Next-Level Evolution Stage Progress
 
@@ -48,7 +57,10 @@ Component 8.3 is next and has not started.
 - [x] Lead Coordinator audits and commits Component 8.1
 - [x] Component 8.2 delivers v4 reset, immutable difficulty, and demand registry
 - [x] Lead Coordinator audits, repairs, validates, and commits Component 8.2
-- [ ] Component 8.3 department-store/equipment implementation begins
+- [x] Component 8.3 delivers the department venue, commercial tiers, 40-day campaign, and WebGL shell
+- [x] Component 8.3 focused and unchanged-candidate Tier 2 validation passes
+- [x] Lead Coordinator audits and commits Component 8.3
+- [ ] Component 8.4 department workforce implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -93,7 +105,7 @@ Component 8.3 is next and has not started.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.3 next        | Phase 8 runtime sequence after committed Component 8.2                  |
+| next_level_implement      | Implement                  | ready — 8.4 next        | Sequential Component 8.4 workforce implementation after committed 8.3  |
 
 ## Previous release human task gate
 
@@ -159,6 +171,13 @@ Component 8.3 is next and has not started.
   `9434536f…b2b2b8`; build/lint, 159 Vitest cases, retained desktop/touch smoke,
   and the coordinator's independent 48-test persistence/demand/context audit
   passed. No physical device, push, merge, deployment, or publication occurred.
+- **Component 8.3:** COMMITTED / TIER 2 PASS AFTER COORDINATOR-AUDIT REPAIR —
+  fingerprint `3f9f9485…8253067`; focused logic/UI passed 128 Vitest
+  cases, focused department/outcome browser proof passed 6 cases, repaired
+  cumulative current-v4 browser proof passed 18 cases, and the fresh final gate
+  passed build/lint, all 168 Vitest cases, and 4 applicable retained
+  desktop/touch smoke cases with 2 intentional routing skips. No physical
+  device, Git mutation, merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -209,6 +228,9 @@ Component 8.3 is next and has not started.
 | 2026-08-08 | Reserve two separate final Phase 8 decisions                | Local 8.9 PASS does not authorize merge; merge approval does not authorize Pages publication/owner-hosted verification                                                                                | Component 8.1/8.9  |
 | 2026-08-08 | Establish the v4 difficulty boundary                        | Legacy v1–v3 data retains only three preferences; Standard/Hard is immutable and every current direct demand factor uses one typed registry                                                            | Component 8.2      |
 | 2026-08-08 | Fail unavailable-storage imports closed                     | No legacy marker or in-memory state may change until a concrete browser store verifies the v4 write; focused and full repaired gates pass                                                             | Component 8.2      |
+| 2026-08-08 | Generalize venue and equipment progression from typed data  | One four-venue order and six validated three-tier catalogues now drive purchase, maintenance, reliability, throughput, quality, demand, queue, inventory, persistence, and UI truth                   | Component 8.3      |
+| 2026-08-08 | Keep the department shell single-queue and snapshot-only     | The heritage hall truthfully presents the current engine; Manager/Runner, stations, express priority, and parallel settlement remain in Components 8.4–8.5                                            | Component 8.3      |
+| 2026-08-08 | Record repaired Component 8.3 candidate as Tier 2 PASS     | Fingerprint `3f9f9485…8253067` passed focused 128-test/6-browser proof, repaired 18-case cumulative browser proof, build, lint, 168 Vitest, and retained desktop/touch smoke                               | Component 8.3      |
 
 ## Drift log
 
@@ -228,6 +250,8 @@ Component 8.3 is next and has not started.
 | 2026-08-08 | Merge-triggered Pages run `31244688241` failed after lint                     | Linux observed `scene-loading` before the lazy WebGL `img`; the test now awaits readiness on both mounts while retaining every outcome assertion. Local Tier 3 passes; clean CI is pending                      |
 | 2026-08-08 | Pages run `31245312235` retained 64 E2E passes but had 3 failures             | Two accidental constrained-runner state ceilings became bounded condition waits; the touch PWA overlay is semantically dismissed. No sleeps, skips, forced clicks, runtime/config changes, or weaker assertions |
 | 2026-08-08 | Phase 8 breakdown still named agent/device evidence                           | Components 8.1, 8.6, 8.8, and 8.9 now separate automated browser/deployment evidence from optional owner-only physical findings; no agent device access remains assigned                                        |
+| 2026-08-08 | Component 8.3's initial ownership omitted inventory/layout proof paths        | Coordinator added only inventory, venue-layout, scene, presentation, and breakdown paths needed for tier-three shelf-life and fourth-venue exhaustiveness; all are in the final scope                           |
+| 2026-08-08 | Component 8.3 audit found stale retained current-v4 browser contracts          | Operations now reaches the department flagship, transfer restores Day 40 department detail, and service layout iterates canonical four-venue content; 18/18 repaired desktop/touch cases pass                  |
 
 ## Deferred log
 

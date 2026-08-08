@@ -10,6 +10,7 @@ import {
   DIFFICULTY_DESCRIPTIONS,
   DIFFICULTY_LABELS,
   formatMoney,
+  venueLabel,
   type CampaignRecord,
   type Difficulty,
   type Preferences,
@@ -236,10 +237,13 @@ export function GameTools(): React.JSX.Element {
                   <li>
                     Resolve rush choices, then use the report to find demand and service causes.
                   </li>
-                  <li>Invest in equipment and promote cart → kiosk → cafe.</li>
                   <li>
-                    On Day {CAMPAIGN_RULES.durationDays}, finish with a cafe,{' '}
-                    {formatMoney(CAMPAIGN_RULES.victoryCashCents)}, and{' '}
+                    Invest in three equipment tiers and promote cart → kiosk → cafe → department
+                    store.
+                  </li>
+                  <li>
+                    On Day {CAMPAIGN_RULES.durationDays}, finish with the department-store coffee
+                    hall, {formatMoney(CAMPAIGN_RULES.victoryCashCents)}, and{' '}
                     {CAMPAIGN_RULES.victoryReputation} reputation.
                   </li>
                 </ol>
@@ -337,7 +341,7 @@ function DifficultyRecordList({
         <article key={`${record.difficulty}-${record.campaignId}-${record.result}-${record.day}`}>
           <strong className="capitalize">{record.result.replace(/([A-Z])/g, ' $1')}</strong>
           <span>
-            Day {record.day} · {record.venueId} · {formatMoney(record.cashCents)} · rep{' '}
+            Day {record.day} · {venueLabel(record.venueId)} · {formatMoney(record.cashCents)} · rep{' '}
             {record.reputation}
           </span>
         </article>

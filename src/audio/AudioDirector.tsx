@@ -16,6 +16,14 @@ interface AudioHandle {
 
 export type AudioFactory = (source: string) => AudioHandle;
 
+/** Venue-scaled local ambience levels, exhaustive across the campaign progression. */
+export const VENUE_AMBIENCE_VOLUME: Readonly<Record<VenueId, number>> = {
+  cart: 0.13,
+  kiosk: 0.15,
+  cafe: 0.16,
+  departmentStore: 0.18,
+};
+
 /** Small local-audio adapter that treats unsupported or blocked playback as muted operation. */
 export class BrowserAudioManager {
   readonly #ambience: AudioHandle;
@@ -47,6 +55,11 @@ export class BrowserAudioManager {
       return;
     }
     safelyPlay(this.#ambience);
+  }
+
+  /** Match the local room tone level to the active venue without changing consent. */
+  public setVenue(venueId: VenueId | null): void {
+    this.#ambience.volume = venueId ? VENUE_AMBIENCE_VOLUME[venueId] : 0.16;
   }
 
   /** Play one non-blocking local interface cue. */
@@ -89,8 +102,9 @@ export function AudioDirector(): null {
   }, []);
 
   useEffect(() => {
+    manager.setVenue(game?.venueId ?? null);
     manager.setAmbienceEnabled(interactionAllowed && preferences.ambienceEnabled);
-  }, [interactionAllowed, manager, preferences.ambienceEnabled]);
+  }, [game?.venueId, interactionAllowed, manager, preferences.ambienceEnabled]);
 
   useEffect(() => {
     const previous = previousRef.current;

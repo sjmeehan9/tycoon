@@ -44,7 +44,7 @@ export function EndingPanel(): React.JSX.Element {
         </div>
       ) : outcome.type === 'targetMissed' ? (
         <p>
-          Target: cafe · {formatMoney(CAMPAIGN_RULES.victoryCashCents)} ·{' '}
+          Target: department-store coffee hall · {formatMoney(CAMPAIGN_RULES.victoryCashCents)} ·{' '}
           {CAMPAIGN_RULES.victoryReputation} reputation.
         </p>
       ) : null}

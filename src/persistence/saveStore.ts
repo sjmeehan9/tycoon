@@ -2,10 +2,13 @@ import {
   ALL_DRINK_IDS,
   CAMPAIGN_RULES,
   DRINK_MAP,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
   INGREDIENT_DETAILS,
   INGREDIENT_IDS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
   RUSH_ACTIVITY_LIMIT,
+  VENUE_IDS,
 } from '../content/gameContent';
 import {
   MAX_REPORT_CHARGE_GROUPS,
@@ -23,7 +26,6 @@ import type {
   DayPlan,
   DayReport,
   Difficulty,
-  EquipmentId,
   GamePhase,
   GameState,
   IngredientId,
@@ -34,7 +36,6 @@ import type {
   SaveEnvelope,
   ScenarioId,
   StaffMember,
-  VenueId,
 } from '../game';
 
 export const SAVE_KEY = 'laneway-tycoon.save.v4';
@@ -56,19 +57,10 @@ const GAME_PHASES: GamePhase[] = [
   'defeat',
 ];
 const SEGMENTS: CustomerSegment[] = ['commuter', 'student', 'enthusiast', 'regular'];
-const VENUES: VenueId[] = ['cart', 'kiosk', 'cafe'];
 const SCENARIOS: ScenarioId[] = ['lanewayClassic', 'rainySeason', 'festivalWeek'];
 const COSMETICS: CosmeticId[] = ['classicAwning', 'wattleAwning', 'neonCup'];
 const ACHIEVEMENTS: AchievementId[] = ['cafeFounder', 'goldenCup', 'hardLessons'];
 const DIFFICULTIES: Difficulty[] = ['standard', 'hard'];
-const EQUIPMENT_IDS: EquipmentId[] = [
-  'grinder',
-  'espressoMachine',
-  'batchBrewer',
-  'refrigeration',
-  'pos',
-  'serviceCounter',
-];
 
 export const EVOLUTION_NOTICE =
   'The game has evolved. Your settings were kept, while campaign progress was reset for the new Standard and Hard modes.';
@@ -468,7 +460,7 @@ function validateCampaignRecord(value: unknown, path: string): asserts value is 
   assertNumber(record.day, `${path}.day`, 1, 10_000, true);
   assertNumber(record.cashCents, `${path}.cashCents`, -1_000_000_000, 1_000_000_000, true);
   assertNumber(record.reputation, `${path}.reputation`, 0, 100, true);
-  assertEnum(record.venueId, VENUES, `${path}.venueId`);
+  assertEnum(record.venueId, VENUE_IDS, `${path}.venueId`);
 }
 
 function validateGameState(value: unknown): asserts value is GameState {
@@ -484,7 +476,7 @@ function validateGameState(value: unknown): asserts value is GameState {
   assertNumber(state.day, 'activeRun.day', 1, 10_000, true);
   assertNumber(state.cashCents, 'activeRun.cashCents', -1_000_000_000, 1_000_000_000, true);
   assertNumber(state.reputation, 'activeRun.reputation', 0, 100, true);
-  assertEnum(state.venueId, VENUES, 'activeRun.venueId');
+  assertEnum(state.venueId, VENUE_IDS, 'activeRun.venueId');
   assertEnum(state.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], 'activeRun.weather');
   validateInventory(state.inventory, 'activeRun.inventory', state.day);
   validatePlan(state.plan);
@@ -528,7 +520,7 @@ function validatePlan(value: unknown): asserts value is DayPlan {
     ['houseBeans', 'singleOriginBeans', 'darkRoastBeans'],
     'activeRun.plan.beanId',
   );
-  const scheduled = expectArray(plan.scheduledStaffIds, 'activeRun.plan.scheduledStaffIds', 5);
+  const scheduled = expectArray(plan.scheduledStaffIds, 'activeRun.plan.scheduledStaffIds', 10);
   scheduled.forEach((id, index) => assertSafeId(id, `scheduledStaffIds[${index}]`));
   assert(new Set(scheduled).size === scheduled.length, 'Scheduled staff IDs must be unique.');
 }
@@ -539,7 +531,7 @@ function validateRush(value: unknown, day: number): asserts value is RushState {
   assertNumber(rush.durationTicks, 'rush.durationTicks', 1, 2_000, true);
   assert(typeof rush.isPaused === 'boolean', 'rush.isPaused must be boolean.');
   assertEnum(rush.speed, [1, 2, 4], 'rush.speed');
-  expectArray(rush.queue, 'rush.queue', 30).forEach((customer, index) =>
+  expectArray(rush.queue, 'rush.queue', 40).forEach((customer, index) =>
     validateCustomer(customer, `rush.queue[${index}]`),
   );
   if (rush.activeService !== null) {
@@ -847,7 +839,11 @@ function validateInventory(value: unknown, path: string, currentDay: number): vo
         batch.expiresAfterDay,
         `${path}.${id}[${index}].expiresAfterDay`,
         Math.max(batch.acquiredDay, currentDay),
-        batchExpiryDay(id, batch.acquiredDay, INGREDIENT_DETAILS[id].chilled ? 2 : 0),
+        batchExpiryDay(
+          id,
+          batch.acquiredDay,
+          INGREDIENT_DETAILS[id].chilled ? EQUIPMENT.refrigeration.tiers.at(-1)!.level : 0,
+        ),
         true,
       );
       total += batch.quantity;
@@ -900,7 +896,10 @@ function validateStaffIdentities(staff: StaffMember[], candidateStaff: StaffMemb
 
 function validateEquipment(value: unknown): void {
   const equipment = expectRecord(value, 'activeRun.equipment');
-  for (const id of EQUIPMENT_IDS) assertNumber(equipment[id], `equipment.${id}`, 0, 2, true);
+  for (const id of EQUIPMENT_IDS) {
+    const maximumLevel = EQUIPMENT[id].tiers.at(-1)?.level ?? 0;
+    assertNumber(equipment[id], `equipment.${id}`, 0, maximumLevel, true);
+  }
 }
 
 function validateOutcome(value: unknown): asserts value is CampaignOutcome {

@@ -67,13 +67,25 @@ describe('dated perishable inventory', () => {
 
     const tierOne = extendInventoryRefrigeration(inventory, 2, 0, 1);
     const tierTwo = extendInventoryRefrigeration(tierOne, 2, 1, 2);
+    const tierThree = extendInventoryRefrigeration(tierTwo, 2, 2, 3);
 
     expect(tierOne.dairyMilk[0]?.expiresAfterDay).toBe(5);
     expect(tierTwo.dairyMilk[0]?.expiresAfterDay).toBe(6);
+    expect(tierThree.dairyMilk[0]?.expiresAfterDay).toBe(8);
+    expect(tierThree.coldBrewConcentrate[0]?.expiresAfterDay).toBe(8);
     expect(tierTwo.coldBrewConcentrate[0]?.expiresAfterDay).toBe(6);
-    expect(tierTwo.houseBeans[0]?.expiresAfterDay).toBe(4);
-    expect(batchExpiryDay('oatMilk', 7, 2)).toBe(11);
-    expect(batchExpiryDay('chocolate', 7, 2)).toBe(9);
+    expect(tierThree.houseBeans[0]?.expiresAfterDay).toBe(4);
+    expect(batchExpiryDay('oatMilk', 7, 3)).toBe(13);
+    expect(batchExpiryDay('chocolate', 7, 3)).toBe(9);
+
+    const lifecycle = expireInventoryAfterRush(tierThree, 7);
+    expect(lifecycle.expired.dairyMilk).toBe(0);
+    expect(lifecycle.expired.houseBeans).toBe(500);
+    expect(inventoryTotals(lifecycle.inventory)).toMatchObject({
+      dairyMilk: 400,
+      coldBrewConcentrate: 600,
+      houseBeans: 0,
+    });
   });
 
   it('projects purchase totals without mutating carried stock', () => {

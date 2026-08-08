@@ -123,16 +123,22 @@ describe('snapshot presentation and audio consent', () => {
       weather: 'coldSnap' as const,
       world: 'laneway-specialty-cafe',
     },
+    {
+      venueId: 'departmentStore' as const,
+      staffCount: 8,
+      weather: 'mild' as const,
+      world: 'heritage-department-store-coffee-hall',
+    },
   ])('routes $venueId service exclusively through its complete WebGL world', async (fixture) => {
     new BrowserSaveStore(window.localStorage).save(
       livingRushEnvelope({
         equipment: {
-          grinder: 2,
-          espressoMachine: 2,
-          batchBrewer: 2,
-          refrigeration: 2,
-          pos: 2,
-          serviceCounter: 2,
+          grinder: 3,
+          espressoMachine: 3,
+          batchBrewer: 3,
+          refrigeration: 3,
+          pos: 3,
+          serviceCounter: 3,
         },
         queueCount: 16,
         scheduledStaffCount: fixture.staffCount,
@@ -159,7 +165,11 @@ describe('snapshot presentation and audio consent', () => {
     expect(frame).toHaveAttribute('data-max-visible-staff', '10');
     expect(frame).toHaveAttribute(
       'data-equipment',
-      'grinder:2,espressoMachine:2,batchBrewer:2,refrigeration:2,pos:2,serviceCounter:2',
+      'grinder:3,espressoMachine:3,batchBrewer:3,refrigeration:3,pos:3,serviceCounter:3',
+    );
+    expect(frame).toHaveAttribute(
+      'data-queue-capacity',
+      ({ cart: '16', kiosk: '19', cafe: '23', departmentStore: '32' } as const)[fixture.venueId],
     );
     expect(screen.getByText('+4 beyond view')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');

@@ -14,6 +14,7 @@ import {
 import { createRenderSnapshot, MAX_RENDER_QUEUE_CUSTOMERS } from './renderSnapshot';
 import { CafeWorld } from './venues/CafeWorld';
 import { CartWorld } from './venues/CartWorld';
+import { DepartmentStoreWorld } from './venues/DepartmentStoreWorld';
 import { KioskWorld } from './venues/KioskWorld';
 import { venueLayoutFor } from './venues/venueLayout';
 import { WebGLBoundary } from './WebGLBoundary';
@@ -59,6 +60,7 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-max-visible-staff={layout.performance.maxVisibleStaff}
       data-paused={snapshot.service.isPaused}
       data-queue-count={snapshot.service.queueCount}
+      data-queue-capacity={snapshot.service.queueCapacity}
       data-queue-overflow={overflow}
       data-reduced-motion={snapshot.presentation.reducedMotion}
       data-renderer="webgl"
@@ -78,6 +80,7 @@ export function ServiceWorld(): React.JSX.Element | null {
           'data-active-customer': snapshot.service.active?.id ?? 'none',
           'data-last-event': lastActivity?.id ?? 'none',
           'data-queue-count': snapshot.service.queueCount,
+          'data-queue-capacity': snapshot.service.queueCapacity,
           'data-queue-overflow': overflow,
           'data-speed': snapshot.service.speed,
           'data-venue': snapshot.identity.venueId,
@@ -191,6 +194,8 @@ function VenueWorld({
       return <KioskWorld snapshot={snapshot} />;
     case 'cafe':
       return <CafeWorld snapshot={snapshot} />;
+    case 'departmentStore':
+      return <DepartmentStoreWorld snapshot={snapshot} />;
     default:
       return assertNever(snapshot.identity.venueId);
   }

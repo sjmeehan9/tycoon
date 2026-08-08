@@ -1,6 +1,7 @@
 import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../../content/gameContent';
 import {
   inventoryTotals,
+  serviceQueueCapacity,
   type CosmeticId,
   type CustomerSegment,
   type EquipmentState,
@@ -53,6 +54,7 @@ export interface RenderSnapshot {
     speed: RushSpeed;
     isPaused: boolean;
     queueCount: number;
+    queueCapacity: number;
     queue: readonly RenderCustomerSnapshot[];
     active: RenderActiveServiceSnapshot | null;
     activity: readonly RushActivityEvent[];
@@ -109,6 +111,7 @@ export function createRenderSnapshot(
       speed: game.rush?.speed ?? 1,
       isPaused: game.rush?.isPaused ?? false,
       queueCount: game.rush?.queue.length ?? 0,
+      queueCapacity: serviceQueueCapacity(game),
       queue:
         game.rush?.queue.slice(0, MAX_RENDER_QUEUE_CUSTOMERS).map(({ id, segment }) => ({
           id,

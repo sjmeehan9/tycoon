@@ -267,7 +267,8 @@ a playable Day-40 victory requiring the department store.
 
 ### File ownership
 
-- `src/game/types.ts`, `src/game/engine.ts`, `src/game/selectors.ts`
+- `src/game/types.ts`, `src/game/engine.ts`, `src/game/inventory.ts`
+- `src/game/selectors.ts`
 - `src/game/demandInfluences.ts`
 - `src/game/index.ts`, `src/game/capacity.ts`, `src/game/meta.ts`
 - `src/content/gameContent.ts`
@@ -279,12 +280,17 @@ a playable Day-40 victory requiring the department store.
 - `src/scene/three/ServiceWorld.tsx`
 - `src/scene/three/renderSnapshot.ts`
 - `src/scene/three/venues/DepartmentStoreWorld.tsx`
+- `src/scene/three/venues/venueLayout.ts`
 - `src/styles.css`
 - `tests/unit/coffee-content.test.ts`, `tests/unit/operations.test.ts`
 - `tests/unit/demand.test.ts`
+- `tests/unit/inventory.test.ts`
+- `tests/unit/scene.test.ts`
 - `tests/unit/campaign.test.ts`, `tests/unit/persistence.test.ts`
-- `tests/components/game-loop.test.tsx`
+- `tests/components/game-loop.test.tsx`, `tests/components/presentation.test.tsx`
 - `tests/e2e/department-store.spec.ts`, `tests/e2e/campaign-outcomes.spec.ts`
+- `tests/e2e/operations.spec.ts`, `tests/e2e/save-transfer.spec.ts`
+- `tests/e2e/service-layout.spec.ts`
 - `tests/fixtures/campaignFixtures.ts`
 - `docs/components/phase-8-component-8-3-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`
@@ -300,6 +306,9 @@ dispatcher.
 - Validate every equipment tier for increasing level, positive cost, valid venue,
   bounded effect, and a complete category; engine reads tier data rather than
   `level === 2` conditionals.
+- Refrigeration tier three extends only surviving chilled batches through the
+  shared inventory authority, never revives expiry, and has focused conservation
+  and waste-boundary proof.
 - Keep 40-day rules typed and difficulty-aware. Boundary fixtures cover Day 39,
   Day 40, equality, missing department venue, bankruptcy, victory, target miss,
   and endless continuation.
@@ -309,6 +318,9 @@ dispatcher.
   exhaustive and retain exact Standard/Hard deviation proofs.
 - The department scene reads existing engine truth only; it does not prebuild
   station outcomes.
+- Retained current-v4 operations, save-transfer, and all-venue service-layout
+  journeys must follow the same 40-day/fourth-venue contract. Legacy-schema
+  fixture literals remain historical evidence and are not rewritten.
 
 ### Acceptance mapping
 

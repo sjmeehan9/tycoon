@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { useModalFocus } from '../accessibility/useModalFocus';
 import { useGame } from '../app/GameContext';
+import { CAMPAIGN_RULES } from '../content/gameContent';
 import { DIFFICULTY_DESCRIPTIONS, DIFFICULTY_LABELS, type GamePhase } from '../game';
 
 const STEPS: Record<GamePhase, { number: number; title: string; detail: string }> = {
@@ -107,7 +108,8 @@ export function OnboardingGuide(): React.JSX.Element | null {
                 <strong>Learn</strong> from the causal report.
               </li>
               <li>
-                <strong>Grow</strong> equipment and venues over the full campaign.
+                <strong>Grow</strong> through three equipment tiers and four venues by Day{' '}
+                {CAMPAIGN_RULES.durationDays}.
               </li>
             </ol>
             <div className="ending-actions">

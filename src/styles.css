@@ -440,6 +440,15 @@ small {
 .webgl-scene-hud .webgl-stock-signal {
   background: #cfe2c7;
 }
+.webgl-service-world[data-venue='departmentStore'] {
+  border-color: #4c342c;
+  box-shadow:
+    var(--shadow),
+    0 0 0 3px #c3a46f;
+}
+.webgl-service-world[data-venue='departmentStore'] .scene-hud strong {
+  background: #ead4a3;
+}
 .scene-hud {
   position: absolute;
   z-index: 2;

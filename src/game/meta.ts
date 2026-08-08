@@ -3,8 +3,9 @@ import type { AchievementId, CampaignRecord, GameState, MetaProgress } from './t
 
 export const ACHIEVEMENT_DETAILS: Record<AchievementId, { name: string; description: string }> = {
   cafeFounder: {
-    name: 'Cafe Founder',
-    description: 'Win a 30-day campaign and open endless mode, a wattle awning, and Rainy Season.',
+    name: 'Coffee Hall Founder',
+    description:
+      'Win a 40-day campaign from cart to department-store coffee hall and unlock endless mode, a wattle awning, and Rainy Season.',
   },
   goldenCup: {
     name: 'Golden Cup',

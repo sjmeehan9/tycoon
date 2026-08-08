@@ -179,7 +179,7 @@ describe('staff operations', () => {
 });
 
 describe('equipment and venue growth', () => {
-  it('applies all six equipment families to service calculations', () => {
+  it('applies every commercial tier through data-driven service calculations', () => {
     const base = createCampaign({ seed: 71 });
     expect(operationalEffects(withEquipment(base, 'grinder')).qualityBonus).toBeGreaterThan(0);
     expect(
@@ -195,6 +195,31 @@ describe('equipment and venue growth', () => {
     expect(serviceQueueCapacity(withEquipment(base, 'serviceCounter'))).toBe(
       serviceQueueCapacity(base) + 2,
     );
+
+    const commercial: GameState = {
+      ...base,
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    const commercialEffects = operationalEffects(commercial);
+    expect(commercialEffects).toMatchObject({
+      qualityBonus: 8,
+      demandMultiplier: 1.07,
+      queueBonus: 8,
+    });
+    expect(commercialEffects.preparationMultiplier).toBeCloseTo(0.84 * 0.86, 8);
+    expect(equipmentPreparationMultiplier(commercial, 'flatWhite')).toBe(0.7);
+    expect(equipmentPreparationMultiplier(commercial, 'batchBrew')).toBe(0.4);
+    expect(batchExpiryDay('dairyMilk', 1, 3)).toBe(7);
+    expect(serviceQueueCapacity(commercial)).toBe(32);
+    expect(commercialEffects.operatingCostCents).toBe(3_610);
   });
 
   it.each(EQUIPMENT_IDS)('%s is wired into a complete day and settlement', (equipmentId) => {
@@ -214,9 +239,9 @@ describe('equipment and venue growth', () => {
     expect(batchExpiryDay('houseBeans', 1, 2)).toBe(batchExpiryDay('houseBeans', 1, 0));
   });
 
-  it('enforces tier availability, affordability, and both promotion gates', () => {
+  it('enforces tier availability, affordability, and all three promotion gates', () => {
     const reinvest = closeDay(runToReport(startRush(createCampaign({ seed: 2 }))));
-    const funded = { ...reinvest, cashCents: 100_000, reputation: 60 };
+    const funded = { ...reinvest, cashCents: 200_000, reputation: 80 };
     const grinderOne = buyEquipment(funded, 'grinder');
     expect(grinderOne.equipment.grinder).toBe(1);
     expect(() => buyEquipment(grinderOne, 'grinder')).toThrow('requires a Coffee Kiosk');
@@ -246,5 +271,14 @@ describe('equipment and venue growth', () => {
     expect(
       prepareDay({ ...cafe, phase: 'planning' }, { activeMenu: ALL_DRINK_IDS }).plan.activeMenu,
     ).toHaveLength(10);
+
+    expect(() => buyEquipment(cafe, 'grinder')).toThrow('requires a Department Store Coffee Hall');
+    const department = promoteVenue(cafe);
+    expect(department.venueId).toBe('departmentStore');
+    expect(department.cashCents).toBe(cafe.cashCents - 20_000);
+    const commercialGrinder = buyEquipment(department, 'grinder');
+    expect(commercialGrinder.equipment.grinder).toBe(3);
+    expect(() => buyEquipment(commercialGrinder, 'grinder')).toThrow('fully upgraded');
+    expect(serviceQueueCapacity(department)).toBe(24);
   });
 });

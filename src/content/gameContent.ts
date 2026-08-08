@@ -7,6 +7,7 @@ import type {
   DrinkPrices,
   EquipmentConfig,
   EquipmentId,
+  EquipmentTierEffects,
   IngredientId,
   IngredientInventory,
   IngredientPurchases,
@@ -267,7 +268,7 @@ export const SCENARIO_DETAILS: Record<
 > = {
   lanewayClassic: {
     name: 'Laneway Classic',
-    description: 'The balanced original 30-day campaign.',
+    description: 'The balanced 40-day journey from laneway cart to landmark coffee hall.',
     demandMultiplier: 1,
   },
   rainySeason: {
@@ -313,12 +314,21 @@ export const SEGMENT_LARGE_SIZE_PROBABILITY: Record<CustomerSegment, number> = {
   regular: 0.42,
 };
 
+/** Canonical progression order shared by every exhaustive venue consumer. */
+export const VENUE_IDS = [
+  'cart',
+  'kiosk',
+  'cafe',
+  'departmentStore',
+] as const satisfies readonly VenueId[];
+
 /** Functional venue stages used by planning, service, settlement, and the scene. */
 export const VENUES: Record<VenueId, VenueConfig> = {
   cart: {
     id: 'cart',
     name: 'Hardware Lane Cart',
     shortName: 'Coffee Cart',
+    actionName: 'cart',
     description: 'One compact bar, close conversation, and no spare elbow room.',
     menuCapacity: 3,
     staffCapacity: 2,
@@ -330,6 +340,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     id: 'kiosk',
     name: 'Laneway Coffee Kiosk',
     shortName: 'Coffee Kiosk',
+    actionName: 'kiosk',
     description: 'A permanent counter with storage, shelter, and a faster service lane.',
     menuCapacity: 6,
     staffCapacity: 3,
@@ -341,6 +352,7 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     id: 'cafe',
     name: 'Laneway Specialty Cafe',
     shortName: 'Specialty Cafe',
+    actionName: 'cafe',
     description: 'A full neighbourhood cafe with room for every coffee on the board.',
     menuCapacity: 10,
     staffCapacity: 5,
@@ -348,50 +360,93 @@ export const VENUES: Record<VenueId, VenueConfig> = {
     demandFactor: 1.38,
     operatingCostCents: 1_100,
   },
+  departmentStore: {
+    id: 'departmentStore',
+    name: 'Merriweather Department Store Coffee Hall',
+    shortName: 'Department Store Coffee Hall',
+    actionName: 'department-store coffee hall',
+    description:
+      'A landmark coffee operation beneath a restored heritage dome, built for ten staff and the city crowd.',
+    menuCapacity: ALL_DRINK_IDS.length,
+    staffCapacity: 10,
+    queueCapacity: 24,
+    demandFactor: 1.62,
+    operatingCostCents: 1_850,
+  },
 };
 
-export const VENUE_MENU_CAPACITY: Record<VenueId, number> = {
-  cart: VENUES.cart.menuCapacity,
-  kiosk: VENUES.kiosk.menuCapacity,
-  cafe: VENUES.cafe.menuCapacity,
-};
-export const VENUE_STAFF_CAPACITY: Record<VenueId, number> = {
-  cart: VENUES.cart.staffCapacity,
-  kiosk: VENUES.kiosk.staffCapacity,
-  cafe: VENUES.cafe.staffCapacity,
-};
-export const VENUE_DEMAND_FACTOR: Record<VenueId, number> = {
-  cart: VENUES.cart.demandFactor,
-  kiosk: VENUES.kiosk.demandFactor,
-  cafe: VENUES.cafe.demandFactor,
-};
+export const VENUE_MENU_CAPACITY = venueRecord(({ menuCapacity }) => menuCapacity);
+export const VENUE_STAFF_CAPACITY = venueRecord(({ staffCapacity }) => staffCapacity);
+export const VENUE_DEMAND_FACTOR = venueRecord(({ demandFactor }) => demandFactor);
 
-/** Two practical tiers for every required equipment family. */
+/** Three practical tiers for every required equipment family. */
 export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
   grinder: equipment('grinder', 'Grinder', 'Controls dose consistency and extraction clarity.', [
-    tier(1, 'Stepless grinder', 2_500, 90, 'cart', '+2 cup quality'),
-    tier(2, 'Precision twin grinder', 5_500, 170, 'kiosk', '+5 cup quality total'),
+    tier(1, 'Stepless grinder', 2_500, 90, 96, 'cart', '+2 cup quality', {
+      qualityBonus: 2,
+    }),
+    tier(2, 'Precision twin grinder', 5_500, 170, 98, 'kiosk', '+5 cup quality total', {
+      qualityBonus: 5,
+    }),
+    tier(3, 'Commercial grinder bank', 8_500, 280, 99, 'departmentStore', '+8 cup quality total', {
+      qualityBonus: 8,
+    }),
   ]),
   espressoMachine: equipment(
     'espressoMachine',
     'Espresso machine',
     'Adds stable pressure and faster recovery between espresso drinks.',
     [
-      tier(1, 'Dual-boiler machine', 3_500, 140, 'cart', '8% faster espresso service'),
-      tier(2, 'Three-group workhorse', 7_500, 280, 'kiosk', '18% faster espresso service'),
+      tier(1, 'Dual-boiler machine', 3_500, 140, 94, 'cart', '8% faster espresso service', {
+        espressoPreparationMultiplier: 0.92,
+      }),
+      tier(2, 'Three-group workhorse', 7_500, 280, 97, 'kiosk', '18% faster espresso service', {
+        espressoPreparationMultiplier: 0.82,
+      }),
+      tier(
+        3,
+        'Six-group commercial line',
+        11_500,
+        460,
+        99,
+        'departmentStore',
+        '30% faster espresso service',
+        { espressoPreparationMultiplier: 0.7 },
+      ),
     ],
   ),
   batchBrewer: equipment('batchBrewer', 'Batch brewer', 'Keeps filter coffee ready at peak time.', [
-    tier(1, 'Bench batch brewer', 2_200, 85, 'kiosk', '25% faster batch brew'),
-    tier(2, 'Twin thermal brewer', 4_800, 150, 'cafe', '45% faster batch brew'),
+    tier(1, 'Bench batch brewer', 2_200, 85, 94, 'kiosk', '25% faster batch brew', {
+      batchBrewPreparationMultiplier: 0.75,
+    }),
+    tier(2, 'Twin thermal brewer', 4_800, 150, 97, 'cafe', '45% faster batch brew', {
+      batchBrewPreparationMultiplier: 0.55,
+    }),
+    tier(3, 'High-volume urn battery', 8_500, 280, 99, 'departmentStore', '60% faster batch brew', {
+      batchBrewPreparationMultiplier: 0.4,
+    }),
   ]),
   refrigeration: equipment(
     'refrigeration',
     'Refrigeration',
     'Extends the usable life of milk and cold-brew concentrate.',
     [
-      tier(1, 'Under-counter fridge', 2_500, 110, 'kiosk', '+1 chilled-stock day'),
-      tier(2, 'Cold-room system', 5_200, 210, 'cafe', '+2 chilled-stock days total'),
+      tier(1, 'Under-counter fridge', 2_500, 110, 95, 'kiosk', '+1 chilled-stock day', {
+        chilledShelfLifeDays: 1,
+      }),
+      tier(2, 'Cold-room system', 5_200, 210, 98, 'cafe', '+2 chilled-stock days total', {
+        chilledShelfLifeDays: 2,
+      }),
+      tier(
+        3,
+        'Commercial chilled store',
+        9_000,
+        360,
+        99,
+        'departmentStore',
+        '+4 chilled-stock days total',
+        { chilledShelfLifeDays: 4 },
+      ),
     ],
   ),
   pos: equipment(
@@ -399,8 +454,30 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
     'Point of sale',
     'Moves orders cleanly from the till to the coffee station.',
     [
-      tier(1, 'Touch POS', 1_800, 65, 'cart', '4% faster hand-off and +2% demand'),
-      tier(2, 'Integrated order rail', 4_000, 120, 'kiosk', '9% faster hand-off and +4% demand'),
+      tier(1, 'Touch POS', 1_800, 65, 96, 'cart', '4% faster hand-off and +2% demand', {
+        preparationMultiplier: 0.96,
+        demandMultiplier: 1.02,
+      }),
+      tier(
+        2,
+        'Integrated order rail',
+        4_000,
+        120,
+        98,
+        'kiosk',
+        '9% faster hand-off and +4% demand',
+        { preparationMultiplier: 0.91, demandMultiplier: 1.04 },
+      ),
+      tier(
+        3,
+        'Department order console',
+        7_000,
+        210,
+        99,
+        'departmentStore',
+        '16% faster hand-off and +7% demand',
+        { preparationMultiplier: 0.84, demandMultiplier: 1.07 },
+      ),
     ],
   ),
   serviceCounter: equipment(
@@ -408,14 +485,38 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
     'Service counter',
     'Creates a clearer collection point and more room for a patient queue.',
     [
-      tier(1, 'Marked collection rail', 1_600, 45, 'cart', '+2 queue spaces, 3% faster service'),
+      tier(
+        1,
+        'Marked collection rail',
+        1_600,
+        45,
+        100,
+        'cart',
+        '+2 queue spaces, 3% faster service',
+        {
+          queueCapacityBonus: 2,
+          preparationMultiplier: 0.97,
+        },
+      ),
       tier(
         2,
         'Dedicated service counter',
         3_800,
         90,
+        100,
         'kiosk',
         '+4 queue spaces, 7% faster service',
+        { queueCapacityBonus: 4, preparationMultiplier: 0.93 },
+      ),
+      tier(
+        3,
+        'Marble collection island',
+        7_500,
+        170,
+        100,
+        'departmentStore',
+        '+8 queue spaces, 14% faster service',
+        { queueCapacityBonus: 8, preparationMultiplier: 0.86 },
       ),
     ],
   ),
@@ -423,7 +524,7 @@ export const EQUIPMENT: Record<EquipmentId, EquipmentConfig> = {
 
 export const EQUIPMENT_IDS = Object.keys(EQUIPMENT) as EquipmentId[];
 
-export const VENUE_PROMOTIONS: Record<Exclude<VenueId, 'cafe'>, VenuePromotion> = {
+export const VENUE_PROMOTIONS: Record<Exclude<VenueId, 'departmentStore'>, VenuePromotion> = {
   cart: {
     from: 'cart',
     to: 'kiosk',
@@ -438,7 +539,16 @@ export const VENUE_PROMOTIONS: Record<Exclude<VenueId, 'cafe'>, VenuePromotion> 
     reputationRequired: 55,
     requiredEquipment: { grinder: 2, espressoMachine: 2, refrigeration: 1, pos: 1 },
   },
+  cafe: {
+    from: 'cafe',
+    to: 'departmentStore',
+    costCents: 20_000,
+    reputationRequired: 70,
+    requiredEquipment: { grinder: 2, espressoMachine: 2, refrigeration: 1, pos: 1 },
+  },
 };
+
+validateEquipmentContent();
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   barista: 'Barista',
@@ -472,7 +582,7 @@ export const MAX_QUEUE_LENGTH = 8;
 
 /** Typed, centrally tuned campaign outcome and portability bounds. */
 export const CAMPAIGN_RULES = {
-  durationDays: 30,
+  durationDays: 40,
   victoryCashCents: 30_000,
   victoryReputation: 65,
   overdraftFloorCents: -10_000,
@@ -587,12 +697,96 @@ function equipment(
 }
 
 function tier(
-  level: 1 | 2,
+  level: 1 | 2 | 3,
   name: string,
   costCents: number,
   operatingCostCents: number,
+  reliabilityPercent: number,
   requiresVenue: VenueId,
   effect: string,
+  effects: Readonly<EquipmentTierEffects>,
 ): EquipmentConfig['tiers'][number] {
-  return { level, name, costCents, operatingCostCents, requiresVenue, effect };
+  return {
+    level,
+    name,
+    costCents,
+    operatingCostCents,
+    reliabilityPercent,
+    requiresVenue,
+    effect,
+    effects,
+  };
+}
+
+/** Return the installed tier definition, or null for owner equipment. */
+export function equipmentTierAtLevel(
+  equipmentId: EquipmentId,
+  level: number,
+): EquipmentConfig['tiers'][number] | null {
+  if (level === 0) return null;
+  return EQUIPMENT[equipmentId].tiers.find((candidate) => candidate.level === level) ?? null;
+}
+
+/** Return whether one venue satisfies a configured progression requirement. */
+export function venueMeetsRequirement(current: VenueId, required: VenueId): boolean {
+  return VENUE_IDS.indexOf(current) >= VENUE_IDS.indexOf(required);
+}
+
+/** Validate the complete commercial equipment catalogue at startup and in tests. */
+export function validateEquipmentContent(
+  catalogue: Readonly<Record<EquipmentId, EquipmentConfig>> = EQUIPMENT,
+): void {
+  const effectBounds: Record<keyof EquipmentTierEffects, readonly [number, number]> = {
+    preparationMultiplier: [0.4, 1],
+    qualityBonus: [0, 20],
+    demandMultiplier: [1, 1.2],
+    queueCapacityBonus: [0, 12],
+    espressoPreparationMultiplier: [0.4, 1],
+    batchBrewPreparationMultiplier: [0.3, 1],
+    chilledShelfLifeDays: [0, 7],
+  };
+  for (const equipmentId of EQUIPMENT_IDS) {
+    const config = catalogue[equipmentId];
+    if (!config || config.id !== equipmentId || config.tiers.length !== 3) {
+      throw new Error(`${equipmentId} must define one complete three-tier category.`);
+    }
+    let previousLevel = 0;
+    for (const tierConfig of config.tiers) {
+      if (tierConfig.level !== previousLevel + 1) {
+        throw new Error(`${equipmentId} tiers must use increasing consecutive levels.`);
+      }
+      if (tierConfig.costCents <= 0 || tierConfig.operatingCostCents <= 0) {
+        throw new Error(`${equipmentId} tier ${tierConfig.level} costs must be positive.`);
+      }
+      if (
+        !Number.isInteger(tierConfig.reliabilityPercent) ||
+        tierConfig.reliabilityPercent < 90 ||
+        tierConfig.reliabilityPercent > 100
+      ) {
+        throw new Error(`${equipmentId} tier ${tierConfig.level} reliability is out of bounds.`);
+      }
+      if (!VENUE_IDS.includes(tierConfig.requiresVenue)) {
+        throw new Error(`${equipmentId} tier ${tierConfig.level} requires an unknown venue.`);
+      }
+      const effects = Object.entries(tierConfig.effects) as Array<
+        [keyof EquipmentTierEffects, number]
+      >;
+      if (effects.length === 0) {
+        throw new Error(`${equipmentId} tier ${tierConfig.level} needs an operational effect.`);
+      }
+      for (const [effectId, value] of effects) {
+        const bounds = effectBounds[effectId];
+        if (!bounds || !Number.isFinite(value) || value < bounds[0] || value > bounds[1]) {
+          throw new Error(`${equipmentId} tier ${tierConfig.level} has an invalid ${effectId}.`);
+        }
+      }
+      previousLevel = tierConfig.level;
+    }
+  }
+}
+
+function venueRecord<T>(select: (venue: VenueConfig) => T): Record<VenueId, T> {
+  return Object.fromEntries(
+    VENUE_IDS.map((venueId) => [venueId, select(VENUES[venueId])]),
+  ) as Record<VenueId, T>;
 }

@@ -11,6 +11,7 @@ import {
   DIFFICULTY_DEVIATION_MULTIPLIERS,
   demandRate,
   ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES,
+  operationalEffects,
   prepareDay,
   resolveEvent,
   startRush,
@@ -152,6 +153,9 @@ describe('explainable demand factors', () => {
     expect(demandRate({ ...cheap, venueId: 'cafe' })).toBeGreaterThan(
       demandRate({ ...cheap, venueId: 'cart' }),
     );
+    expect(demandRate({ ...cheap, venueId: 'departmentStore' })).toBeGreaterThan(
+      demandRate({ ...cheap, venueId: 'cafe' }),
+    );
     expect(demandRate({ ...cheap, weather: 'coldSnap' })).toBeGreaterThan(
       demandRate({ ...cheap, weather: 'rainy' }),
     );
@@ -196,6 +200,44 @@ describe('explainable demand factors', () => {
       );
     }
     expect(seen).toEqual(new Set(['commuter', 'student', 'enthusiast', 'regular']));
+  });
+
+  it('keeps department venue and commercial team-equipment source values inside exact Hard bounds', () => {
+    const venue = DEMAND_INFLUENCES.arrivalVenue;
+    expect(venue.engineSource).toBe('engine.demandRate.VENUE_DEMAND_FACTOR[state.venueId]');
+    expect(applyDemandInfluence('standard', 'arrivalVenue', 1.62)).toBeCloseTo(1.62, 8);
+    expect(applyDemandInfluence('hard', 'arrivalVenue', 1.62)).toBeCloseTo(2.0385, 8);
+    expect(venue.clamp.maximum).toBeGreaterThanOrEqual(2.0385);
+
+    const base = createCampaign({ seed: 8_303 });
+    const staff = Array.from({ length: 8 }, (_, index) => ({
+      ...base.candidateStaff[index % base.candidateStaff.length]!,
+      id: `demand-staff-${index}`,
+      name: `Demand Staff ${index}`,
+      trait: 'peoplePerson' as const,
+      hiredOnDay: 1,
+    }));
+    const department = {
+      ...base,
+      venueId: 'departmentStore' as const,
+      staff,
+      equipment: { ...base.equipment, pos: 3 },
+      plan: { ...base.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    };
+    const baselineTeamEquipment = operationalEffects(department).demandMultiplier;
+    const hardTeamEquipment = applyDemandInfluence(
+      'hard',
+      'arrivalTeamEquipment',
+      baselineTeamEquipment,
+    );
+    expect(DEMAND_INFLUENCES.arrivalTeamEquipment.engineSource).toBe(
+      'engine.demandRate.operationalEffects(state).demandMultiplier',
+    );
+    expect(baselineTeamEquipment).toBeCloseTo(1.05 ** 8 * 1.07, 8);
+    expect(hardTeamEquipment).toBeCloseTo(1 + (baselineTeamEquipment - 1) * 1.675, 8);
+    expect(hardTeamEquipment).toBeLessThanOrEqual(
+      DEMAND_INFLUENCES.arrivalTeamEquipment.clamp.maximum,
+    );
   });
 });
 

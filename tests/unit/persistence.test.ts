@@ -83,16 +83,50 @@ describe('schema-v4 save envelope', () => {
         ...state,
         staff: [{ ...candidate, hiredOnDay: 1 }],
         candidateStaff: state.candidateStaff.slice(1),
-        venueId: 'kiosk',
-        equipment: { ...state.equipment, grinder: 1, espressoMachine: 1, pos: 1 },
+        venueId: 'departmentStore',
+        equipment: {
+          grinder: 3,
+          espressoMachine: 3,
+          batchBrewer: 3,
+          refrigeration: 3,
+          pos: 3,
+          serviceCounter: 3,
+        },
       },
       { scheduledStaffIds: [candidate.id] },
     );
     const parsed = parseEnvelope(JSON.stringify(createSaveEnvelope(state)));
 
     expect(parsed?.activeRun).toEqual(state);
-    expect(parsed?.activeRun).toMatchObject({ difficulty: 'hard', venueId: 'kiosk' });
+    expect(parsed?.activeRun).toMatchObject({
+      difficulty: 'hard',
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    });
     expect(parsed?.activeRun?.plan.scheduledStaffIds).toEqual([candidate.id]);
+  });
+
+  it('rejects unknown venues and equipment beyond the commercial third tier', () => {
+    const unknownVenue = structuredClone(nearVictoryEnvelope());
+    if (!unknownVenue.activeRun) throw new Error('Expected active campaign.');
+    (unknownVenue.activeRun as { venueId: string }).venueId = 'airport';
+    expect(() => importEnvelope(JSON.stringify(unknownVenue))).toThrow(
+      'activeRun.venueId is not supported',
+    );
+
+    const futureEquipment = structuredClone(nearVictoryEnvelope());
+    if (!futureEquipment.activeRun) throw new Error('Expected active campaign.');
+    futureEquipment.activeRun.equipment.grinder = 4;
+    expect(() => importEnvelope(JSON.stringify(futureEquipment))).toThrow(
+      'equipment.grinder is outside its allowed bounds',
+    );
   });
 
   it('rejects malformed, oversized, unsafe, and future v4 imports', () => {

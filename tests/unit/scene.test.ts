@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { VENUE_IDS } from '../../src/content/gameContent';
 import {
   advanceTick,
   createCampaign,
@@ -373,9 +374,9 @@ describe('snapshot-only WebGL contract', () => {
   });
 
   it('provides immutable bounded and venue-distinct layouts for every service VenueId', () => {
-    const venueIds: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
+    const venueIds: readonly VenueId[] = VENUE_IDS;
     expect(Object.keys(VENUE_LAYOUTS)).toEqual(venueIds);
-    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(3);
+    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(4);
     for (const venueId of venueIds) {
       const layout = venueLayoutFor(venueId);
       expect(layout.venueId).toBe(venueId);
@@ -388,7 +389,7 @@ describe('snapshot-only WebGL contract', () => {
         shadowLightCount: MAX_WORLD_SHADOW_LIGHTS,
       });
       expect(layout.performance.maxRepeatedFurnishings).toBeGreaterThan(0);
-      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(32);
+      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(36);
       expect(layout.queueAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
       expect(layout.staffAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
       expect(deeplyFrozen(layout)).toBe(true);
@@ -399,15 +400,16 @@ describe('snapshot-only WebGL contract', () => {
     { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const },
     { venueId: 'kiosk' as const, staffCount: 3, weather: 'rainy' as const },
     { venueId: 'cafe' as const, staffCount: 5, weather: 'coldSnap' as const },
+    { venueId: 'departmentStore' as const, staffCount: 8, weather: 'mild' as const },
   ])('keeps exact $venueId operation truth in the shared renderer snapshot', (fixture) => {
     const game = livingRushEnvelope({
       equipment: {
-        grinder: 2,
-        espressoMachine: 2,
-        batchBrewer: 2,
-        refrigeration: 2,
-        pos: 2,
-        serviceCounter: 2,
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
       },
       queueCount: 16,
       scheduledStaffCount: fixture.staffCount,
@@ -422,6 +424,9 @@ describe('snapshot-only WebGL contract', () => {
       phase: 'rush',
     });
     expect(snapshot.service.queueCount).toBe(16);
+    expect(snapshot.service.queueCapacity).toBe(
+      ({ cart: 16, kiosk: 19, cafe: 23, departmentStore: 32 } as const)[fixture.venueId],
+    );
     expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
     expect(snapshot.operation.scheduledRoles).toHaveLength(fixture.staffCount);
     expect(snapshot.operation.equipment).toEqual(game.equipment);
@@ -451,9 +456,7 @@ describe('snapshot-only WebGL contract', () => {
   });
 
   it.each(
-    (['cart', 'kiosk', 'cafe'] as const).flatMap((venueId) =>
-      ([1, 2, 4] as const).map((speed) => ({ speed, venueId })),
-    ),
+    VENUE_IDS.flatMap((venueId) => ([1, 2, 4] as const).map((speed) => ({ speed, venueId }))),
   )(
     'cannot alter $venueId engine truth while mounted at $speed× or reduced motion',
     ({ speed, venueId }) => {
@@ -511,12 +514,19 @@ describe('snapshot-only WebGL contract', () => {
   it('keeps Canvas lazy and unreachable from every service venue branch', () => {
     const appSource = readFileSync('src/App.tsx', 'utf8');
     const serviceSource = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+    const departmentSource = readFileSync(
+      'src/scene/three/venues/DepartmentStoreWorld.tsx',
+      'utf8',
+    );
     expect(appSource).not.toContain('temporary-kiosk-cafe');
     expect(appSource).not.toContain('import { CanvasScene }');
     expect(serviceSource).not.toContain('CanvasScene');
-    for (const venueId of ['cart', 'kiosk', 'cafe'] as const) {
+    for (const venueId of VENUE_IDS) {
       expect(serviceSource).toContain(`case '${venueId}'`);
     }
+    expect(departmentSource).toContain('single-grand-service-counter');
+    expect(departmentSource).toContain('department-single-queue-markers');
+    expect(departmentSource).not.toMatch(/station|express/i);
   });
 });
 

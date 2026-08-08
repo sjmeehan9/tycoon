@@ -26,7 +26,9 @@ import {
   createDefaultPlan,
   emptyInventory,
   emptyPurchases,
+  equipmentTierAtLevel,
   milkIngredient,
+  venueMeetsRequirement,
   weatherForDay,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
@@ -77,12 +79,10 @@ import type {
   StaffMember,
   StaffTrait,
   StepDirection,
-  VenueId,
 } from './types';
 
 const MAX_HIRED_STAFF = 8;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
-const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
 
 /** Registry identities consumed by the arrival-rate engine path. */
 export const ARRIVAL_DEMAND_ENGINE_INFLUENCES = [
@@ -401,7 +401,7 @@ export function closeDay(state: GameState): GameState {
   }
   if (settled.mode === 'campaign' && settled.day >= CAMPAIGN_RULES.durationDays) {
     const won =
-      settled.venueId === 'cafe' &&
+      settled.venueId === 'departmentStore' &&
       settled.cashCents >= CAMPAIGN_RULES.victoryCashCents &&
       settled.reputation >= CAMPAIGN_RULES.victoryReputation;
     return won
@@ -410,8 +410,8 @@ export function closeDay(state: GameState): GameState {
           phase: 'victory',
           outcome: {
             type: 'victory',
-            title: 'The laneway has its local institution',
-            message: `Day ${CAMPAIGN_RULES.durationDays} closes with a thriving specialty cafe, ${formatCents(settled.cashCents)} in the till, and ${settled.reputation} reputation.`,
+            title: 'The city has its coffee institution',
+            message: `Day ${CAMPAIGN_RULES.durationDays} closes with a thriving department-store coffee hall, ${formatCents(settled.cashCents)} in the till, and ${settled.reputation} reputation.`,
           },
         }
       : {
@@ -420,7 +420,7 @@ export function closeDay(state: GameState): GameState {
           outcome: {
             type: 'targetMissed',
             title: 'A good run, short of the final brief',
-            message: `Day ${CAMPAIGN_RULES.durationDays} needs a cafe, ${formatCents(CAMPAIGN_RULES.victoryCashCents)}, and ${CAMPAIGN_RULES.victoryReputation} reputation. Your next seed is waiting.`,
+            message: `Day ${CAMPAIGN_RULES.durationDays} needs the department-store coffee hall, ${formatCents(CAMPAIGN_RULES.victoryCashCents)}, and ${CAMPAIGN_RULES.victoryReputation} reputation. Your next seed is waiting.`,
           },
         };
   }
@@ -466,7 +466,9 @@ export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameSt
   if (!EQUIPMENT_IDS.includes(equipmentId))
     throw new GameRuleError('That equipment is unavailable.');
   const currentLevel = state.equipment[equipmentId];
-  const nextTier = EQUIPMENT[equipmentId].tiers[currentLevel];
+  const nextTier = EQUIPMENT[equipmentId].tiers.find(
+    (candidate) => candidate.level === currentLevel + 1,
+  );
   if (!nextTier)
     throw new GameRuleError(`${EQUIPMENT[equipmentId].name} is already fully upgraded.`);
   if (!venueMeetsRequirement(state.venueId, nextTier.requiresVenue)) {
@@ -492,7 +494,9 @@ export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameSt
 /** Promote the current business when its cash, reputation, and equipment are ready. */
 export function promoteVenue(state: GameState): GameState {
   requirePhase(state, 'reinvest');
-  if (state.venueId === 'cafe') throw new GameRuleError('The specialty cafe is the final venue.');
+  if (state.venueId === 'departmentStore') {
+    throw new GameRuleError('The department-store coffee hall is the final venue.');
+  }
   const promotion = VENUE_PROMOTIONS[state.venueId];
   if (state.reputation < promotion.reputationRequired) {
     throw new GameRuleError(
@@ -617,18 +621,17 @@ export function operationalEffects(state: GameState): OperationalEffects {
   let satisfactionBonus = 0;
   let demandMultiplier = 1;
   let patienceMultiplier = 1;
-  const queueBonus = state.equipment.serviceCounter * 2;
+  let queueBonus = 0;
 
-  qualityBonus += state.equipment.grinder === 2 ? 5 : state.equipment.grinder === 1 ? 2 : 0;
-  if (state.equipment.pos === 1) {
-    preparationMultiplier *= 0.96;
-    demandMultiplier *= 1.02;
-  } else if (state.equipment.pos === 2) {
-    preparationMultiplier *= 0.91;
-    demandMultiplier *= 1.04;
+  for (const equipmentId of EQUIPMENT_IDS) {
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    if (!tier) continue;
+    const effects = tier.effects;
+    preparationMultiplier *= effects.preparationMultiplier ?? 1;
+    qualityBonus += effects.qualityBonus ?? 0;
+    demandMultiplier *= effects.demandMultiplier ?? 1;
+    queueBonus += effects.queueCapacityBonus ?? 0;
   }
-  preparationMultiplier *= state.equipment.serviceCounter === 2 ? 0.93 : 1;
-  if (state.equipment.serviceCounter === 1) preparationMultiplier *= 0.97;
 
   for (const member of scheduledStaff(state)) {
     if (member.role === 'barista') {
@@ -654,10 +657,8 @@ export function operationalEffects(state: GameState): OperationalEffects {
   }
 
   const equipmentOperatingCost = EQUIPMENT_IDS.reduce((total, equipmentId) => {
-    const level = state.equipment[equipmentId];
-    return (
-      total + (level > 0 ? (EQUIPMENT[equipmentId].tiers[level - 1]?.operatingCostCents ?? 0) : 0)
-    );
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    return total + (tier?.operatingCostCents ?? 0);
   }, 0);
   return {
     preparationMultiplier,
@@ -673,14 +674,16 @@ export function operationalEffects(state: GameState): OperationalEffects {
 /** Return the equipment-only preparation multiplier for a configured drink. */
 export function equipmentPreparationMultiplier(state: GameState, drinkId: DrinkId): number {
   if (drinkId === 'batchBrew') {
-    return state.equipment.batchBrewer === 2 ? 0.55 : state.equipment.batchBrewer === 1 ? 0.75 : 1;
+    return (
+      equipmentTierAtLevel('batchBrewer', state.equipment.batchBrewer)?.effects
+        .batchBrewPreparationMultiplier ?? 1
+    );
   }
   if (drinkId === 'coldBrew') return 1;
-  return state.equipment.espressoMachine === 2
-    ? 0.82
-    : state.equipment.espressoMachine === 1
-      ? 0.92
-      : 1;
+  return (
+    equipmentTierAtLevel('espressoMachine', state.equipment.espressoMachine)?.effects
+      .espressoPreparationMultiplier ?? 1
+  );
 }
 
 /** Return the venue plus service-counter queue capacity used by arrivals. */
@@ -1299,7 +1302,7 @@ function determineBottleneck(state: GameState, rush: RushState): string {
   if (rush.stats.stockouts > Math.max(2, rush.stats.served * 0.15)) return 'Ingredient stockouts';
   if (rush.stats.peakQueue >= serviceQueueCapacity(state) - 1) return 'Coffee preparation speed';
   if (rush.stats.abandoned > 2) return 'Customer wait time';
-  return 'No major bottleneck — the cart flowed well';
+  return `No major bottleneck — the ${VENUES[state.venueId].shortName.toLowerCase()} flowed well`;
 }
 
 function buildExplanations(state: GameState, rush: RushState, satisfaction: number): string[] {
@@ -1526,10 +1529,6 @@ function emptyRushStats(): RushStats {
 function scheduledStaff(state: GameState): StaffMember[] {
   const scheduledIds = new Set(state.plan.scheduledStaffIds);
   return state.staff.filter((member) => scheduledIds.has(member.id));
-}
-
-function venueMeetsRequirement(current: VenueId, required: VenueId): boolean {
-  return VENUE_ORDER.indexOf(current) >= VENUE_ORDER.indexOf(required);
 }
 
 function requireManagementPhase(state: GameState): void {

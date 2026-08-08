@@ -285,10 +285,10 @@ describe('playable cart UI', () => {
           campaignId: 'standard-record',
           difficulty: 'standard' as const,
           result: 'victory' as const,
-          day: 30,
+          day: 40,
           cashCents: 40_000,
           reputation: 80,
-          venueId: 'cafe' as const,
+          venueId: 'departmentStore' as const,
         },
         {
           campaignId: 'hard-record',
@@ -313,8 +313,8 @@ describe('playable cart UI', () => {
     expect(within(dialog).getByRole('heading', { name: 'Standard records' })).toBeVisible();
     expect(within(dialog).getByRole('heading', { name: 'Hard records' })).toBeVisible();
     expect(within(dialog).getByText(/shared across difficulties/i)).toBeVisible();
-    expect(within(dialog).getByText(/Day 30 · cafe/)).toBeVisible();
-    expect(within(dialog).getByText(/Day 12 · kiosk/)).toBeVisible();
+    expect(within(dialog).getByText(/Day 40 · Department Store Coffee Hall/)).toBeVisible();
+    expect(within(dialog).getByText(/Day 12 · Coffee Kiosk/)).toBeVisible();
   });
 
   it('hires both roles and schedules a daily team with visible payroll', async () => {
@@ -457,11 +457,11 @@ describe('playable cart UI', () => {
     expect(screen.queryByRole('radio', { name: /Hard/ })).toBeNull();
   });
 
-  it('buys equipment and promotes the same venue through kiosk to cafe', async () => {
+  it('buys equipment and promotes the same venue through the department-store hall', async () => {
     const reinvest = {
       ...closeDay(stateAtReport()),
-      cashCents: 100_000,
-      reputation: 60,
+      cashCents: 200_000,
+      reputation: 80,
     };
     new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(reinvest));
     const user = userEvent.setup();
@@ -473,7 +473,7 @@ describe('playable cart UI', () => {
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 1/ }));
     expect(firstPromotion).toBeEnabled();
     await user.click(firstPromotion);
-    expect(screen.getByRole('heading', { name: /Day 1\/30 · Coffee Kiosk/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/40 · Coffee Kiosk/ })).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: /Buy Grinder level 2/ }));
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 2/ }));
@@ -482,7 +482,20 @@ describe('playable cart UI', () => {
     const cafePromotion = screen.getByRole('button', { name: 'Promote to Specialty Cafe' });
     expect(cafePromotion).toBeEnabled();
     await user.click(cafePromotion);
-    expect(screen.getByRole('heading', { name: /Day 1\/30 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/40 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByText(/Commercial grinder bank · \$85\.00 purchase/)).toHaveTextContent(
+      /requires Department Store Coffee Hall.*99% reliability.*\$2\.80\/day maintenance/,
+    );
+    const departmentPromotion = screen.getByRole('button', {
+      name: 'Promote to Department Store Coffee Hall',
+    });
+    expect(departmentPromotion).toBeEnabled();
+    await user.click(departmentPromotion);
+    expect(
+      screen.getByRole('heading', { name: /Day 1\/40 · Department Store Coffee Hall/ }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /Buy Grinder level 3/ }));
+    expect(screen.getByText('Level 3/3')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
     expect(document.querySelector('[data-game-layout="management"]')).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
@@ -500,16 +513,16 @@ describe('playable cart UI', () => {
       }),
     );
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
-    await user.click(screen.getByText('View full Day 30 report'));
+    await user.click(screen.getByText('View full Day 40 report'));
     expect(screen.getByText(/Lifecycle detail is unavailable for this older save/)).toBeVisible();
     expect(screen.getByText('Charge breakdown unavailable for this older report.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle & reinvest' }));
-    expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /coffee institution/ })).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Continue in endless mode' }));
     expect(
-      screen.getByRole('heading', { name: /Day 31 · Endless · Specialty Cafe/ }),
+      screen.getByRole('heading', { name: /Day 41 · Endless · Department Store Coffee Hall/ }),
     ).toBeVisible();
   });
 
@@ -558,7 +571,7 @@ describe('playable cart UI', () => {
     await user.click(screen.getByRole('button', { name: 'Game menu' }));
     await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
     await user.click(screen.getByRole('button', { name: 'Restore last-known-good save' }));
-    expect(await screen.findByRole('heading', { name: /Day 1\/30 · Coffee Cart/ })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /Day 1\/40 · Coffee Cart/ })).toBeVisible();
     expect(window.localStorage.getItem(SAVE_KEY)).toBe(serializeEnvelope(first));
   });
 });

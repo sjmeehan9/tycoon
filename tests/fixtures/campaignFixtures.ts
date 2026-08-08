@@ -10,6 +10,7 @@ import {
   startRush,
   type Customer,
   type DayReport,
+  type Difficulty,
   type EquipmentState,
   type GameState,
   type SaveEnvelope,
@@ -22,9 +23,9 @@ import {
   createSaveEnvelope,
 } from '../../src/persistence/saveStore';
 
-/** Valid production-import fixture one settlement away from Day 30 victory. */
-export function nearVictoryEnvelope(): SaveEnvelope {
-  const base = createCampaign({ seed: 30_030 });
+/** Valid production-import fixture one settlement away from Day 40 victory. */
+export function nearVictoryEnvelope(difficulty: Difficulty = 'standard'): SaveEnvelope {
+  const base = createCampaign({ seed: 40_040, difficulty });
   const closingCashCents = CAMPAIGN_RULES.victoryCashCents + 12_000;
   const state: GameState = {
     ...base,
@@ -32,15 +33,15 @@ export function nearVictoryEnvelope(): SaveEnvelope {
     phase: 'report',
     cashCents: closingCashCents,
     reputation: 82,
-    venueId: 'cafe',
+    venueId: 'departmentStore',
     lastSettledDay: CAMPAIGN_RULES.durationDays - 1,
     equipment: {
-      grinder: 2,
-      espressoMachine: 2,
-      batchBrewer: 1,
-      refrigeration: 1,
-      pos: 1,
-      serviceCounter: 1,
+      grinder: 3,
+      espressoMachine: 3,
+      batchBrewer: 3,
+      refrigeration: 3,
+      pos: 3,
+      serviceCounter: 3,
     },
     report: fixtureReport(base, CAMPAIGN_RULES.durationDays, closingCashCents),
   };
@@ -70,8 +71,8 @@ export function growthReadyEnvelope(): SaveEnvelope {
     ...base,
     day: 18,
     phase: 'reinvest',
-    cashCents: 100_000,
-    reputation: 70,
+    cashCents: 200_000,
+    reputation: 80,
     lastSettledDay: 18,
   };
   return createSaveEnvelope(state, fixturePreferences(), createDefaultMeta());
@@ -409,7 +410,7 @@ function fixtureReport(base: GameState, day: number, closingCashCents: number): 
     remainingInventory: inventoryTotals(base.inventory),
     inventoryLifecycle: null,
     servedBySegment: { commuter: 6, student: 4, enthusiast: 4, regular: 4 },
-    bottleneck: 'No major bottleneck — the cafe flowed well',
+    bottleneck: 'No major bottleneck — service flowed well',
     explanations: ['Validated deterministic outcome fixture ready for final settlement.'],
     settled: false,
   };
