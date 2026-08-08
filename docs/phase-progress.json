@@ -202,12 +202,12 @@
             "tests/e2e/presentation.spec.ts",
             "tests/fixtures/campaignFixtures.ts"
           ],
-          "evidenceFingerprint": null,
-          "validationEvidence": null,
+          "evidenceFingerprint": "6003451b87c5474f8fce64f80d3bf1368d72f271eee9e3d7309a3487ae136733",
+          "validationEvidence": "docs/components/phase-7-component-7-3-overview.md",
           "authorRepairUsed": false,
           "remediationCycles": 0,
-          "disposition": null,
-          "status": "spec-validated"
+          "disposition": "tier-2-pass",
+          "status": "committed"
         },
         {
           "id": "7.4",

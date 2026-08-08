@@ -8,9 +8,11 @@ import {
   startRush,
   type Customer,
   type DayReport,
+  type EquipmentState,
   type GameState,
   type SaveEnvelope,
   type VenueId,
+  type WeatherId,
 } from '../../src/game';
 import {
   createDefaultMeta,
@@ -154,18 +156,36 @@ export function endlessDay9_999Envelope(): SaveEnvelope {
 
 export interface LivingRushOptions {
   endingSoon?: boolean;
+  equipment?: Partial<EquipmentState>;
   paused?: boolean;
+  queueCount?: number;
   reducedMotion?: boolean;
+  scheduledStaffCount?: number;
   venueId?: VenueId;
+  weather?: WeatherId;
 }
 
 /** Deterministic dense rush used to prove queue overflow, evidence, and static parity. */
 export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelope {
   const campaign = createCampaign({ seed: 6_303 });
-  const started = startRush({ ...campaign, venueId: options.venueId ?? campaign.venueId });
+  const scheduledStaffCount = options.scheduledStaffCount ?? 0;
+  const staff = [...campaign.candidateStaff, ...candidatePoolForDay(campaign.seed, 2)]
+    .slice(0, scheduledStaffCount)
+    .map((member) => ({ ...member, hiredOnDay: 1 }));
+  const started = startRush({
+    ...campaign,
+    candidateStaff: campaign.candidateStaff.filter(
+      ({ id }) => !staff.some((member) => member.id === id),
+    ),
+    equipment: { ...campaign.equipment, ...options.equipment },
+    plan: { ...campaign.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    staff,
+    venueId: options.venueId ?? campaign.venueId,
+    weather: options.weather ?? campaign.weather,
+  });
   if (!started.rush) throw new Error('Living-rush fixture requires an active rush.');
   const activeCustomer = livingRushCustomer('d1-c1', 'enthusiast');
-  const queue = Array.from({ length: 12 }, (_, index) =>
+  const queue = Array.from({ length: options.queueCount ?? 12 }, (_, index) =>
     livingRushCustomer(
       `d1-c${index + 2}`,
       (['commuter', 'student', 'enthusiast', 'regular'] as const)[index % 4] ?? 'regular',

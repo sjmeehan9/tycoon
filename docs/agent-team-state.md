@@ -4,10 +4,10 @@
 
 Phase 7 sequential implementation — the user approved the complete Phases 7–8
 plan and authorized immediate implementation. Both required component
-breakdowns are `Spec-Validated`; Component 7.1 has reserved the human/device
-gates and established the documentation baseline on `phase-7`. Component 7.2
-has a complete Tier 2 PASS; Component 7.3 is next and must remove the temporary
-kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
+breakdowns are `Spec-Validated`; Components 7.1–7.3 are complete through their
+assigned gates. Cart, kiosk, and cafe service are now WebGL-only with a complete
+Tier 2 PASS. Component 7.4 is next and owns the approved service information
+ordering plus removal of the non-service morning preview.
 
 ## Next-Level Evolution Stage Progress
 
@@ -21,7 +21,8 @@ kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
 - [x] Sequential Implement delivery begins on Phase 7
 - [x] Component 7.1 records the branch, official-source checklist, device reservation, and merge gate
 - [x] Component 7.2 delivers the snapshot-only WebGL cart service
-- [ ] Component 7.3 completes kiosk and cafe isometric service worlds
+- [x] Component 7.3 completes kiosk and cafe isometric service worlds
+- [ ] Component 7.4 recomposes planning and immersive service information flow
 
 ## Lean team contract
 
@@ -65,7 +66,7 @@ kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
 | next_level_plan           | Technical Business Analyst | retired — stalled  | Intake/context audit; no artifact mutation returned                      |
 | next_level_plan_recovery  | Technical Business Analyst | done               | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready       | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | active — 7.2 PASS  | Sequential Phases 7–8 delivery; stops before Component 7.3              |
+| next_level_implement      | Implement                  | active — 7.3 PASS  | Sequential Phases 7–8 delivery; stops before Component 7.4              |
 
 ## Previous release human task gate
 
@@ -121,6 +122,7 @@ kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
 | 2026-08-08 | Reserve representative WebGL2 touch-device evidence | The approval response answered the combined plan/device request; reservation is confirmed but physical proof remains due in 7.6 | Components 7.1/7.6 |
 | 2026-08-08 | Materialize both additive component breakdowns      | All 15 components now carry ownership, dependencies, Technical Validation, acceptance, lane, tier, and `Spec-Validated` status | Phases 7–8 entry |
 | 2026-08-08 | Pin the snapshot-only cart renderer stack           | R3F 9.7.0, Three 0.185.1, and `@types/three` 0.185.4 build with React 19.2/Vite 8.1; renderer input is one frozen bounded snapshot | Component 7.2 |
+| 2026-08-08 | Make all current service venues WebGL-only          | Exhaustive immutable layouts and cart/kiosk/cafe dispatch replace the temporary service bridge; Canvas remains lazy and non-service-only until 7.4 | Component 7.3 |
 
 ## Drift log
 
@@ -143,6 +145,7 @@ kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
   behavior.
 - Version 1 exclusions remain explicit non-goals in `docs/requirements.md`, not
   deferred required behavior.
-- The temporary Component 7.2 kiosk/cafe Canvas bridge is mandatory
-  intermediate sequencing, not released debt. Component 7.3 owns its removal;
-  until then the `phase-7` head is non-mergeable and non-releasable.
+- The Component 7.2 kiosk/cafe service bridge was removed by Component 7.3.
+  `CanvasScene` remains a separately lazy non-service planning/report renderer
+  only until Component 7.4 performs the approved flow recomposition; it is not
+  reachable from a service venue or WebGL recovery path.

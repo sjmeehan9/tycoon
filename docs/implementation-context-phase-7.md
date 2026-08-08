@@ -94,15 +94,19 @@ version and does not change the approved architecture.
 4. **Post-7.6 human gate:** request explicit approval before merging
    `phase-7`; no hosted publication is part of Phase 7.
 
-## Phase 7 delivery state after Component 7.2
+## Phase 7 delivery state after Component 7.3
 
 - Component 7.1: documentary Tier 1 gate complete and committed on `phase-7`.
 - Component 7.2: Tier 2 PASS at scoped fingerprint
   `8759d86a444de478015effb331e6633fcbae379dd7ab7979537292e5df067824`;
-  commit is owned by Implement.
-- Component 7.3: next. It must replace the explicit kiosk/cafe Canvas bridge
-  before the Phase 7 branch can be considered mergeable or releasable.
-- Components 7.4–7.6: queued in approved dependency order.
+  committed on `phase-7` at `8060579`.
+- Component 7.3: Tier 2 PASS at scoped fingerprint
+  `6003451b87c5474f8fce64f80d3bf1368d72f271eee9e3d7309a3487ae136733`;
+  commit is owned by Implement. All three service venues are WebGL-only and the
+  temporary service bridge is gone.
+- Component 7.4: next. It owns the approved service information ordering and
+  removal of the non-service morning preview.
+- Components 7.5–7.6: queued in approved dependency order.
 
 ## Component 7.2 — Snapshot-Only WebGL Cart Service
 
@@ -160,3 +164,55 @@ version and does not change the approved architecture.
   `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
 - Full contracts, commands, durations, screenshots, caveats, and spec mapping
   are in `docs/components/phase-7-component-7-2-overview.md`.
+
+## Component 7.3 — Complete Kiosk and Cafe Isometric Worlds
+
+### Complete venue registry and worlds
+
+- `VENUE_LAYOUTS` is a deeply frozen compiler-exhaustive `Record<VenueId,
+  VenueLayout>`. It defines bounded customer/staff/service/activity/stock
+  anchors, floor extents, and inspectable performance limits for cart, kiosk,
+  and cafe.
+- Kiosk service now uses a permanent sheltered counter, pickup rail, stock
+  wall, tiered owned equipment, instanced floor/furnishings/rain, and its own
+  queue/staff geometry.
+- Cafe service now uses an open L counter, display/storage areas, full stock
+  wall, tiered owned equipment, instanced tiles/seating/rain, windows, plants,
+  and emissive pendant ambience without adding scene lights.
+- `People` consumes the venue layout while retaining the existing segment/staff
+  palette and local matrix-only animation. The shared frozen snapshot remains
+  the only engine-derived renderer input.
+
+### Final service renderer boundary
+
+- `ServiceWorld` dispatch is exhaustive for cart, kiosk, and cafe; a missing
+  future venue fails TypeScript through both the layout record and `never`
+  dispatch branch.
+- Every `rush`/`event` phase selects the lazy `ServiceWorld`. The temporary
+  kiosk/cafe service bridge and its marker are deleted.
+- `CanvasScene` remains a separate lazy route only outside service until 7.4
+  removes the planning preview and recomposes the approved information flow.
+  Direct cart/kiosk/cafe service imports do not fetch the Canvas chunk.
+- Unsupported WebGL2 and context loss remain semantic recovery only. Browser
+  tests cover capability loss or recovery at all three current venues and find
+  no Canvas gameplay.
+
+### Performance, visual, and validation evidence
+
+- Explicit limits remain 12 visible queued customers, 10 scheduled staff, two
+  global lights, one shadow light, at most 32 repeated furnishing/effect
+  instances, 1,024px basic shadow map, and DPR 1.5.
+- Desktop and 360×780 screenshots confirm the two new floor plans are distinct,
+  fitted, and keep queue/counter/sale/walkaway/stock cues readable. Exact
+  equipment, 3/5 staff, rainy/cold weather, activity, 16-person queue, visible
+  12-person crowd, and `+4` overflow are asserted through imported saves.
+- Tier 2 PASS: build, lint, 140/140 Vitest, and 12/12 exact WebGL/presentation
+  Playwright paths at scoped fingerprint
+  `6003451b87c5474f8fce64f80d3bf1368d72f271eee9e3d7309a3487ae136733`.
+- Production emits separate dynamic `ServiceWorld` (204,016 bytes) and
+  non-service `CanvasScene` (12,910 bytes) entries. `ServiceWorld` imports no
+  Canvas entry; the largest Workbox file is `three-webgl` at 724,524 bytes and
+  all 22 precache entries remain below 1,000,000 bytes.
+- Full interfaces, source/test ownership, screenshots, exact commands,
+  durations, manifest/cache evidence, and acceptance mapping are in
+  `docs/components/phase-7-component-7-3-overview.md`.

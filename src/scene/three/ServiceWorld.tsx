@@ -12,21 +12,25 @@ import {
   SHADOW_MAP_SIZE,
 } from './materials';
 import { createRenderSnapshot, MAX_RENDER_QUEUE_CUSTOMERS } from './renderSnapshot';
+import { CafeWorld } from './venues/CafeWorld';
 import { CartWorld } from './venues/CartWorld';
+import { KioskWorld } from './venues/KioskWorld';
+import { venueLayoutFor } from './venues/venueLayout';
 import { WebGLBoundary } from './WebGLBoundary';
 
-/** Lazy, snapshot-only WebGL service renderer for the cart venue. */
+/** Lazy, snapshot-only WebGL service renderer for every campaign venue. */
 export function ServiceWorld(): React.JSX.Element | null {
   const { game, meta, preferences } = useGame();
   const snapshot = useMemo(
     () =>
-      game && game.venueId === 'cart' && (game.phase === 'rush' || game.phase === 'event')
+      game && (game.phase === 'rush' || game.phase === 'event')
         ? createRenderSnapshot(game, preferences.reducedMotion, meta.cosmetics)
         : null,
     [game, meta.cosmetics, preferences.reducedMotion],
   );
   if (!snapshot) return null;
 
+  const layout = venueLayoutFor(snapshot.identity.venueId);
   const overflow = Math.max(0, snapshot.service.queueCount - MAX_RENDER_QUEUE_CUSTOMERS);
   const latestSale = snapshot.service.activity.findLast((event) => event.type === 'sale');
   const latestWalkaway = snapshot.service.activity.findLast((event) => event.type === 'walkaway');
@@ -46,7 +50,12 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-equipment={equipmentLabel}
       data-active-customer={snapshot.service.active?.id ?? 'none'}
       data-instanced-people="true"
+      data-layout={`${layout.floor.width}x${layout.floor.depth}`}
+      data-light-count={layout.performance.lightCount}
       data-last-event={lastActivity?.id ?? 'none'}
+      data-max-furnishings={layout.performance.maxRepeatedFurnishings}
+      data-max-visible-customers={layout.performance.maxVisibleCustomers}
+      data-max-visible-staff={layout.performance.maxVisibleStaff}
       data-paused={snapshot.service.isPaused}
       data-queue-count={snapshot.service.queueCount}
       data-queue-overflow={overflow}
@@ -54,8 +63,12 @@ export function ServiceWorld(): React.JSX.Element | null {
       data-renderer="webgl"
       data-snapshot-only="true"
       data-speed={snapshot.service.speed}
+      data-staff-count={snapshot.operation.scheduledRoles.length}
+      data-shadow-light-count={layout.performance.shadowLightCount}
       data-venue={snapshot.identity.venueId}
+      data-visible-customers={snapshot.service.queue.length}
       data-weather={snapshot.identity.weather}
+      data-world={layout.worldName}
     >
       <WebGLBoundary
         sceneLabel={snapshot.description}
@@ -68,9 +81,10 @@ export function ServiceWorld(): React.JSX.Element | null {
           'data-speed': snapshot.service.speed,
           'data-venue': snapshot.identity.venueId,
           'data-weather': snapshot.identity.weather,
+          'data-world': layout.worldName,
         }}
       >
-        {({ generation }) => <CartCanvas generation={generation} snapshot={snapshot} />}
+        {({ generation }) => <ServiceCanvas generation={generation} snapshot={snapshot} />}
       </WebGLBoundary>
       <div aria-hidden="true" className="scene-hud webgl-scene-hud">
         <strong>QUEUE {snapshot.service.queueCount}</strong>
@@ -102,7 +116,7 @@ export function ServiceWorld(): React.JSX.Element | null {
   );
 }
 
-function CartCanvas({
+function ServiceCanvas({
   generation,
   snapshot,
 }: {
@@ -159,9 +173,26 @@ function CartCanvas({
         shadow-mapSize-width={SHADOW_MAP_SIZE}
       />
       <IsometricCamera />
-      <CartWorld snapshot={snapshot} />
+      <VenueWorld snapshot={snapshot} />
     </Canvas>
   );
+}
+
+function VenueWorld({
+  snapshot,
+}: {
+  readonly snapshot: ReturnType<typeof createRenderSnapshot>;
+}): React.JSX.Element {
+  switch (snapshot.identity.venueId) {
+    case 'cart':
+      return <CartWorld snapshot={snapshot} />;
+    case 'kiosk':
+      return <KioskWorld snapshot={snapshot} />;
+    case 'cafe':
+      return <CafeWorld snapshot={snapshot} />;
+    default:
+      return assertNever(snapshot.identity.venueId);
+  }
 }
 
 function IsometricCamera(): null {
@@ -179,4 +210,8 @@ function walkawayLabel(reason: string): string {
   if (reason === 'queueFull') return 'QUEUE FULL';
   if (reason === 'rushEnded') return 'RUSH CLOSED';
   return 'WAITED TOO LONG';
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported service venue: ${String(value)}`);
 }

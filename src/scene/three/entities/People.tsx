@@ -5,6 +5,7 @@ import type { InstancedMesh } from 'three';
 
 import type { CustomerSegment, StaffRole } from '../../../game';
 import type { RenderSnapshot } from '../renderSnapshot';
+import { venueLayoutFor } from '../venues/venueLayout';
 
 interface PeopleProps {
   readonly snapshot: RenderSnapshot;
@@ -113,38 +114,45 @@ function batchPeople(
 }
 
 function buildPeople(snapshot: RenderSnapshot): readonly PersonPose[] {
-  const people: PersonPose[] = snapshot.service.queue.map((customer, index) => ({
-    id: customer.id,
-    x: 2.7 + Math.min(index, 5) * 0.72,
-    z: 2.35 + Math.floor(index / 6) * 0.78,
-    rotation: -Math.PI / 2,
-    colour: SEGMENT_COLOURS[customer.segment],
-    phase: stablePhase(customer.id),
-  }));
+  const layout = venueLayoutFor(snapshot.identity.venueId);
+  const people: PersonPose[] = snapshot.service.queue.map((customer, index) => {
+    const [x, , z] = layout.queueAnchors[index] ?? layout.overflowAnchor;
+    return {
+      id: customer.id,
+      x,
+      z,
+      rotation: -Math.PI / 2,
+      colour: SEGMENT_COLOURS[customer.segment],
+      phase: stablePhase(customer.id),
+    };
+  });
   if (snapshot.service.active) {
+    const [x, , z] = layout.activeCustomerAnchor;
     people.push({
       id: snapshot.service.active.id,
-      x: 1.85,
-      z: 0.72,
+      x,
+      z,
       rotation: Math.PI,
       colour: SEGMENT_COLOURS[snapshot.service.active.segment],
       phase: stablePhase(snapshot.service.active.id),
     });
   }
   snapshot.operation.scheduledRoles.forEach((role, index) => {
+    const [x, , z] = layout.staffAnchors[index] ?? layout.ownerAnchor;
     people.push({
       id: `staff-${role}-${index}`,
-      x: -1.05 + index * 0.72,
-      z: -0.25 - (index % 2) * 0.5,
+      x,
+      z,
       rotation: 0,
       colour: STAFF_COLOURS[role],
       phase: index * 0.8,
     });
   });
+  const [ownerX, , ownerZ] = layout.ownerAnchor;
   people.push({
     id: 'owner-barista',
-    x: 0.42,
-    z: -0.4,
+    x: ownerX,
+    z: ownerZ,
     rotation: 0,
     colour: STAFF_COLOURS.barista,
     phase: 0,

@@ -28,6 +28,13 @@ test.describe('pixel presentation and local audio', () => {
       viewportWidth,
     );
 
+    await page.getByRole('button', { name: 'Open the cart' }).click();
+    const serviceWorld = page.locator('figure[data-renderer="webgl"]');
+    await expect(serviceWorld).toHaveAttribute('data-venue', 'cart');
+    await expect(serviceWorld.getByRole('img')).toHaveAttribute('data-webgl-status', 'ready');
+    await expect(page.locator('canvas[width="320"]')).toHaveCount(0);
+    await expect(page.locator('[data-renderer-bridge]')).toHaveCount(0);
+
     await page.getByRole('button', { name: 'Game menu' }).click();
     await page.getByRole('tab', { name: 'Settings' }).click();
     const sounds = page.getByRole('checkbox', { name: 'Interface sounds' });

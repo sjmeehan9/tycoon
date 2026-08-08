@@ -14,10 +14,12 @@ import { ReportPanel } from './components/ReportPanel';
 import { RushPanel } from './components/RushPanel';
 import { RushStockGrid } from './components/RushStockGrid';
 import { TitleScreen } from './components/TitleScreen';
-import { CanvasScene } from './scene/CanvasScene';
 import { VENUES } from './content/gameContent';
 import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
+const LazyCanvasScene = lazy(() =>
+  import('./scene/CanvasScene').then(({ CanvasScene }) => ({ default: CanvasScene })),
+);
 const LazyServiceWorld = lazy(() =>
   import('./scene/three/ServiceWorld').then(({ ServiceWorld }) => ({ default: ServiceWorld })),
 );
@@ -39,7 +41,6 @@ export default function App(): React.JSX.Element {
   }
 
   const serviceActive = game.phase === 'rush' || game.phase === 'event';
-  const webglCartActive = serviceActive && game.venueId === 'cart';
 
   return (
     <>
@@ -51,23 +52,26 @@ export default function App(): React.JSX.Element {
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <main className="game-layout">
           <div className="scene-column">
-            {webglCartActive ? (
+            {serviceActive ? (
               <Suspense
                 fallback={
                   <div className="scene-frame scene-loading" role="status">
-                    Preparing the 3D cart…
+                    Preparing the 3D service world…
                   </div>
                 }
               >
                 <LazyServiceWorld />
               </Suspense>
-            ) : serviceActive ? (
-              // Temporary branch-only bridge. Component 7.3 replaces kiosk/cafe service worlds.
-              <div data-renderer-bridge="temporary-kiosk-cafe">
-                <CanvasScene />
-              </div>
             ) : (
-              <CanvasScene />
+              <Suspense
+                fallback={
+                  <div className="scene-frame scene-loading" role="status">
+                    Preparing the venue overview…
+                  </div>
+                }
+              >
+                <LazyCanvasScene />
+              </Suspense>
             )}
             <section className="scene-caption" aria-label="Current venue">
               <strong>{VENUES[game.venueId].name}</strong>

@@ -23,7 +23,7 @@ describe('snapshot presentation and audio consent', () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
-    const planningScene = screen.getByRole('img', { name: /Coffee Cart in/ });
+    const planningScene = await screen.findByRole('img', { name: /Coffee Cart in/ });
     expect(planningScene).toHaveAttribute('width', '320');
     expect(planningScene).toHaveAttribute('height', '180');
     expect(planningScene).toHaveAttribute('data-animation', 'still');
@@ -83,6 +83,64 @@ describe('snapshot presentation and audio consent', () => {
     expect(document.querySelector('.last-walkaway-note')).toHaveTextContent(
       /Latest walkaway:.*out of stock/i,
     );
+  });
+
+  it.each([
+    { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const, world: 'laneway-cart' },
+    {
+      venueId: 'kiosk' as const,
+      staffCount: 3,
+      weather: 'rainy' as const,
+      world: 'sheltered-coffee-kiosk',
+    },
+    {
+      venueId: 'cafe' as const,
+      staffCount: 5,
+      weather: 'coldSnap' as const,
+      world: 'laneway-specialty-cafe',
+    },
+  ])('routes $venueId service exclusively through its complete WebGL world', async (fixture) => {
+    new BrowserSaveStore(window.localStorage).save(
+      livingRushEnvelope({
+        equipment: {
+          grinder: 2,
+          espressoMachine: 2,
+          batchBrewer: 2,
+          refrigeration: 2,
+          pos: 2,
+          serviceCounter: 2,
+        },
+        queueCount: 16,
+        scheduledStaffCount: fixture.staffCount,
+        venueId: fixture.venueId,
+        weather: fixture.weather,
+      }),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const scene = await screen.findByRole('img', { name: /16 customers waiting/ });
+    const frame = scene.closest('figure');
+    expect(frame).toHaveAttribute('data-renderer', 'webgl');
+    expect(frame).toHaveAttribute('data-venue', fixture.venueId);
+    expect(frame).toHaveAttribute('data-world', fixture.world);
+    expect(frame).toHaveAttribute('data-queue-count', '16');
+    expect(frame).toHaveAttribute('data-queue-overflow', '4');
+    expect(frame).toHaveAttribute('data-staff-count', String(fixture.staffCount));
+    expect(frame).toHaveAttribute('data-weather', fixture.weather);
+    expect(frame).toHaveAttribute('data-light-count', '2');
+    expect(frame).toHaveAttribute('data-shadow-light-count', '1');
+    expect(frame).toHaveAttribute('data-visible-customers', '12');
+    expect(frame).toHaveAttribute('data-max-visible-customers', '12');
+    expect(frame).toHaveAttribute('data-max-visible-staff', '10');
+    expect(frame).toHaveAttribute(
+      'data-equipment',
+      'grinder:2,espressoMachine:2,batchBrewer:2,refrigeration:2,pos:2,serviceCounter:2',
+    );
+    expect(screen.getByText('+4 beyond view')).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
+    expect(document.querySelector('[data-renderer-bridge]')).not.toBeInTheDocument();
+    expect(document.querySelector('canvas[width="320"]')).not.toBeInTheDocument();
   });
 
   it('freezes, resumes, and re-freezes local WebGL motion at the persisted 4× speed', async () => {

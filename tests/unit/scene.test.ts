@@ -11,6 +11,7 @@ import {
   startRush,
   type Customer,
   type RushActivityEvent,
+  type VenueId,
 } from '../../src/game';
 import {
   LOGICAL_SCENE_SIZE,
@@ -38,6 +39,14 @@ import {
   MAX_RENDER_QUEUE_CUSTOMERS,
   createRenderSnapshot,
 } from '../../src/scene/three/renderSnapshot';
+import {
+  MAX_WORLD_LIGHTS,
+  MAX_WORLD_SHADOW_LIGHTS,
+  MAX_WORLD_VISIBLE_CUSTOMERS,
+  MAX_WORLD_VISIBLE_STAFF,
+  VENUE_LAYOUTS,
+  venueLayoutFor,
+} from '../../src/scene/three/venues/venueLayout';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 describe('snapshot-driven pixel scene', () => {
@@ -313,6 +322,64 @@ describe('snapshot-driven pixel scene', () => {
 });
 
 describe('snapshot-only WebGL contract', () => {
+  it('provides immutable bounded and venue-distinct layouts for every service VenueId', () => {
+    const venueIds: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
+    expect(Object.keys(VENUE_LAYOUTS)).toEqual(venueIds);
+    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(3);
+    for (const venueId of venueIds) {
+      const layout = venueLayoutFor(venueId);
+      expect(layout.venueId).toBe(venueId);
+      expect(layout.queueAnchors).toHaveLength(MAX_WORLD_VISIBLE_CUSTOMERS);
+      expect(layout.staffAnchors).toHaveLength(MAX_WORLD_VISIBLE_STAFF);
+      expect(layout.performance).toMatchObject({
+        maxVisibleCustomers: MAX_WORLD_VISIBLE_CUSTOMERS,
+        maxVisibleStaff: MAX_WORLD_VISIBLE_STAFF,
+        lightCount: MAX_WORLD_LIGHTS,
+        shadowLightCount: MAX_WORLD_SHADOW_LIGHTS,
+      });
+      expect(layout.performance.maxRepeatedFurnishings).toBeGreaterThan(0);
+      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(32);
+      expect(layout.queueAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
+      expect(layout.staffAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
+      expect(deeplyFrozen(layout)).toBe(true);
+    }
+  });
+
+  it.each([
+    { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const },
+    { venueId: 'kiosk' as const, staffCount: 3, weather: 'rainy' as const },
+    { venueId: 'cafe' as const, staffCount: 5, weather: 'coldSnap' as const },
+  ])('keeps exact $venueId operation truth in the shared renderer snapshot', (fixture) => {
+    const game = livingRushEnvelope({
+      equipment: {
+        grinder: 2,
+        espressoMachine: 2,
+        batchBrewer: 2,
+        refrigeration: 2,
+        pos: 2,
+        serviceCounter: 2,
+      },
+      queueCount: 16,
+      scheduledStaffCount: fixture.staffCount,
+      venueId: fixture.venueId,
+      weather: fixture.weather,
+    }).activeRun;
+    if (!game?.rush) throw new Error('Expected venue rush fixture.');
+    const snapshot = createRenderSnapshot(game, false, ['wattleAwning']);
+    expect(snapshot.identity).toMatchObject({
+      venueId: fixture.venueId,
+      weather: fixture.weather,
+      phase: 'rush',
+    });
+    expect(snapshot.service.queueCount).toBe(16);
+    expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
+    expect(snapshot.operation.scheduledRoles).toHaveLength(fixture.staffCount);
+    expect(snapshot.operation.equipment).toEqual(game.equipment);
+    expect(snapshot.operation.stock).toHaveLength(9);
+    expect(snapshot.description).toContain(`${fixture.staffCount} staff scheduled`);
+    expect(deeplyFrozen(snapshot)).toBe(true);
+  });
+
   it('copies, bounds, and deeply freezes every renderer-facing branch', () => {
     const game = livingRushEnvelope({ paused: true, reducedMotion: true }).activeRun;
     if (!game?.rush) throw new Error('Expected living-rush fixture.');
@@ -333,10 +400,14 @@ describe('snapshot-only WebGL contract', () => {
     }).toThrow(TypeError);
   });
 
-  it.each([1, 2, 4] as const)(
-    'cannot alter deterministic engine truth while mounted at %d× or reduced motion',
-    (speed) => {
-      const base = livingRushEnvelope({ paused: false }).activeRun;
+  it.each(
+    (['cart', 'kiosk', 'cafe'] as const).flatMap((venueId) =>
+      ([1, 2, 4] as const).map((speed) => ({ speed, venueId })),
+    ),
+  )(
+    'cannot alter $venueId engine truth while mounted at $speed× or reduced motion',
+    ({ speed, venueId }) => {
+      const base = livingRushEnvelope({ paused: false, venueId }).activeRun;
       if (!base?.rush) throw new Error('Expected living-rush fixture.');
       let observed = setRushSpeed(base, speed);
       let control = setRushSpeed(base, speed);
@@ -386,11 +457,30 @@ describe('snapshot-only WebGL contract', () => {
       .digest('hex');
     expect(digest).toBe('5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37');
   });
+
+  it('keeps Canvas lazy and unreachable from every service venue branch', () => {
+    const appSource = readFileSync('src/App.tsx', 'utf8');
+    const serviceSource = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+    expect(appSource).not.toContain('temporary-kiosk-cafe');
+    expect(appSource).not.toContain('import { CanvasScene }');
+    expect(serviceSource).not.toContain('CanvasScene');
+    for (const venueId of ['cart', 'kiosk', 'cafe'] as const) {
+      expect(serviceSource).toContain(`case '${venueId}'`);
+    }
+  });
 });
 
 function deeplyFrozen(value: unknown): boolean {
   if (value === null || typeof value !== 'object') return true;
   return Object.isFrozen(value) && Object.values(value).every((nested) => deeplyFrozen(nested));
+}
+
+function withinFloor(
+  x: number,
+  z: number,
+  floor: Readonly<{ width: number; depth: number }>,
+): boolean {
+  return Math.abs(x) <= floor.width / 2 && Math.abs(z) <= floor.depth / 2;
 }
 
 function sceneCustomer(id: string): Customer {
