@@ -45,8 +45,13 @@ test.describe('complete seeded cart day', () => {
 
     await page.getByRole('button', { name: 'Settle & reinvest' }).click();
     await expect(page.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
-    const buySign = page.getByRole('button', { name: 'Buy sign' });
-    if (await buySign.isEnabled()) await buySign.click();
+    const signCard = page.locator('[data-improvement-id="street-sign"]');
+    const buySign = signCard.getByRole('button', {
+      name: 'Buy Hand-painted street sign · $25.00',
+    });
+    await expect(buySign).toBeEnabled();
+    await buySign.click();
+    await expect(signCard.getByText('Owned', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Plan Day 2' }).click();
     await expect(page.getByRole('heading', { name: 'Set up the cart' })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Day 2/ })).toBeVisible();

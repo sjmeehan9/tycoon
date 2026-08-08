@@ -3,9 +3,13 @@
 ## Entry status
 
 Phase 8 started on 2026-08-08 from the final repaired and published Phase 7
-main head. Component 8.1 is documentary setup only. It changes no application
-runtime, package, dependency, deployment configuration, repository visibility,
-or public release, and it stops before Component 8.2.
+main head. Components 8.1–8.8 are committed in dependency order: the runtime is
+now the complete schema-v4, Standard/Hard, 40-day, four-venue department-store
+campaign and its release-ready PWA. Component 8.9 owns cumulative validation,
+documentation reconciliation, candidate evidence, and the handoff to the
+separate merge/publication/owner-hosted gates. It introduces no planned feature
+scope; bounded source or test repairs are permitted only when the cumulative
+gate exposes a reproduced release defect.
 
 One sequential Implement engagement owns Components 8.1–8.9 under the approved
 lean TBA + Implement contract. Each component must complete its assigned gate
@@ -25,7 +29,7 @@ The verified commit chain is:
    `4b54d3f0ba34d10ce06ca6286af5716e58d4e8e2`
 5. Final stabilization PR #9 merge and current `main`:
    `d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`
-6. `phase-8` base/current entry head:
+6. `phase-8` base/entry head:
    `d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`
 
 Read-only `git merge-base --is-ancestor` checks passed for every adjacent link.
@@ -108,11 +112,12 @@ a third, distinct owner-only record.
 
 ## Downstream implementation boundaries
 
-- Component 8.2 owns the one-time v4 reset and immutable Standard/Hard campaign
-  choice. Component 8.1 starts none of that runtime behavior.
-- Phase 8 remains additive to the final Phase 7 WebGL/report baseline until the
-  explicit v4 boundary is implemented and validated.
-- Intermediate component heads remain internally playable and must not infer a
+- Component 8.2 established the one-time v4 reset and immutable Standard/Hard
+  campaign choice before later slices extended its public contracts.
+- Components 8.3–8.8 preserve the final Phase 7 WebGL/report baseline while
+  completing progression, workforce, parallel service, dense presentation,
+  content/history, and release readiness in dependency order.
+- Every intermediate component head remains evidence only and must not infer a
   final release decision.
 - Agents may use profiled desktop Chromium and exact touch-mobile automation,
   but never physical-device access.
@@ -182,24 +187,18 @@ baseline deviation from its declared neutral, including both price paths, with
 domain-aware clamps and no Standard compounding. The engine exposes its consumed
 factor identities so tests fail if the engine and registry diverge.
 
-Because later Phase 8 venue/equipment, workforce, and parallel-service slices
+Because the completed venue/equipment, workforce, and parallel-service slices
 change the registered venue, scheduled-team/equipment, queue/wait, and
 availability ranges, Components 8.3–8.5 explicitly co-own
 `demandInfluences.ts` and `tests/unit/demand.test.ts`. Their gates must update
 registry metadata/bounds and preserve exhaustive Standard/Hard proofs rather
 than bypassing the Component 8.2 authority.
 
-`README.md` and `docs/agent-runbook.md` now describe the current intermediate
-runtime accurately: schema v4 and immutable Standard/Hard are live, while three
-venues and the 30-day target remain until later components. They also document
-the preferences-only legacy reset, v4 save keys, current unique-name validation,
-and honest read-only v4 reports without charge groups.
-
-This component intentionally does not introduce the fourth venue, third
-equipment tiers, expanded workforce, multi-station service, dense department-
-store world, or forty-day content. Those remain sequential Components 8.3–8.7.
-Automated desktop Chromium and touch-mobile checks are browser evidence only;
-no physical device was accessed or claimed.
+At this boundary the public documentation first adopted schema v4, immutable
+difficulty, the preferences-only reset, current unique-name validation, and
+honest read-only v4 reports without charge groups. Component 8.9 reconciles
+those documents again against the completed Phase 8 runtime rather than leaving
+an intermediate product description in release-facing files.
 
 ## Component 8.3 fourth venue and commercial equipment boundary
 
@@ -249,11 +248,12 @@ retaining its older-report detail assertions. Service-layout coverage now
 iterates canonical `VENUE_IDS`, so scene-free planning and desktop/touch service
 composition automatically cover all four venues.
 
-An exhaustive current-v4 E2E source audit found no other genuine `/30`, Day
-30/31, cafe-final, or hard-coded all-three-venue contract. The deliberately
-scoped kiosk/cafe recovery case remains a kiosk/cafe case, and legacy schema
-fixtures/docs remain historical evidence. No Canvas route, runtime behavior,
-fixture migration, dependency, or later Component 8.4 behavior was added.
+An exhaustive current-v4 E2E source audit found no other hard-coded legacy
+campaign length, cafe-final, or pre-expansion venue-cardinality contract. The
+deliberately scoped kiosk/cafe recovery case remains a kiosk/cafe case, and
+legacy schema fixtures/docs remain historical evidence. No Canvas route,
+runtime behavior, fixture migration, dependency, or Component 8.4 behavior was
+added at that boundary.
 
 ## Component 8.4 department workforce and operational roles boundary
 
@@ -289,9 +289,9 @@ exact payroll, and applied Manager/Runner reductions; an eleventh checkbox is
 disabled with a visible live capacity explanation. Day reports preserve exact
 payroll and add the applied role counts, reductions, remaining delays, and
 equipment-reliability contribution to the optional causal explanation list.
-The scene snapshot still carries one bounded list of ten scheduled roles into
-one queue and one active service. Stations, express priority, and parallel
-settlement remain exclusively Component 8.5.
+At the 8.4 boundary, the scene snapshot still used its inherited service
+projection. Component 8.5 subsequently replaced runtime service authority with
+canonical station, lane, queue, and job contracts.
 
 The registered team/equipment demand boundary now covers ten scheduled
 people-person traits plus commercial POS: Standard preserves the exact
@@ -309,8 +309,8 @@ reload, segment, walkaway, Canvas-removal, and WebGL check. Existing staff-name
 and report-history browser files required no mutation and passed unchanged.
 
 No schema/key bump, dependency, station, express lane, parallel service,
-physical-device access, Git mutation, merge, deployment, or publication belongs
-to this component. The approved title art remains byte-identical at SHA-256
+physical-device access, Git mutation, merge, deployment, or publication belonged
+to this component boundary. The approved title art remains byte-identical at SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
 
 ## Component 8.5 three-station and exact parallel-service boundary
@@ -410,6 +410,42 @@ results remain browser evidence only. The title art remains byte-identical at
 SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
 
+## Component 8.7 complete content, balance, and history boundary
+
+The campaign is now a complete 40-day Standard or Hard experience. Standard
+keeps every non-price influence at baseline and applies 1.225 to the separate
+arrival and order-choice price paths. Hard applies 1.70 once to every registered
+domain-supported deviation from neutral, including both price paths. Typed
+bounds cover every final economy value and the engine-to-registry
+exhaustiveness contract remains executable.
+
+The department tier adds six uniquely identified service events, four visible
+operational hall improvements, three presentation-only cosmetics, and two
+shared non-power milestones while retaining exactly the established ten drinks
+and nine ingredients. Event selection remains deterministic, bounded to zero
+through two non-repeating choices per rush, and persists resolved copy and
+effects so later content cannot silently rewrite history.
+
+Every settled report may carry an immutable causal snapshot of its difficulty,
+venue, menu prices, dial-in, beans, express selection, staff roles/stations and
+wages, equipment, improvements, event result, queue/wait evidence, and operating
+cost. Historical UI consumes only that selected report and never recomputes it
+from the current plan or catalogue. Earlier current-v4 reports without captured
+causes retain an honest `null` value and accessible unavailable explanation.
+
+The deterministic balance harness uses public commands over twenty fixed seeds
+for each difficulty and each of two materially different strategies. Across 80
+managed campaigns, every run reached the department hall and retained all 40
+causal reports; each cohort produced at least 17 victories, while both
+20-campaign mismanagement cohorts reached bankruptcy. Day-40 equality,
+department ownership, bankruptcy ordering, and Day-41 endless continuation are
+separately proved.
+
+No new dependency, backend, API, remote asset, food, drink, ingredient,
+physical-device action, merge, deployment, or publication belongs to this
+component. The title artwork remains byte-identical at SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
 ## Component 8.8 offline, update, performance, and release boundary
 
 The production PWA now precaches one canonical copy of the complete generated
@@ -466,3 +502,44 @@ updates; and schema-v4-compatible superseding-build recovery. Component 8.8 does
 not merge, publish, deploy, alter repository settings, or claim hosted or
 physical-device evidence. The title artwork remains byte-identical at SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.9 cumulative candidate and evidence boundary
+
+Component 8.9 first audits every committed 8.1–8.8 manifest and historical
+scoped fingerprint, then reconciles release-facing documentation to the final
+runtime. Existing deterministic, component, browser, simulation, PWA, bundle,
+performance, accessibility, migration, security, and release checks already
+cover every named Phase 8 target; no new runtime or test path is introduced
+unless the cumulative gate exposes a real defect.
+
+The cumulative gate exposed stale synchronous browser assertions around
+post-import planner/service rendering and one genuine title-load performance
+defect. Browser evidence now uses Playwright auto-retrying locators and the
+existing 620px responsive contract instead of reading lazy sections or hidden
+mobile tabs synchronously. `AudioDirector` now creates its local
+`BrowserAudioManager` only after the first pointer or keyboard interaction, so
+the title route requests no WAV resource before interaction while retaining the
+same saved sound/ambience preferences, venue levels, transition cues, cleanup,
+local-only assets, and complete offline cache.
+
+After every fingerprint-included source, test, configuration, workflow, and
+contract-document path is stable, the Implement engagement records one
+unscoped global fingerprint and runs the exact Tier 3 sequence once under the
+profile-compatible Node runtime. Lighthouse, production dependency/license,
+title-hash, and network/static-output checks are supplemental named-target
+proof on the same immutable candidate. The mutable command outcomes and target
+map belong in the fingerprint-excluded `docs/phase-8-test-report.md`; this
+context file is not edited after candidate freeze.
+
+Lighthouse variability is governed before sampling: five sequential isolated
+Lighthouse 13.4.1 reports are retained, median Performance must be at least 90,
+every Accessibility and Best Practices score must be at least 90, and every
+sample must be free of runtime and console-error audit failures. A selected
+best run cannot satisfy the target.
+
+Local automated PASS, deployment identity, owner-hosted gameplay verification,
+and optional owner-only physical evidence are four distinct dispositions. A
+local PASS authorizes neither merge nor publication. The coordinator may act
+only after the reserved human decisions; the repository owner performs the
+hosted gameplay checks, and physical evidence remains pending/unclaimed unless
+the owner elects to supply it.

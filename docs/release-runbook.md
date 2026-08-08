@@ -24,16 +24,22 @@ runtime external service is part of the release.
 
 ## 1. Reproduce the local candidate
 
-Use Node.js 22.12 or newer and pnpm 10. The Component 8.8 evidence was produced
-with Node.js 24.18.0 and the frozen lockfile.
+Use Node.js 22.12 or newer and pnpm 10. The final Phase 8 evidence uses Node.js
+24.18.0 and the frozen lockfile. Stabilize every fingerprint-included path,
+record the unscoped global fingerprint, and run the exact Tier 3 sequence once:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
 pnpm lint
 pnpm test
-pnpm exec playwright test tests/e2e/pwa.spec.ts tests/e2e/persistence.spec.ts tests/e2e/service-layout.spec.ts tests/e2e/department-store-scene.spec.ts --workers=1
+pnpm test:e2e
 ```
+
+The complete Playwright command already includes the PWA, persistence, exact
+360×780 service layout, dense department scene, reset/difficulty, workforce,
+parallel-service, 40-day campaign, report history, and all enduring Phase 1–7
+journeys. Do not replace it with a sampled subset at the cumulative gate.
 
 The production build must use the `/tycoon/` base. Inspect the generated service
 worker and the Playwright evidence to confirm that its canonical precache list
@@ -83,6 +89,7 @@ pnpm audit --prod --audit-level high
 pnpm audit --prod --json
 pnpm licenses list --prod --json
 pnpm list --prod --depth Infinity --json
+shasum -a 256 public/assets/art/laneway-title.webp
 ```
 
 Performance, Accessibility, and Best Practices must each score at least 90 in
@@ -93,12 +100,17 @@ remain free of high or critical advisories, all production licenses must remain
 approved, and source plus built-output inspection must find no remote runtime
 asset, API, telemetry, or analytics request.
 
+These are supplemental named-target checks on the same frozen global
+fingerprint. Record their exact commands, durations, and outputs in
+`docs/phase-8-test-report.md`; never infer them from Component 8.8's historical
+component gate alone.
+
 ## 3. Human merge gate
 
 After Component 8.9 records a cumulative Phase 8 PASS for one frozen global
 fingerprint, the repository owner may approve or reject the merge. On approval:
 
-1. push the validated `phase-8` branch;
+1. push the validated Phase 8 branch without force;
 2. open a pull request into `main`;
 3. confirm the required checks passed for the exact candidate; and
 4. merge through the normal pull-request/check workflow.
@@ -116,13 +128,15 @@ publication. On approval, use the existing GitHub Pages workflow:
    commit;
 3. record the workflow run, deployed commit, deployment ID, timestamp, and URL;
 4. verify direct load and refresh at `https://sjmeehan9.github.io/tycoon/`;
-5. run the hosted desktop/touch/WebGL/offline checks in
-   `docs/public-release-checklist.md`; and
+5. ask the repository owner to run the hosted desktop/touch/WebGL/offline
+   checks in `docs/public-release-checklist.md`; and
 6. if the owner elects to use a physical mobile device, record its supplied
    browser/OS/model/orientation/DPR/GPU/FPS evidence without agent device access.
 
 Until this gate is expressly approved, do not deploy or alter repository
-visibility, Pages settings, environments, releases, or hosted evidence.
+visibility, Pages settings, environments, releases, or hosted evidence. A
+successful workflow/deployment proves artifact publication and identity only;
+it does not prove the owner's hosted gameplay checks.
 
 ## 5. Update behavior in production
 

@@ -6,39 +6,47 @@ only; it does not merge or publish.
 
 ## Component 8.8 candidate readiness
 
-These boxes remain provisional until the final frozen-fingerprint Component 8.8
-evidence passes. Component 8.9 consumes that evidence before the cumulative
-phase gate.
+Component 8.8 passed its immutable Tier 2 gate at commit
+`86b99e93c52d9102e5af7d013d3b67674b1273e5` and scoped fingerprint
+`292d06c8b4260cc1500474c90ca13b27f10a40bd21ae07ca047d0a1b19619e3b`.
+Component 8.9 independently consumes and supersedes these release-readiness
+facts through its cumulative gate.
 
-- [ ] The production build uses `/tycoon/` manifest, scope, start URL, and asset
+- [x] The production build uses `/tycoon/` manifest, scope, start URL, and asset
       paths.
-- [ ] The generated canonical precache contains the complete runtime graph with
+- [x] The generated canonical precache contains the complete runtime graph with
       no duplicate URL and no file of 1,000,000 bytes or more.
-- [ ] Every precached file returns 200 offline after one successful online load.
-- [ ] Warm and cold offline reload preserve the exact schema-v4 continuation.
-- [ ] A dense department rush can resume, finish, settle once, and continue to
+- [x] Every precached file returns 200 offline after one successful online load.
+- [x] Warm and cold offline reload preserve the exact schema-v4 continuation.
+- [x] A dense department rush can resume, finish, settle once, and continue to
       the next planning day entirely offline.
-- [ ] Active-service update controls cannot activate or reload the waiting
+- [x] Active-service update controls cannot activate or reload the waiting
       worker, and dismissing the prompt does not queue activation.
-- [ ] Safe-phase acceptance verifies a fresh schema-v4 checkpoint, activates the
+- [x] Safe-phase acceptance verifies a fresh schema-v4 checkpoint, activates the
       waiting worker, and restores all persisted gameplay, preferences, and meta
       content exactly after reload; only top-level `savedAt` is intentionally
       refreshed monotonically.
-- [ ] Automated 1280×800 desktop and 360×780 DPR-2 touch-emulation evidence
+- [x] Automated 1280×800 desktop and 360×780 DPR-2 touch-emulation evidence
       records its environment and meets the configured FPS/p95 budgets.
-- [ ] Lighthouse mobile meets at least 90 in Performance, Accessibility, and
+- [x] Lighthouse mobile meets at least 90 in Performance, Accessibility, and
       Best Practices; PWA capability is proved by the browser suite because the
       installed Lighthouse version exposes no PWA category.
-- [ ] Production dependency security reports zero known vulnerabilities.
-- [ ] Production dependency licenses are MIT or BSD-3-Clause; no dependency was
+- [x] Production dependency security reports zero known vulnerabilities.
+- [x] Production dependency licenses are MIT or BSD-3-Clause; no dependency was
       added for Component 8.8.
-- [ ] Source, production output, and browser request inspection find no runtime
+- [x] Source, production output, and browser request inspection find no runtime
       external API, remote asset, analytics, telemetry, advertising, secret, or
       personal-data path.
-- [ ] The title artwork remains byte-identical at SHA-256
+- [x] The title artwork remains byte-identical at SHA-256
       `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
 
 ## Component 8.9 cumulative phase gate
+
+The authoritative mutable verdict belongs only in the fingerprint-excluded
+`docs/phase-8-test-report.md`. These operator boxes remain unchecked until that
+report identifies one unchanged global candidate as PASS; do not edit this
+candidate-scoped checklist after the fingerprint freeze merely to duplicate the
+verdict.
 
 - [ ] `pnpm install --frozen-lockfile` passes for the frozen global fingerprint.
 - [ ] `pnpm build`, `pnpm lint`, and `pnpm test` pass.

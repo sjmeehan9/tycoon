@@ -25,12 +25,14 @@ test.describe('department workforce and operational roles', () => {
     await expect(page.getByText(/Roster · 10\/12 employed/)).toBeVisible();
     await expect(page.getByText(`${formatMoney(expectedPayroll)} payroll at close`)).toBeVisible();
     await expect(page.locator('#schedule-capacity-note')).toContainText('Daily schedule full');
-    await expect(
-      page.getByRole('list', { name: 'Applied department workforce effects' }),
-    ).toContainText('coordination/reliability ticks remain');
-    await expect(
-      page.getByRole('list', { name: 'Applied department workforce effects' }),
-    ).toContainText('replenishment/handoff ticks remain');
+    const workforceEffects = page
+      .getByRole('list', { name: 'Applied department workforce effects' })
+      .getByRole('listitem');
+    await expect(workforceEffects).toHaveText([
+      'Espresso bar: 4 assigned; 1 Manager and 0 Runner coverage leaves 2 coordination/reliability and 4 replenishment/handoff ticks.',
+      'Brew bar: 3 assigned; 1 Manager and 2 Runner coverage leaves 2 coordination/reliability and 1 replenishment/handoff ticks.',
+      'Cold bar: 3 assigned; 0 Manager and 0 Runner coverage leaves 4 coordination/reliability and 4 replenishment/handoff ticks.',
+    ]);
 
     let hireButtons = page.getByRole('button', { name: /^Hire / });
     await expect(hireButtons).toHaveCount(2);
@@ -72,10 +74,29 @@ test.describe('department workforce and operational roles', () => {
     await expect(page.getByRole('row', { name: /Staff wages/ })).toContainText(
       formatMoney(expectedPayroll),
     );
-    await expect(page.getByText(/Manager coverage: 2 scheduled/)).toBeVisible();
-    await expect(page.getByText(/Runner coverage: 2 scheduled/)).toBeVisible();
-    await expect(page.getByText(/equipment-reliability ticks/)).toBeVisible();
-    await expect(page.getByText(/replenishment and handoff delay fell/)).toBeVisible();
+    await expect(
+      page.getByText(
+        'Espresso bar: 4 assigned, 24 served; Manager reduction 2 with 2 coordination/reliability ticks remaining, Runner reduction 0 with 4 replenishment/handoff ticks remaining.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        'Brew bar: 3 assigned, 0 served; Manager reduction 2 with 2 coordination/reliability ticks remaining, Runner reduction 3 with 1 replenishment/handoff ticks remaining.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        'Cold bar: 3 assigned, 0 served; Manager reduction 0 with 4 coordination/reliability ticks remaining, Runner reduction 0 with 4 replenishment/handoff ticks remaining.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Lane settlement: 0 express and 24 normal jobs completed exactly once.', {
+        exact: true,
+      }),
+    ).toBeVisible();
   });
 });
 

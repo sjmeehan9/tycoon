@@ -19,9 +19,8 @@ offline-capable web experience.
 - Deliver a satisfying planning, rush, results, and reinvestment loop.
 - Make coffee, staffing, inventory, pricing, upgrades, and demand interact in
   understandable ways with multiple viable strategies.
-- Preserve the complete 30-day campaign, bankruptcy, victory, and endless play
-  through the Phase 7 presentation upgrade; the approved Phase 8 expansion
-  replaces this with a 40-day campaign.
+- Deliver a complete 40-day campaign through the department-store coffee hall,
+  including bankruptcy, Day-40 victory, and endless continuation.
 - Pass every automated and human-readable criterion in `requirements.md` and
   the project profile on desktop and touch-mobile layouts.
 - Publish a free MIT-licensed game and source repository on GitHub Pages.
@@ -33,12 +32,14 @@ readable strategic depth, replayability, and Australian cafe authenticity.
 
 ## Feature inventory and functional requirements
 
-The binding inventory is `docs/requirements.md`: daily planning, deterministic
-service simulation, ten-drink menu, ingredients, quality, four customer
-segments, staff roles/traits, equipment, weather/events, cart-to-cafe
-progression, compact and reopenable day reports, victory/bankruptcy, endless
-unlocks, local saves, export/import, a responsive fixed-isometric WebGL service
-world, PWA/offline support, and public GitHub Pages distribution.
+The binding inventory is `docs/requirements.md`: daily planning, immutable
+Standard/Hard campaigns, deterministic parallel service, ten-drink menu,
+ingredients, quality, four customer segments, four staff roles, three-tier
+equipment, weather/events, cart-to-department-store progression, station and
+express-lane operations, compact and reopenable day reports,
+victory/bankruptcy, endless unlocks, local saves, export/import, responsive
+fixed-isometric WebGL service worlds, PWA/offline support, and public GitHub
+Pages distribution.
 
 ## Application logic and user flows
 
@@ -75,13 +76,14 @@ cost. Full required behavior outranks documentation breadth and cosmetic polish.
 ## Assumptions and out of scope
 
 The choices and exclusions in `docs/requirements.md` are approved. The current
-Phase 7 candidate retains the existing single balanced mode, 30-day campaign,
-schema-v3 saves, and three venues. The approved but not-yet-implemented Phase 8
-boundary introduces Standard/Hard modes, a one-time v4 progress reset, a
-40-day campaign, and a department-store coffee operation. No Phase 8 behavior
-may be represented as current before that phase passes its own gate.
+Phase 8 candidate uses schema-v4 saves after one preferences-only legacy reset,
+locks Standard or Hard for each campaign, runs for 40 days, and culminates in a
+department-store coffee operation. Publication and hosted validation remain
+separate release gates; local candidate evidence must never be represented as a
+hosted or physical-device result.
 
 ## Approval
 
 Approved by the user through the root conversation on 2026-07-18, including the
-lean-team execution condition supplied immediately before implementation.
+lean-team execution condition, and expanded through the approved Phase 7–8 plan
+on 2026-08-08.

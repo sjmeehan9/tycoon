@@ -65,10 +65,20 @@ describe('snapshot presentation and audio consent', () => {
 
   it('keeps audio off initially, then persists independent consent controls', async () => {
     const user = userEvent.setup();
+    const createElementSpy = vi.spyOn(document, 'createElement');
     renderGame();
     expect(playMock).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    const gameMenu = await screen.findByRole('button', { name: 'Game menu' });
+    expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(0);
+    await user.click(gameMenu);
+    await waitFor(() =>
+      expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(
+        3,
+      ),
+    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' }));
+    expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(3);
     await user.click(screen.getByRole('tab', { name: 'Settings' }));
     const sounds = screen.getByRole('checkbox', { name: 'Interface sounds' });
     const ambience = screen.getByRole('checkbox', { name: 'Cafe ambience' });

@@ -66,11 +66,11 @@ test.describe('parallel department service', () => {
     await page.goto('./');
     await importSave(page, serializeEnvelope(parallelServiceEnvelope()), 'parallel-rush.json');
 
-    const sections = await page
-      .locator('[data-service-section]')
-      .evaluateAll((elements) =>
-        elements.map((element) => element.getAttribute('data-service-section')),
-      );
+    const serviceSections = page.locator('[data-service-section]');
+    await expect(serviceSections).toHaveCount(4);
+    const sections = await serviceSections.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-service-section')),
+    );
     expect(sections).toEqual(['scene', 'dashboard', 'activity', 'stock']);
     await expect(page.locator('[data-dashboard-field="queue"]')).toContainText('1');
     await expect(page.locator('[data-dashboard-field="normalQueue"]')).toContainText('1');
@@ -127,8 +127,14 @@ function menuCard(page: Page, name: string): Locator {
 }
 
 async function showPlannerTab(page: Page, name: 'Menu' | 'Team'): Promise<void> {
-  const tab = page.getByRole('tab', { name });
-  if (await tab.isVisible()) await tab.click();
+  await expect(
+    page.getByRole('heading', { name: 'Set up the department-store coffee hall' }),
+  ).toBeVisible();
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('Parallel-service checks require a configured viewport.');
+  const panel = page.locator(name === 'Menu' ? '#planner-menu' : '#planner-team');
+  if (viewport.width <= 620) await page.getByRole('tab', { name }).click();
+  await expect(panel).toBeVisible();
 }
 
 async function importSave(page: Page, contents: string, name: string): Promise<void> {

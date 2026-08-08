@@ -394,8 +394,8 @@
       "phase": 8,
       "phaseId": 8,
       "phaseName": "Forty-Day Department-Store Campaign",
-      "status": "started",
-      "branch": "phase-8",
+      "status": "local-pass-authorized-release-execution-pending",
+      "branch": "phase-8-sealed",
       "baseSha": "d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752",
       "approvedOn": "2026-08-08",
       "componentBreakdownDoc": "docs/phase-8-component-breakdown.md",
@@ -414,25 +414,33 @@
       },
       "deviceGate": {
         "status": "pending-unclaimed-owner-only-optional-hosted",
-        "evidenceDueIn": "after separately approved final Phase 8 publication, if elected by the repository owner",
+        "evidenceDueIn": "after the authorized final Phase 8 publication executes and exact deployment identity exists, if elected by the repository owner",
         "description": "No agent may access, reserve, identify, or claim availability of a physical device. Any Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, hosted against the exact final published candidate, and remains pending/unclaimed until the owner supplies evidence."
       },
       "releaseGates": {
-        "status": "reserved-after-8.9-local-pass",
+        "status": "authorities-received-execution-and-hosted-evidence-pending",
         "decisions": [
           {
             "order": 1,
-            "decision": "approve-or-reject-phase-8-merge",
+            "decision": "phase-8-merge-authority",
             "owner": "Human",
+            "status": "approved-received",
+            "source": "Root-conversation implementation and merge direction",
             "inferred": false
           },
           {
             "order": 2,
-            "decision": "approve-or-reject-final-pages-publication-and-owner-hosted-verification",
+            "decision": "final-pages-publication-authority",
             "owner": "Human",
+            "status": "approved-received",
+            "source": "Root-conversation instruction to publish over the existing web link",
             "inferred": false
           }
-        ]
+        ],
+        "commitPrMergeExecution": "pending-lead-coordinator",
+        "workflowDeploymentExecutionAndIdentity": "pending",
+        "ownerHostedVerdict": "pending-owner",
+        "optionalPhysicalEvidence": "pending-unclaimed-owner-only"
       },
       "components": [
         {
@@ -860,14 +868,33 @@
           "authorRepairUsed": true,
           "remediationCycles": 2,
           "disposition": "tier-2-pass-after-bounded-lighthouse-and-immediate-planner-remediation",
-      "status": "committed"
+          "status": "committed"
         },
         {
           "id": "8.9",
+          "componentId": "8.9",
           "name": "Cumulative Phase Gate, Publication, and Release Evidence",
+          "componentName": "Cumulative Phase Gate, Publication, and Release Evidence",
+          "owner": "AI Agent",
+          "priority": "Must-have",
+          "deliveryBudget": "single-agent-run",
           "assuranceLane": "phase-gate (lean override)",
           "validationTier": "phase",
-          "status": "spec-validated"
+          "assuranceReasons": [
+            "Standard Test triggers recorded: destructive migration, persistence/offline/update round trips, concurrent service, responsive UI, WebGL cadence, accessibility, and cumulative regression behavior.",
+            "Standard Review triggers recorded: broad core/app/config/documentation scope, public save/game contracts, release safety, and frozen candidate identity; the approved lean override assigns cumulative Tier 3 self-review and validation to Implement.",
+            "Bounded gate repair corrected stale browser synchronization, serialized renderer evidence, and deferred local-audio construction until first input without weakening retries, timeouts, skips, thresholds, or product behavior."
+          ],
+          "validationOwner": "Implement",
+          "commitOwner": "Lead Coordinator",
+          "fingerprintScope": ["global repository executable candidate (unscoped)"],
+          "evidenceFingerprint": "09b45748f9afd3315ca632ae45bdce26c46efd7fcbb6312bb8193323692a3e59",
+          "validationEvidence": "docs/phase-8-test-report.md",
+          "componentOverview": "docs/components/phase-8-component-8-9-overview.md",
+          "authorRepairUsed": true,
+          "remediationCycles": 4,
+          "disposition": "local-tier-3-pass-authorities-received-release-execution-pending",
+          "status": "local-pass-awaiting-coordinator-commit"
         }
       ]
     }
