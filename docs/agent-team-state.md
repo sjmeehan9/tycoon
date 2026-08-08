@@ -2,18 +2,19 @@
 
 ## Current Stage
 
-Human-approved Phase 7 PR #7 merged at `4e489198`; its unit-test race was fixed
-and PR #8 merged at `cae94763`. The second Pages run `31245312235` passed
-install/build/lint and all 148 unit/component tests, then retained 64 E2E passes
-and 7 intentional skips with three CI-stabilization failures. The second narrow
-test-only stabilization now has focused and full local Tier 3 PASS at immutable
-global fingerprint
-`5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`.
-The second stabilization is independently audited and committed; its PR and
-clean GitHub CI/deployment remain pending.
+Final Phase 7 stabilization PR #9 merged at
+`d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`. Clean Pages run `31246227689`
+passed install/build/lint, all 148 unit/component tests, 67 applicable
+Playwright cases with 7 intentional skips, artifact upload, and deployment.
+Deployment `5806728203` / status `16540798993` identifies that exact SHA at
+`https://sjmeehan9.github.io/tycoon/`. This is automated deployment evidence,
+not hosted-browser or physical-device proof.
+
+Phase 8 is started on `phase-8` from that exact main head. Component 8.1 has
+Tier 1 documentary PASS and is committed as the Phase 8 entry gate.
 Physical Safari/mobile-GPU/FPS validation remains pending and unclaimed for
-optional owner-only testing against the exact final hosted build. Phase 8 is
-paused and no Phase 8 files or runtime were changed.
+optional owner-only testing against the exact final Phase 8 hosted build. No
+Phase 8 runtime work or Component 8.2 change has started.
 
 ## Next-Level Evolution Stage Progress
 
@@ -38,7 +39,11 @@ paused and no Phase 8 files or runtime were changed.
 - [x] Lead Coordinator merges the first remediation through PR #8
 - [x] Second CI stabilization passes focused browser and full local gates
 - [x] Lead Coordinator audits and commits the second stabilization
-- [ ] Lead Coordinator merges the second stabilization and verifies clean CI/Pages deployment
+- [x] Lead Coordinator merges PR #9 and verifies clean automated CI/Pages deployment
+- [x] Phase 8 starts from final repaired main head `d3ef6d9e`
+- [x] Component 8.1 records ancestry, setup boundaries, and final release gates
+- [x] Lead Coordinator audits and commits Component 8.1
+- [ ] Component 8.2 runtime implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -75,15 +80,15 @@ paused and no Phase 8 files or runtime were changed.
 
 ## Active agents
 
-| Agent                     | Role                       | Status                      | Owns                                                                    |
-| ------------------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done                        | `docs/phase-plan.md`                                                    |
-| lean_full_build           | Implement                  | done — HOSTED PASS          | application, validation, release evidence                               |
-| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS          | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
-| next_level_plan           | Technical Business Analyst | retired — stalled           | Intake/context audit; no artifact mutation returned                     |
-| next_level_plan_recovery  | Technical Business Analyst | done                        | Comprehensive and corrected Phases 7–8 plan                             |
-| plan_feasibility_audit    | Implement                  | done — ready                | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | done — stabilization PASS   | Second Phase 7 CI stabilization; Phase 8 remains paused                 |
+| Agent                     | Role                       | Status                   | Owns                                                                    |
+| ------------------------- | -------------------------- | ------------------------ | ----------------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done                     | `docs/phase-plan.md`                                                    |
+| lean_full_build           | Implement                  | done — HOSTED PASS       | application, validation, release evidence                               |
+| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS       | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
+| next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
+| next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
+| plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
+| next_level_implement      | Implement                  | ready — 8.2 next        | Phase 8 runtime sequence after committed Component 8.1                  |
 
 ## Previous release human task gate
 
@@ -97,7 +102,8 @@ paused and no Phase 8 files or runtime were changed.
 
 - **Status:** CLOSED — the user approved Phases 7–8 and immediate
   implementation on 2026-08-08. Both component breakdowns are materialized and
-  `Spec-Validated`; Component 7.1 has entered the approved Phase 7 branch.
+  `Spec-Validated`; Phase 7 is merged/deployed and Phase 8 has entered its
+  approved branch.
 
 ## Phase 7 human/device gates
 
@@ -113,16 +119,42 @@ paused and no Phase 8 files or runtime were changed.
 - **Merge-triggered CI attempt 2:** FAILED — run `31245312235` passed through
   all 148 unit/component tests. E2E completed 64 PASS / 7 intentional skips /
   3 CI-stabilization failures in 9.1m; upload and deployment were skipped.
+- **Merge-triggered CI attempt 3:** AUTOMATED HOSTED PASS — run `31246227689`
+  passed install/build/lint, 148 unit/component tests, 67 Playwright cases with
+  7 intentional skips, artifact upload, and Pages deployment for exact SHA
+  `d3ef6d9e`.
 - **Physical device:** PENDING / UNCLAIMED — no agent accessed a device and no
   physical result is claimed. Only the repository owner may run Safari,
   mobile-GPU, orientation, and FPS checks against the exact hosted candidate
   after separate merge/publication approval.
 - **External setup:** CLOSED — no account, credential, secret, environment
   variable, paid asset, backend, runtime service, or publication setup exists.
-- **Merge:** PR #7 and first-remediation PR #8 are complete at `4e489198` and
-  `cae94763`. Second-stabilization commit/PR/merge remains Lead Coordinator work.
-- **Publication:** PENDING — both failed runs produced no deployable artifact;
-  no hosted PASS is claimed.
+- **Merge:** COMPLETE — PR #7, remediation PR #8, and stabilization PR #9 are
+  merged at `4e489198`, `cae94763`, and `d3ef6d9e`.
+- **Automated Pages deployment:** PASS — deployment `5806728203`, success status
+  `16540798993`, exact SHA `d3ef6d9e`, URL
+  `https://sjmeehan9.github.io/tycoon/`. No hosted-browser or physical PASS is
+  inferred.
+
+## Phase 8 setup and final release gates
+
+- **Entry:** `phase-8` starts from final repaired/deployed main head
+  `d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`; Phase 7 executable fingerprint
+  `5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`.
+- **External setup:** CLOSED — no new account, credential, secret, paid asset,
+  backend, database, API, analytics, telemetry, or runtime service is required.
+- **Physical path:** PENDING / UNCLAIMED — agents never access, reserve,
+  identify, or claim availability of a device. Any physical
+  Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, hosted
+  against the exact final Phase 8 build, and occurs only after separate final
+  approvals.
+- **Component 8.1:** COMMITTED / TIER 1 DOCUMENTARY PASS — independently
+  audited; no runtime or Component 8.2 mutation.
+- **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
+  exact Phase 8 candidate.
+- **Decision 2 after Decision 1:** human separately approves or rejects final
+  Pages publication and owner-hosted verification. Neither decision is inferred
+  from prior approval.
 
 ## Decisions log
 
@@ -162,6 +194,10 @@ paused and no Phase 8 files or runtime were changed.
 | 2026-08-08 | Stabilize constrained hosted state waits                    | Cart-day/persistence keep identical state assertions with bounded condition waits and sufficient enclosing budgets; comments reject performance interpretation                                        | Component 7.6      |
 | 2026-08-08 | Dismiss the touch PWA notice before WebGL retry             | The existing semantic helper clears the visible overlay before the unforced retry tap; unsupported/no-Canvas/save-safe outcomes remain unchanged                                                      | Component 7.6      |
 | 2026-08-08 | Record the second stabilized candidate as local PASS        | Fingerprint `5d2da832…9b55096` passed affected desktop 2/2, touch 1/1, 148 Vitest, and 67 applicable Playwright cases; hosted rerun remains pending                                                   | Component 7.6      |
+| 2026-08-08 | Record final Phase 7 automated Pages deployment PASS        | Run `31246227689`, deployment `5806728203`, status `16540798993`, and URL identify exact repaired main `d3ef6d9e`; no browser/physical result is inferred                                             | Phase 7 release    |
+| 2026-08-08 | Start Phase 8 from final repaired main                      | `phase-8` begins at `d3ef6d9e` with Phase 7 executable fingerprint `5d2da832…9b55096` and no intermediate ancestry ambiguity                                                                          | Component 8.1      |
+| 2026-08-08 | Prohibit all agent physical-device access                   | Any physical Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, exact-hosted, and pending/unclaimed until owner evidence exists                                                     | Phase 8 validation |
+| 2026-08-08 | Reserve two separate final Phase 8 decisions                | Local 8.9 PASS does not authorize merge; merge approval does not authorize Pages publication/owner-hosted verification                                                                                | Component 8.1/8.9  |
 
 ## Drift log
 
@@ -180,6 +216,7 @@ paused and no Phase 8 files or runtime were changed.
 | 2026-08-08 | macOS sandbox blocked Chromium launch before the browser suite                | The project-profile outside-sandbox fallback ran the real unchanged-candidate browser gate; 67 applicable cases passed with seven intentional cross-project skips                                               |
 | 2026-08-08 | Merge-triggered Pages run `31244688241` failed after lint                     | Linux observed `scene-loading` before the lazy WebGL `img`; the test now awaits readiness on both mounts while retaining every outcome assertion. Local Tier 3 passes; clean CI is pending                      |
 | 2026-08-08 | Pages run `31245312235` retained 64 E2E passes but had 3 failures             | Two accidental constrained-runner state ceilings became bounded condition waits; the touch PWA overlay is semantically dismissed. No sleeps, skips, forced clicks, runtime/config changes, or weaker assertions |
+| 2026-08-08 | Phase 8 breakdown still named agent/device evidence                           | Components 8.1, 8.6, 8.8, and 8.9 now separate automated browser/deployment evidence from optional owner-only physical findings; no agent device access remains assigned                                        |
 
 ## Deferred log
 
@@ -195,8 +232,8 @@ paused and no Phase 8 files or runtime were changed.
   deferred runtime path or WebGL fallback.
 - Physical Safari/mobile-GPU/orientation/FPS validation remains pending and
   unclaimed as an owner-only hosted handoff, not deferred product behavior.
-  It may run only against the exact candidate after separate approval; no
-  intermediate build was published and Phase 8 runtime work did not begin.
-- Clean GitHub CI, Pages artifact upload/deployment, and hosted identity capture
-  for the second stabilized candidate are pending Lead Coordinator handoff.
-  Both failed runs deployed nothing; no hosted or physical PASS is claimed.
+  The repository owner has deferred public-game validation until the exact final
+  Phase 8 candidate is complete and separately approved.
+- Phase 7 clean automated CI, artifact upload, Pages deployment, and exact
+  identity capture are complete. Hosted-browser and physical findings remain
+  unclaimed; they are not inferred from workflow success.
