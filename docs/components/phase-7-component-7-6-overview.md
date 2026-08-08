@@ -35,8 +35,8 @@ contracts:
 - schema/state version remain 3, one balanced 30-day cart→kiosk→cafe campaign
   remains current, and all Phase 8 campaign/difficulty/reset behavior remains
   planned only;
-- the remediated automated verdict is identified by global fingerprint
-  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`;
+- the stabilized automated verdict is identified by global fingerprint
+  `5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`;
   hosted physical validation is a separate owner-owned record.
 
 ## Files owned
@@ -76,10 +76,11 @@ Modified documentation/state:
 - `docs/phase-progress.json`
 - `docs/agent-team-state.md`
 
-The post-merge remediation diff is strictly limited to
-`tests/components/game-loop.test.tsx`, this overview, the Phase 7 test report,
-phase progress, and team state. The other paths above remain the historical
-Component 7.6 delivery manifest and are not restaged by this remediation.
+The second post-merge stabilization diff is strictly limited to
+`tests/e2e/cart-day.spec.ts`, `tests/e2e/persistence.spec.ts`,
+`tests/e2e/webgl-service.spec.ts`, this overview, the Phase 7 test report, phase
+progress, and team state. The other paths above remain the historical Component
+7.6 delivery manifest and are not restaged by this stabilization.
 
 No application runtime source, package manifest, lockfile, Vite configuration,
 Playwright configuration, public asset, deployment workflow, or release was
@@ -97,7 +98,7 @@ pnpm test:e2e
 ```
 
 The fingerprint must be
-`88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`
+`5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`
 before and after the unchanged candidate gate. Chromium needs the project's
 outside-sandbox browser-launch fallback in this macOS environment.
 
@@ -113,8 +114,13 @@ hosted physical checklist.
 - PR #7 merged component head `dc34856e` at main merge `4e489198`, but its Pages
   run `31244688241` failed at one synchronous component-test query while the
   lazy WebGL scene was still loading. Build/lint passed; E2E/upload/deploy were
-  skipped. The current local remediation is PASS; clean CI/deployment remains
-  pending.
+  skipped.
+- PR #8 merged the first remediation at `cae94763`; run `31245312235` then
+  passed install/build/lint and all 148 unit/component tests. E2E retained 64
+  passes and 7 intentional skips but had three CI-stabilization failures:
+  constrained desktop event/report ceilings and a touch retry intercepted by
+  the visible PWA notice. Upload/deploy were skipped. The second local
+  stabilization is PASS; clean CI/deployment remains pending.
 - The public URL still serves the prior approved release. Publish only the exact
   audited/approved candidate; never publish an intermediate build for device
   validation.
@@ -137,8 +143,10 @@ hosted physical checklist.
 | Acceptance criterion                            | Runtime behavior / owned evidence                                                                           | Proof                                                                  |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Complete automated Phase 7 target coverage      | Cumulative unit/component/E2E suite covers every plan target                                                | 148 Vitest + 67 applicable Playwright PASS                             |
-| Final global identity                           | Unscoped fingerprint before and after remediated Tier 3 is identical                                        | `88dbdaf3…a2247f`                                                      |
+| Final global identity                           | Unscoped fingerprint before and after stabilized Tier 3 is identical                                        | `5d2da832…9b55096`                                                     |
 | Post-merge Linux scene readiness                | Both paused dense-rush mounts await the lazy scene before checking unchanged current truth                  | Focused 18/18 plus cumulative 148/148 Vitest PASS                      |
+| Constrained-runner gameplay completion          | Existing event and report states use bounded condition waits plus sufficient enclosing budgets              | Focused desktop 2/2 plus cumulative desktop/touch PASS                 |
+| Touch unsupported/retry interaction             | Existing semantic PWA helper dismisses the notice before an unforced retry tap                              | Focused touch 1/1 plus cumulative touch PASS                           |
 | WebGL stack and license compatibility           | Exact installed pins, peers, lock entries, and MIT license files audited                                    | `tests/unit/scene.test.ts`; production build                           |
 | Snapshot-only renderer authority                | Recursive renderer graph excludes commands, persistence, storage, network, PRNG, and wall clock             | Unit static audit plus mounted/unmounted/context/speed equality tests  |
 | Three distinct fixed-isometric worlds           | Cart, kiosk, and cafe dispatch distinct bounded layouts and captures                                        | `webgl-service.spec.ts` in both projects; visual audit                 |
@@ -170,9 +178,9 @@ Under the approved lean override, Implement owns the cumulative gate,
 self-review, remediation, evidence, and commit candidate; the Lead Coordinator
 independently audits and commits.
 
-The lane was not downgraded. The post-merge test correction changed executable
-identity, so the recorded completion gate belongs only to the final unchanged
-remediation fingerprint.
+The lane was not downgraded. The second post-merge test stabilization changed
+executable identity, so the recorded completion gate belongs only to the final
+unchanged stabilization fingerprint.
 
 ## Deviations and decisions
 
@@ -195,6 +203,12 @@ remediation fingerprint.
   a product or device failure. Both scene queries now await lazy WebGL readiness
   before asserting the unchanged queue/current-truth/reduced-motion outcomes;
   no arbitrary sleep or runtime change was introduced.
+- Merge-triggered Pages run `31245312235` exposed two constrained-runner state
+  ceilings and one PWA overlay interception after 64 E2E passes. The same
+  gameplay states now have bounded 60-second waits with sufficient enclosing
+  budgets, and the existing semantic PWA helper runs before touch retry. This
+  is CI stabilization, not performance evidence; no sleep, skip, forced click,
+  configuration, runtime, or assertion change was introduced.
 
 ## Validation evidence
 
@@ -203,15 +217,17 @@ remediation fingerprint.
 - Remediation: all original cumulative failures green; persistence 2/2 PASS;
   living rush 6/6 PASS.
 - Post-merge focused remediation: `game-loop.test.tsx` 18/18 PASS in 5.05s.
-- Remediated Tier 3:
-  - `pnpm install --frozen-lockfile` — exit 0, 0.20s
-  - `pnpm build` — exit 0, 4.81s
-  - `pnpm lint` — exit 0, 8.40s
-  - `pnpm test` — exit 0, 6.33s, 16 files / 148 tests
+- Second focused browser stabilization: desktop cart-day/persistence 2/2 PASS
+  in 28.7s; touch unsupported/retry 1/1 PASS in 5.8s.
+- Stabilized Tier 3:
+  - `pnpm install --frozen-lockfile` — exit 0, 0.19s
+  - `pnpm build` — exit 0, 4.12s
+  - `pnpm lint` — exit 0, 8.21s
+  - `pnpm test` — exit 0, 6.34s, 16 files / 148 tests
   - `pnpm test:e2e` — exit 0, 2.5m, 67 PASS / 7 intentional skips
 - Fingerprint command/hash before and after:
   `python3 scripts/worktree-fingerprint.py` →
-  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`.
+  `5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`.
 
 ## Manual tests automated
 
@@ -230,8 +246,8 @@ it is pending for the repository owner after exact-candidate publication.
 No account, credential, secret, paid asset, or backend task exists. The pending
 human workflow is:
 
-1. Lead Coordinator raises the remediation PR from the independently audited,
-   committed exact candidate.
+1. Lead Coordinator raises the second remediation PR from the independently
+   audited, committed exact candidate.
 2. Confirm a clean GitHub rerun and exact Pages deployment; neither is yet
    claimed.
 3. Repository owner completes the optional physical checklist only against the

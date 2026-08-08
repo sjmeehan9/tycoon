@@ -2,13 +2,15 @@
 
 ## Current Stage
 
-Human-approved Phase 7 PR #7 merged component head `dc34856e` at main merge
-`4e489198`, but Pages run `31244688241` exposed a Linux async component-test
-race and skipped E2E, artifact upload, and deployment. The smallest test-only
-remediation now has local Tier 3 PASS at immutable global fingerprint
-`88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`.
-The remediation is independently audited and committed; its PR and clean GitHub
-CI/deployment remain pending.
+Human-approved Phase 7 PR #7 merged at `4e489198`; its unit-test race was fixed
+and PR #8 merged at `cae94763`. The second Pages run `31245312235` passed
+install/build/lint and all 148 unit/component tests, then retained 64 E2E passes
+and 7 intentional skips with three CI-stabilization failures. The second narrow
+test-only stabilization now has focused and full local Tier 3 PASS at immutable
+global fingerprint
+`5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`.
+The second stabilization is independently audited and committed; its PR and
+clean GitHub CI/deployment remain pending.
 Physical Safari/mobile-GPU/FPS validation remains pending and unclaimed for
 optional owner-only testing against the exact final hosted build. Phase 8 is
 paused and no Phase 8 files or runtime were changed.
@@ -33,7 +35,10 @@ paused and no Phase 8 files or runtime were changed.
 - [x] Human approves normal Phase 7 PR #7 merge
 - [x] Test-only post-merge CI remediation passes focused and full local gates
 - [x] Lead Coordinator audits and commits the remediation candidate
-- [ ] Lead Coordinator merges remediation and verifies clean CI/Pages deployment
+- [x] Lead Coordinator merges the first remediation through PR #8
+- [x] Second CI stabilization passes focused browser and full local gates
+- [x] Lead Coordinator audits and commits the second stabilization
+- [ ] Lead Coordinator merges the second stabilization and verifies clean CI/Pages deployment
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -70,15 +75,15 @@ paused and no Phase 8 files or runtime were changed.
 
 ## Active agents
 
-| Agent                     | Role                       | Status                    | Owns                                                                    |
-| ------------------------- | -------------------------- | ------------------------- | ----------------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done                      | `docs/phase-plan.md`                                                    |
-| lean_full_build           | Implement                  | done — HOSTED PASS        | application, validation, release evidence                               |
-| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS        | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
-| next_level_plan           | Technical Business Analyst | retired — stalled         | Intake/context audit; no artifact mutation returned                     |
-| next_level_plan_recovery  | Technical Business Analyst | done                      | Comprehensive and corrected Phases 7–8 plan                             |
-| plan_feasibility_audit    | Implement                  | done — ready              | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | done — remediation PASS   | Phase 7 post-merge CI remediation; Phase 8 remains paused               |
+| Agent                     | Role                       | Status                      | Owns                                                                    |
+| ------------------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done                        | `docs/phase-plan.md`                                                    |
+| lean_full_build           | Implement                  | done — HOSTED PASS          | application, validation, release evidence                               |
+| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS          | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
+| next_level_plan           | Technical Business Analyst | retired — stalled           | Intake/context audit; no artifact mutation returned                     |
+| next_level_plan_recovery  | Technical Business Analyst | done                        | Comprehensive and corrected Phases 7–8 plan                             |
+| plan_feasibility_audit    | Implement                  | done — ready                | Read-only feasibility audit and approval check; no implementation       |
+| next_level_implement      | Implement                  | done — stabilization PASS   | Second Phase 7 CI stabilization; Phase 8 remains paused                 |
 
 ## Previous release human task gate
 
@@ -96,24 +101,27 @@ paused and no Phase 8 files or runtime were changed.
 
 ## Phase 7 human/device gates
 
-- **Automated validation:** LOCAL REMEDIATION PASS — final unchanged global
+- **Automated validation:** SECOND LOCAL STABILIZATION PASS — final unchanged
+  global
   fingerprint
-  `88dbdaf32cbbe6c59a91bdc5c3853efdf85514fc053b627e1f0962dfa1a2247f`;
+  `5d2da8326f5973e72c90c5e14f0796da9da08c32802ab8c6bfae891d99b55096`;
   build, lint, 148 unit/component tests, and 67 applicable Playwright tests
   passed across desktop Chromium and exact 360×780 touch projects.
-- **Merge-triggered CI:** FAILED — run `31244688241` passed setup, frozen
-  install, build, and lint, then hit a synchronous query while the lazy WebGL
-  scene was still loading. E2E, upload, and deployment were skipped. The local
-  test-only correction awaits clean GitHub CI and deployment.
+- **Merge-triggered CI attempt 1:** FAILED — run `31244688241` passed setup,
+  frozen install, build, and lint, then hit a synchronous query while the lazy
+  WebGL scene was still loading. E2E, upload, and deployment were skipped.
+- **Merge-triggered CI attempt 2:** FAILED — run `31245312235` passed through
+  all 148 unit/component tests. E2E completed 64 PASS / 7 intentional skips /
+  3 CI-stabilization failures in 9.1m; upload and deployment were skipped.
 - **Physical device:** PENDING / UNCLAIMED — no agent accessed a device and no
   physical result is claimed. Only the repository owner may run Safari,
   mobile-GPU, orientation, and FPS checks against the exact hosted candidate
   after separate merge/publication approval.
 - **External setup:** CLOSED — no account, credential, secret, environment
   variable, paid asset, backend, runtime service, or publication setup exists.
-- **Merge:** COMPLETE — human-approved PR #7 merged normally at `4e489198`.
-  Remediation commit/PR/merge remains Lead Coordinator work.
-- **Publication:** PENDING — the failed run produced no artifact or deployment;
+- **Merge:** PR #7 and first-remediation PR #8 are complete at `4e489198` and
+  `cae94763`. Second-stabilization commit/PR/merge remains Lead Coordinator work.
+- **Publication:** PENDING — both failed runs produced no deployable artifact;
   no hosted PASS is claimed.
 
 ## Decisions log
@@ -151,23 +159,27 @@ paused and no Phase 8 files or runtime were changed.
 | 2026-08-08 | Record the Phase 7 automated candidate as PASS              | The unchanged global fingerprint passed build, lint, 148 Vitest cases, and 67 applicable Playwright cases across desktop and exact-touch projects                                                     | Component 7.6      |
 | 2026-08-08 | Remediate the post-merge Linux lazy-import test race        | Await scene accessibility before asserting the unchanged queue/current-event/paused-motion truth; no sleep, runtime change, or weaker assertion                                                       | Component 7.6      |
 | 2026-08-08 | Record the remediated Phase 7 candidate as local PASS       | Fingerprint `88dbdaf3…a2247f` passed the focused 18-test file and the exact full Tier 3 sequence; clean GitHub CI/deployment remains pending                                                          | Component 7.6      |
+| 2026-08-08 | Stabilize constrained hosted state waits                    | Cart-day/persistence keep identical state assertions with bounded condition waits and sufficient enclosing budgets; comments reject performance interpretation                                        | Component 7.6      |
+| 2026-08-08 | Dismiss the touch PWA notice before WebGL retry             | The existing semantic helper clears the visible overlay before the unforced retry tap; unsupported/no-Canvas/save-safe outcomes remain unchanged                                                      | Component 7.6      |
+| 2026-08-08 | Record the second stabilized candidate as local PASS        | Fingerprint `5d2da832…9b55096` passed affected desktop 2/2, touch 1/1, 148 Vitest, and 67 applicable Playwright cases; hosted rerun remains pending                                                   | Component 7.6      |
 
 ## Drift log
 
-| Date       | Deviation                                                                     | Resolution                                                                                                                                                                                 |
-| ---------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-07-18 | Normal agent pipeline omitted                                                 | User explicitly approved lean-team override; Implement absorbs omitted roles                                                                                                               |
-| 2026-07-18 | GitHub `main` has no configured protection rule                               | Release used passing PR checks and a normal merge with no force/admin bypass; evidence states the actual setting                                                                           |
-| 2026-07-18 | In-app browser runtime unavailable                                            | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths                                                                       |
-| 2026-07-18 | Additive TBA threads did not return a document mutation                       | User-authorized coordinator skeleton points the sole Implement agent to the approved root plan; no substitute role was added                                                               |
-| 2026-07-19 | Pages workflow emitted compatibility warnings                                 | Node action-runtime and upload-input annotations were non-blocking; jobs, deployment, assets, and public runtime all passed                                                                |
-| 2026-08-08 | Initial Phase 7+ TBA engagement produced no artifact after bounded follow-ups | Coordinator retired the stalled engagement and re-onboarded the same permitted role with a narrower write-first contract                                                                   |
-| 2026-08-08 | R3F stable release advanced after planning research                           | Official releases now list v9.7.0 rather than v9.6.1 as latest stable; Component 7.1 selects no dependency and Component 7.2 must re-check and build-test its exact pin                    |
-| 2026-08-08 | Component 7.2 profile ownership was incomplete                                | Coordinator granted a bounded clarification: replace only the pending 3D version text with tested exact pins and add that line to 7.2 ownership/fingerprint scope                          |
-| 2026-08-08 | Original Component 7.6 physical-device prerequisite was superseded            | Evidence now states automated PASS separately from pending/unclaimed owner-only hosted validation; agents perform no device access or intermediate publication                             |
-| 2026-08-08 | Cumulative Phase 6 assertions encoded superseded Canvas/report presentation   | Assertions were reconciled to the approved WebGL, scene-free planning, compact-report, and service-order contracts while preserving gameplay, persistence, and accessibility outcomes      |
-| 2026-08-08 | macOS sandbox blocked Chromium launch before the browser suite                | The project-profile outside-sandbox fallback ran the real unchanged-candidate browser gate; 67 applicable cases passed with seven intentional cross-project skips                          |
-| 2026-08-08 | Merge-triggered Pages run `31244688241` failed after lint                     | Linux observed `scene-loading` before the lazy WebGL `img`; the test now awaits readiness on both mounts while retaining every outcome assertion. Local Tier 3 passes; clean CI is pending |
+| Date       | Deviation                                                                     | Resolution                                                                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-18 | Normal agent pipeline omitted                                                 | User explicitly approved lean-team override; Implement absorbs omitted roles                                                                                                                                    |
+| 2026-07-18 | GitHub `main` has no configured protection rule                               | Release used passing PR checks and a normal merge with no force/admin bypass; evidence states the actual setting                                                                                                |
+| 2026-07-18 | In-app browser runtime unavailable                                            | Project-standard Playwright Chromium completed hosted verification; coordinator independently corroborated key paths                                                                                            |
+| 2026-07-18 | Additive TBA threads did not return a document mutation                       | User-authorized coordinator skeleton points the sole Implement agent to the approved root plan; no substitute role was added                                                                                    |
+| 2026-07-19 | Pages workflow emitted compatibility warnings                                 | Node action-runtime and upload-input annotations were non-blocking; jobs, deployment, assets, and public runtime all passed                                                                                     |
+| 2026-08-08 | Initial Phase 7+ TBA engagement produced no artifact after bounded follow-ups | Coordinator retired the stalled engagement and re-onboarded the same permitted role with a narrower write-first contract                                                                                        |
+| 2026-08-08 | R3F stable release advanced after planning research                           | Official releases now list v9.7.0 rather than v9.6.1 as latest stable; Component 7.1 selects no dependency and Component 7.2 must re-check and build-test its exact pin                                         |
+| 2026-08-08 | Component 7.2 profile ownership was incomplete                                | Coordinator granted a bounded clarification: replace only the pending 3D version text with tested exact pins and add that line to 7.2 ownership/fingerprint scope                                               |
+| 2026-08-08 | Original Component 7.6 physical-device prerequisite was superseded            | Evidence now states automated PASS separately from pending/unclaimed owner-only hosted validation; agents perform no device access or intermediate publication                                                  |
+| 2026-08-08 | Cumulative Phase 6 assertions encoded superseded Canvas/report presentation   | Assertions were reconciled to the approved WebGL, scene-free planning, compact-report, and service-order contracts while preserving gameplay, persistence, and accessibility outcomes                           |
+| 2026-08-08 | macOS sandbox blocked Chromium launch before the browser suite                | The project-profile outside-sandbox fallback ran the real unchanged-candidate browser gate; 67 applicable cases passed with seven intentional cross-project skips                                               |
+| 2026-08-08 | Merge-triggered Pages run `31244688241` failed after lint                     | Linux observed `scene-loading` before the lazy WebGL `img`; the test now awaits readiness on both mounts while retaining every outcome assertion. Local Tier 3 passes; clean CI is pending                      |
+| 2026-08-08 | Pages run `31245312235` retained 64 E2E passes but had 3 failures             | Two accidental constrained-runner state ceilings became bounded condition waits; the touch PWA overlay is semantically dismissed. No sleeps, skips, forced clicks, runtime/config changes, or weaker assertions |
 
 ## Deferred log
 
@@ -186,5 +198,5 @@ paused and no Phase 8 files or runtime were changed.
   It may run only against the exact candidate after separate approval; no
   intermediate build was published and Phase 8 runtime work did not begin.
 - Clean GitHub CI, Pages artifact upload/deployment, and hosted identity capture
-  for the remediated candidate are pending Lead Coordinator handoff. The failed
-  run deployed nothing; no hosted or physical PASS is claimed.
+  for the second stabilized candidate are pending Lead Coordinator handoff.
+  Both failed runs deployed nothing; no hosted or physical PASS is claimed.

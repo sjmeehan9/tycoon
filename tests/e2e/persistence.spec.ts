@@ -1,10 +1,14 @@
 import { expect, test } from '@playwright/test';
 
+// Hosted CI can contend for CPU/GPU across browser workers. This bound awaits
+// the settled report state and is not renderer or simulation performance proof.
+const CONSTRAINED_RUNNER_REPORT_TIMEOUT_MS = 60_000;
+
 test.describe('autosaved continuation', () => {
   test('restores planning, service controls, report, and exact-once settlement', async ({
     page,
   }) => {
-    test.setTimeout(100_000);
+    test.setTimeout(180_000);
     await page.goto('./');
     await page.getByRole('button', { name: 'Start new campaign' }).click();
     await page.getByRole('button', { name: 'Show current step' }).click();
@@ -34,7 +38,7 @@ test.describe('autosaved continuation', () => {
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Protect the queue/ }).click();
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible({
-      timeout: 30_000,
+      timeout: CONSTRAINED_RUNNER_REPORT_TIMEOUT_MS,
     });
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
