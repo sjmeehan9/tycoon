@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
 import { BrowserSaveStore, SAVE_KEY, parseEnvelope } from '../../src/persistence/saveStore';
-import { livingRushEnvelope, reportHistoryEnvelope } from '../fixtures/campaignFixtures';
+import {
+  livingRushEnvelope,
+  parallelServiceEnvelope,
+  reportHistoryEnvelope,
+} from '../fixtures/campaignFixtures';
 
 describe('onboarding and accessible interaction', () => {
   it('exposes a named Standard-first difficulty group and persistent help', async () => {
@@ -117,11 +121,13 @@ describe('onboarding and accessible interaction', () => {
     expect(screen.getByRole('tabpanel', { name: 'Supplies' })).toBeInTheDocument();
     expect(screen.getByText('Day 1 planning at the Coffee Cart.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open the cart' }));
-    expect(
-      screen.getByText(
-        'Service rush active at the Coffee Cart. Scene, dashboard and controls, live activity, then stock.',
-      ),
-    ).toBeInTheDocument();
+    const rushAnnouncement = screen.getByText(
+      'Service rush active at the Coffee Cart. One espresso station and its normal lane are available in the semantic dashboard. Scene, dashboard and controls, live activity, then stock.',
+    );
+    expect(rushAnnouncement).toBeInTheDocument();
+    const announcementText = rushAnnouncement.textContent;
+    await user.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(rushAnnouncement).toHaveTextContent(announcementText ?? '');
     expect(
       screen.getByText(/Making |Calling the next order|rare quiet second/),
     ).not.toHaveAttribute('aria-live');
@@ -141,12 +147,25 @@ describe('onboarding and accessible interaction', () => {
       /Latest walkaway: Commuter customer d1-c21 left because their order was out of stock/,
     );
     expect(screen.getByRole('list', { name: 'Recent rush activity' })).toHaveTextContent(
-      'started large oat Flat White service',
+      'started large oat Flat White as job d1-j0 in the Normal lane at the espresso bar',
     );
     expect(scene.closest('figure')).toHaveAttribute('data-animation', 'still');
     expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
     expect(screen.getByRole('button', { name: 'Resume' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('group', { name: 'Service speed' })).toBeVisible();
+  });
+
+  it('announces department station and lane topology without job-level chatter', async () => {
+    new BrowserSaveStore(window.localStorage).save(parallelServiceEnvelope());
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    const announcement = screen.getByText(
+      'Service rush active at the Department Store Coffee Hall. Parallel espresso, brew, and cold stations plus normal and express lanes are available in the semantic dashboard. Scene, dashboard and controls, live activity, then stock.',
+    );
+    const stableText = announcement.textContent;
+    await user.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(announcement).toHaveTextContent(stableText ?? '');
   });
 });
 

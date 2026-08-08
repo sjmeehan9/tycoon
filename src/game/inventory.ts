@@ -173,6 +173,19 @@ export function consumeIngredientsLifo(
   return updated;
 }
 
+/**
+ * Consume one job's complete ingredient requirement at its deterministic service start.
+ *
+ * This is the parallel-service ownership boundary: stock is removed once and is not released if
+ * the rush ends after preparation has begun. Completion must never call this function again.
+ */
+export function consumeIngredientsAtServiceStart(
+  inventory: IngredientInventory,
+  ingredients: IngredientAmount[],
+): IngredientInventory {
+  return consumeIngredientsLifo(inventory, ingredients);
+}
+
 /** Remove all batches whose last usable rush just completed and total the waste. */
 export function expireInventoryAfterRush(
   inventory: IngredientInventory,

@@ -10,8 +10,8 @@ Deployment `5806728203` / status `16540798993` identifies that exact SHA at
 `https://sjmeehan9.github.io/tycoon/`. This is automated deployment evidence,
 not hosted-browser or physical-device proof.
 
-Phase 8 is active on `phase-8` from that exact main head. Components 8.1 and
-8.2 are committed. Component 8.2 delivers schema-v4 preferences-only reset,
+Phase 8 is active on isolated branch `phase-8-sealed` from that exact main
+head. Components 8.1 and 8.2 are committed. Component 8.2 delivers schema-v4 preferences-only reset,
 immutable Standard/Hard campaigns, difficulty-partitioned records, and one
 typed exhaustive demand-influence authority at repaired fingerprint
 `9434536ff79e7807134246cb4beb5073d61d61b9048cb97824294848fbb2b2b8`.
@@ -30,7 +30,11 @@ Component 8.4 is committed at fingerprint
 `64dd0298c9cdcf6973b55fe1882106252e893f065adc5a727c07a5fc8cb4c3e5`.
 It delivers a twelve-person department roster, ten-person daily scheduling,
 Manager/Runner roles with exact operational value, canonical staff identities,
-and strict payroll/persistence proof. Component 8.5 is next and has not started.
+and strict payroll/persistence proof. Component 8.5 is committed at fingerprint
+`af1212722978e7c4991e0f65d28bcc7eca7ea831f842a6b9740163df4acb1c6f`.
+It delivers three deterministic parallel stations, normal/express lanes,
+exact-once service settlement, strict v4 persistence, semantic reports, and the
+compact scene/dashboard/activity/stock hierarchy. Component 8.6 is next.
 
 ## Next-Level Evolution Stage Progress
 
@@ -66,7 +70,9 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 - [x] Lead Coordinator audits and commits Component 8.3
 - [x] Component 8.4 delivers department workforce, Manager, and Runner behavior
 - [x] Lead Coordinator audits and commits Component 8.4
-- [ ] Component 8.5 parallel service implementation begins
+- [x] Component 8.5 delivers canonical parallel stations and express service
+- [x] Lead Coordinator audits and commits the sealed Component 8.5 candidate
+- [ ] Component 8.6 dense heritage-hall implementation begins
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
 ## Lean team contract
@@ -111,7 +117,7 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | next_level_plan           | Technical Business Analyst | retired — stalled        | Intake/context audit; no artifact mutation returned                     |
 | next_level_plan_recovery  | Technical Business Analyst | done                     | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready             | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | ready — 8.5 next        | Sequential Component 8.5 service implementation after committed 8.4    |
+| next_level_implement      | Implement                  | ready — 8.6 next         | Sequential Component 8.6 dense heritage-hall implementation            |
 
 ## Previous release human task gate
 
@@ -190,6 +196,11 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
   final gate passed build/lint, all 180 Vitest cases, and retained smoke. The
   coordinator independently reproduced the fingerprint and 59-test core audit.
   No physical device, push, merge, deployment, or publication occurred.
+- **Component 8.5:** COMMITTED / TIER 2 PASS — fingerprint
+  `af121272…c4acb1c6f`; focused service/persistence proof passed 82 cases, and
+  the immutable sealed gate passed build, lint, all 199 Vitest cases, and 20
+  applicable desktop/touch Chromium cases with two intentional routing skips.
+  No physical device, push, merge, deployment, or publication occurred.
 - **Decision 1 after 8.9 local PASS:** human approves or rejects merging the
   exact Phase 8 candidate.
 - **Decision 2 after Decision 1:** human separately approves or rejects final
@@ -246,6 +257,7 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | 2026-08-08 | Establish one per-venue workforce authority                 | Roster/schedule capacities are 8/2, 8/3, 8/5, and 12/10; engine, persistence, and UI consume that authority while legacy projections are derived                                                          | Component 8.4      |
 | 2026-08-08 | Make Manager/Runner value deterministic and exact-once       | Manager reduces bounded coordination/reliability delay; Runner reduces bounded handoff workload without creating stock; order preparation is the sole application point                                 | Component 8.4      |
 | 2026-08-08 | Bind staff identity and payroll at the v4 boundary           | Seed/day/slot-derived attributes, venue eligibility, complete daily pools, schedule IDs, and rush/report payroll are validated on import                                                                  | Component 8.4      |
+| 2026-08-08 | Make station/lane/job identity canonical                     | Fixed station ordering, bounded express fairness, service-start inventory consumption, and exact-once aggregates keep engine, persistence, UI, scene, and reports on one authority                         | Component 8.5      |
 
 ## Drift log
 
@@ -267,6 +279,7 @@ and strict payroll/persistence proof. Component 8.5 is next and has not started.
 | 2026-08-08 | Phase 8 breakdown still named agent/device evidence                           | Components 8.1, 8.6, 8.8, and 8.9 now separate automated browser/deployment evidence from optional owner-only physical findings; no agent device access remains assigned                                        |
 | 2026-08-08 | Component 8.3's initial ownership omitted inventory/layout proof paths        | Coordinator added only inventory, venue-layout, scene, presentation, and breakdown paths needed for tier-three shelf-life and fourth-venue exhaustiveness; all are in the final scope                           |
 | 2026-08-08 | Component 8.3 audit found stale retained current-v4 browser contracts          | Operations now reaches the department flagship, transfer restores Day 40 department detail, and service layout iterates canonical four-venue content; 18/18 repaired desktop/touch cases pass                  |
+| 2026-08-08 | Another Codex process repeatedly changed the shared 8.5 checkout after freezes | Every in-scope delta was preserved and audited, then the complete candidate was snapshot-copied to ignored worktree `phase-8-sealed`; its stable fingerprint alone supplied completion evidence                |
 
 ## Deferred log
 

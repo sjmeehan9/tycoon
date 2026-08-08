@@ -33,6 +33,10 @@ export type GameMode = 'campaign' | 'endless';
 /** Immutable demand policy selected when a campaign is created. */
 export type Difficulty = 'standard' | 'hard';
 export type VenueId = 'cart' | 'kiosk' | 'cafe' | 'departmentStore';
+/** Stable preparation stations used by planning, service, persistence, and reports. */
+export type StationId = 'espressoBar' | 'brewBar' | 'coldBar';
+/** Stable customer lanes used by routing, fairness, activity, and reports. */
+export type LaneId = 'normal' | 'express';
 export type CustomerSegment = 'commuter' | 'student' | 'enthusiast' | 'regular';
 export type StaffRole = 'barista' | 'frontOfHouse' | 'manager' | 'runner';
 export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'steady';
@@ -93,6 +97,8 @@ export interface DayPlan {
   dialIn: DialIn;
   beanId: BeanId;
   scheduledStaffIds: string[];
+  stationAssignments: Record<StationId, string[]>;
+  expressDrinkIds: DrinkId[];
 }
 
 export interface Order {
@@ -108,12 +114,17 @@ export interface Customer {
   id: string;
   segment: CustomerSegment;
   order: Order;
+  stationId: StationId;
+  laneId: LaneId;
   arrivedAtTick: number;
   patienceTicks: number;
   waitedTicks: number;
 }
 
 export interface ServiceJob {
+  id: string;
+  stationId: StationId;
+  laneId: LaneId;
   customer: Customer;
   remainingTicks: number;
   totalTicks: number;
@@ -128,6 +139,10 @@ export interface RushActivityBase {
   sequence: number;
   tick: number;
   customerId: string;
+  stationId: StationId;
+  laneId: LaneId;
+  /** `null` until preparation starts; started/completed observations require a job ID. */
+  jobId: string | null;
   /** `null` is reserved for honestly migrated observations that predate customer identity. */
   segment: CustomerSegment | null;
 }
@@ -137,9 +152,10 @@ export interface ArrivalActivityEvent extends RushActivityBase {
   type: 'arrival';
 }
 
-/** A queued order whose ingredients were reserved and preparation began. */
+/** A queued order whose ingredients were consumed exactly once and preparation began. */
 export interface ServiceStartedActivityEvent extends RushActivityBase {
   type: 'serviceStarted';
+  jobId: string;
   drinkId: DrinkId;
   size: DrinkSize;
   milk: MilkChoice;
@@ -148,6 +164,7 @@ export interface ServiceStartedActivityEvent extends RushActivityBase {
 /** A completed order charged at the engine-recorded actual price. */
 export interface SaleActivityEvent extends RushActivityBase {
   type: 'sale';
+  jobId: string;
   drinkId: DrinkId;
   size: DrinkSize;
   milk: MilkChoice;
@@ -219,6 +236,20 @@ export interface RushStats {
   consumed: Partial<Record<IngredientId, number>>;
   arrivalsBySegment: Partial<Record<CustomerSegment, number>>;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
+  serviceAggregates: ServiceAggregate[];
+}
+
+/** Bounded exact-once service evidence for one station/lane combination. */
+export interface ServiceAggregate {
+  stationId: StationId;
+  laneId: LaneId;
+  assignedStaffIds: string[];
+  equipmentIds: EquipmentId[];
+  completedJobIds: string[];
+  served: number;
+  revenueCents: number;
+  totalWaitTicks: number;
+  satisfactionTotal: number;
 }
 
 export interface RushState {
@@ -226,8 +257,11 @@ export interface RushState {
   durationTicks: number;
   isPaused: boolean;
   speed: RushSpeed;
-  queue: Customer[];
-  activeService: ServiceJob | null;
+  normalQueue: Customer[];
+  expressQueue: Customer[];
+  serviceJobsByStation: Record<StationId, ServiceJob | null>;
+  consecutiveExpressStartsByStation: Record<StationId, number>;
+  nextServiceJobSequence: number;
   pendingEvent: SimulationEvent | null;
   resolvedEvents: ResolvedEvent[];
   eventTriggerTicks: number[];
@@ -382,6 +416,7 @@ export interface DayReport {
   remainingInventory: IngredientTotals;
   inventoryLifecycle: InventoryLifecycleReport | null;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
+  serviceAggregates: ServiceAggregate[];
   bottleneck: string;
   explanations: string[];
   /** Absent means the historical report predates complete charge capture. */
@@ -480,6 +515,8 @@ export interface PlanPatch {
   dialIn?: DialIn;
   beanId?: BeanId;
   scheduledStaffIds?: string[];
+  stationAssignments?: Partial<Record<StationId, string[]>>;
+  expressDrinkIds?: DrinkId[];
 }
 
 export type GameCommand =

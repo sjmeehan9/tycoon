@@ -1,12 +1,13 @@
 import { useId } from 'react';
 
 import { useGame } from '../app/GameContext';
-import { INGREDIENT_DETAILS, INGREDIENT_IDS } from '../content/gameContent';
+import { INGREDIENT_DETAILS, INGREDIENT_IDS, TICKS_PER_SECOND } from '../content/gameContent';
 import {
   completedSaleLabel,
   DIFFICULTY_LABELS,
   formatIngredientQuantity,
   formatMoney,
+  STATION_DETAILS,
   type DayReport,
   type IngredientId,
 } from '../game';
@@ -118,6 +119,7 @@ export function ReportView(props: ReportViewProps): React.JSX.Element {
             </dl>
           </div>
 
+          <ServiceEvidence report={report} titleId={`service-evidence-title-${instanceId}`} />
           <ChargeEvidence report={report} titleId={`sale-evidence-title-${instanceId}`} />
           <InventoryLifecycle
             report={report}
@@ -142,6 +144,73 @@ export function ReportView(props: ReportViewProps): React.JSX.Element {
           </ul>
         </div>
       </details>
+    </section>
+  );
+}
+
+function ServiceEvidence({
+  report,
+  titleId,
+}: {
+  report: DayReport;
+  titleId: string;
+}): React.JSX.Element {
+  return (
+    <section aria-labelledby={titleId} className="service-evidence">
+      <h3 id={titleId}>Station and lane service</h3>
+      <p>
+        Completed job identities reconcile once to {report.served} served customers and{' '}
+        {formatMoney(report.revenueCents)} revenue. Staffing and equipment show the topology
+        captured when that rush opened.
+      </p>
+      <div className="service-evidence-scroll" tabIndex={0}>
+        <table>
+          <caption>Canonical service settlement by station and lane</caption>
+          <thead>
+            <tr>
+              <th scope="col">Station</th>
+              <th scope="col">Lane</th>
+              <th scope="col">Coverage</th>
+              <th scope="col">Jobs</th>
+              <th scope="col">Revenue</th>
+              <th scope="col">Average wait</th>
+              <th scope="col">Satisfaction</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.serviceAggregates.map((aggregate) => {
+              const averageWait =
+                aggregate.served > 0
+                  ? Math.round(
+                      (aggregate.totalWaitTicks / aggregate.served / TICKS_PER_SECOND) * 10,
+                    ) / 10
+                  : 0;
+              const satisfaction =
+                aggregate.served > 0
+                  ? Math.round(aggregate.satisfactionTotal / aggregate.served)
+                  : 0;
+              return (
+                <tr
+                  data-lane-id={aggregate.laneId}
+                  data-station-id={aggregate.stationId}
+                  key={`${aggregate.stationId}:${aggregate.laneId}`}
+                >
+                  <th scope="row">{STATION_DETAILS[aggregate.stationId].label}</th>
+                  <td>{aggregate.laneId === 'express' ? 'Express' : 'Normal'}</td>
+                  <td>
+                    {aggregate.assignedStaffIds.length} staff · {aggregate.equipmentIds.length}{' '}
+                    equipment
+                  </td>
+                  <td>{aggregate.completedJobIds.length}</td>
+                  <td>{formatMoney(aggregate.revenueCents)}</td>
+                  <td>{averageWait}s</td>
+                  <td>{aggregate.served > 0 ? `${satisfaction}%` : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

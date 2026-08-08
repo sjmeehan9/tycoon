@@ -6,12 +6,16 @@ import {
 } from '../../src/content/gameContent';
 import {
   advanceTick,
+  activeServiceJobs,
   candidatePoolForDay,
   createCampaign,
+  defaultStationAssignments,
+  inventoryTotals,
   prepareDay,
   resolveEvent,
   setRushSpeed,
   startRush,
+  togglePause,
   type GameState,
   type SaveEnvelope,
 } from '../../src/game';
@@ -34,7 +38,12 @@ import {
   parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
-import { nearVictoryEnvelope, reportHistoryEnvelope } from '../fixtures/campaignFixtures';
+import {
+  livingRushEnvelope,
+  nearVictoryEnvelope,
+  parallelServiceEnvelope,
+  reportHistoryEnvelope,
+} from '../fixtures/campaignFixtures';
 
 const LEGACY_KEYS = [
   LEGACY_V3_SAVE_KEY,
@@ -96,7 +105,10 @@ describe('schema-v4 save envelope', () => {
           serviceCounter: 3,
         },
       },
-      { scheduledStaffIds: [candidate.id] },
+      {
+        scheduledStaffIds: [candidate.id],
+        stationAssignments: defaultStationAssignments('departmentStore', [candidate]),
+      },
     );
     const parsed = parseEnvelope(JSON.stringify(createSaveEnvelope(state)));
 
@@ -241,6 +253,239 @@ describe('schema-v4 save envelope', () => {
     futureEquipment.activeRun.equipment.grinder = 4;
     expect(() => importEnvelope(JSON.stringify(futureEquipment))).toThrow(
       'equipment.grinder is outside its allowed bounds',
+    );
+  });
+
+  it('canonicalizes a pre-8.5 v4 rush idempotently and rewrites browser storage', () => {
+    const legacy = pre85DepartmentRushEnvelope();
+    const imported = importEnvelope(JSON.stringify(legacy));
+    const rush = imported.activeRun?.rush;
+    if (!rush) throw new Error('Expected canonical active rush.');
+    expect(rush.normalQueue[0]).toMatchObject({
+      id: 'd1-c2',
+      stationId: 'coldBar',
+      laneId: 'normal',
+    });
+    expect(
+      rush.recentActivity.find((event) => event.customerId === 'd1-c2' && event.type === 'arrival'),
+    ).toMatchObject({ stationId: 'coldBar', laneId: 'normal', jobId: null });
+    expect(rush.serviceJobsByStation.espressoBar).toMatchObject({
+      id: 'd1-j0',
+      stationId: 'espressoBar',
+      laneId: 'normal',
+    });
+    expect(rush.stats.serviceAggregates).toHaveLength(6);
+    expect(rush.stats.serviceAggregates[0]?.assignedStaffIds.length).toBeGreaterThan(0);
+    expect(importEnvelope(serializeEnvelope(imported))).toEqual(imported);
+
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(legacy));
+    const loaded = new BrowserSaveStore(window.localStorage).load();
+    expect(loaded.source).toBe('primary');
+    const rewritten = JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? '{}') as {
+      activeRun?: { rush?: Record<string, unknown> };
+    };
+    expect(rewritten.activeRun?.rush).not.toHaveProperty('queue');
+    expect(rewritten.activeRun?.rush).not.toHaveProperty('activeService');
+    expect(rewritten.activeRun?.rush).toHaveProperty('normalQueue');
+    expect(rewritten.activeRun?.rush).toHaveProperty('serviceJobsByStation');
+  });
+
+  it('keeps migrated historical service identity independent of current department topology', () => {
+    const legacy = structuredClone(nearVictoryEnvelope());
+    if (!legacy.activeRun?.report) throw new Error('Expected report fixture.');
+    const cartEraReport = { ...legacy.activeRun.report, day: 39, settled: true };
+    delete (cartEraReport as Partial<typeof cartEraReport>).serviceAggregates;
+    delete (legacy.activeRun.report as Partial<typeof legacy.activeRun.report>).serviceAggregates;
+    legacy.activeRun.history = [cartEraReport];
+
+    const imported = importEnvelope(JSON.stringify(legacy));
+    for (const report of [imported.activeRun?.report, imported.activeRun?.history[0]]) {
+      if (!report) throw new Error('Expected migrated historical report.');
+      const settled = report.serviceAggregates.filter((aggregate) => aggregate.served > 0);
+      expect(settled).toHaveLength(1);
+      expect(settled[0]).toMatchObject({
+        stationId: 'espressoBar',
+        laneId: 'normal',
+        assignedStaffIds: [],
+        equipmentIds: [],
+        served: 18,
+      });
+    }
+  });
+
+  it('rejects lowered identity counters and active reuse of a completed service job', () => {
+    const loweredCustomer = structuredClone(livingRushEnvelope());
+    if (!loweredCustomer.activeRun?.rush) throw new Error('Expected active rush fixture.');
+    loweredCustomer.activeRun.rush.nextCustomerId = 2;
+    expect(() => importEnvelope(JSON.stringify(loweredCustomer))).toThrow(
+      'nextCustomerId must follow every retained current-day customer identity',
+    );
+
+    const loweredJob = structuredClone(livingRushEnvelope());
+    if (!loweredJob.activeRun?.rush) throw new Error('Expected active rush fixture.');
+    loweredJob.activeRun.rush.nextServiceJobSequence = 1;
+    expect(() => importEnvelope(JSON.stringify(loweredJob))).toThrow(
+      'id must precede rush.nextServiceJobSequence',
+    );
+
+    const reusedJob = structuredClone(livingRushEnvelope());
+    const reusedRush = reusedJob.activeRun?.rush;
+    if (!reusedRush?.serviceJobsByStation.espressoBar) {
+      throw new Error('Expected active espresso job fixture.');
+    }
+    reusedRush.serviceJobsByStation.espressoBar.id =
+      reusedRush.stats.serviceAggregates[0]?.completedJobIds[0] ?? '';
+    expect(() => importEnvelope(JSON.stringify(reusedJob))).toThrow(
+      'active service-job ID cannot already be completed',
+    );
+  });
+
+  it('reloads three active station jobs exactly between stock consumption and completion', () => {
+    const paused = parallelServiceEnvelope().activeRun;
+    if (!paused?.rush) throw new Error('Expected paused parallel-service fixture.');
+    expect(activeServiceJobs(paused.rush)).toHaveLength(3);
+    expect(advanceTick(paused)).toBe(paused);
+    let midJob = setRushSpeed(togglePause(paused), 4);
+    if (!midJob.rush) throw new Error('Expected resumed parallel rush.');
+    midJob = {
+      ...midJob,
+      rush: {
+        ...midJob.rush,
+        eventTriggerTicks: [midJob.rush.tick + 2],
+      },
+    };
+    const midRush = midJob.rush;
+    if (!midRush) throw new Error('Expected configured mid-job rush.');
+    expect(activeServiceJobs(midRush)).toHaveLength(3);
+    expect(midRush.stats.consumed).toMatchObject({
+      houseBeans: 33,
+      coldBrewConcentrate: 90,
+      ice: 1,
+    });
+    const restored = importEnvelope(serializeEnvelope(createSaveEnvelope(midJob))).activeRun;
+    if (!restored?.rush) throw new Error('Expected restored mid-job rush.');
+    expect(restored).toEqual(midJob);
+    expect(activeServiceJobs(restored.rush)).toHaveLength(3);
+    expect(activeServiceJobs(restored.rush)).toEqual(activeServiceJobs(midRush));
+    expect(restored.inventory).toEqual(midJob.inventory);
+    expect(restored.rush.stats).toEqual(midRush.stats);
+
+    const uninterrupted = runToReportState(midJob);
+    const reloaded = runToReportState(restored);
+    expect(JSON.stringify(reloaded)).toBe(JSON.stringify(uninterrupted));
+    expect(reloaded).toEqual(uninterrupted);
+    expect(reloaded.inventory).toEqual(uninterrupted.inventory);
+    expect(reloaded.report).toMatchObject({
+      revenueCents: uninterrupted.report?.revenueCents,
+      satisfactionPercent: uninterrupted.report?.satisfactionPercent,
+      serviceAggregates: uninterrupted.report?.serviceAggregates,
+    });
+    expect(reloaded.rush?.recentActivity).toEqual(uninterrupted.rush?.recentActivity);
+    expect(reloaded.rush?.resolvedEvents).toEqual(uninterrupted.rush?.resolvedEvents);
+    expect(reloaded.rush?.resolvedEvents.length).toBeGreaterThan(0);
+  });
+
+  it('rejects rush and event saves whose inventory no longer reconciles with consumption', () => {
+    const forgedRushInventory = structuredClone(parallelServiceEnvelope());
+    const houseBeansBatch = forgedRushInventory.activeRun?.inventory.houseBeans[0];
+    if (!houseBeansBatch) throw new Error('Expected retained house beans.');
+    houseBeansBatch.quantity += 1;
+    expect(() => importEnvelope(JSON.stringify(forgedRushInventory))).toThrow(
+      'activeRun.inventory.houseBeans does not conserve active-rush quantity',
+    );
+
+    const paused = parallelServiceEnvelope().activeRun;
+    if (!paused?.rush) throw new Error('Expected paused parallel-service fixture.');
+    const running = togglePause(paused);
+    if (!running.rush) throw new Error('Expected resumed parallel-service rush.');
+    const eventState = advanceTick({
+      ...running,
+      rush: {
+        ...running.rush,
+        eventTriggerTicks: [running.rush.tick + 1],
+      },
+    });
+    expect(eventState.phase).toBe('event');
+    expect(() => importEnvelope(serializeEnvelope(createSaveEnvelope(eventState)))).not.toThrow();
+
+    const forgedEventConsumption = createSaveEnvelope(eventState);
+    const eventRush = forgedEventConsumption.activeRun?.rush;
+    if (!eventRush) throw new Error('Expected event rush state.');
+    eventRush.stats.consumed.ice = (eventRush.stats.consumed.ice ?? 0) - 1;
+    expect(() => importEnvelope(JSON.stringify(forgedEventConsumption))).toThrow(
+      'activeRun.inventory.ice does not conserve active-rush quantity',
+    );
+  });
+
+  it('derives canonical completed and active job consumption against coherent forgeries', () => {
+    const honest = livingRushEnvelope({ paused: true });
+    const honestRun = honest.activeRun;
+    const honestRush = honestRun?.rush;
+    if (!honestRun || !honestRush) throw new Error('Expected an honest living-rush fixture.');
+    expect(() => importEnvelope(serializeEnvelope(honest))).not.toThrow();
+    expect(honestRush.stats.consumed).toMatchObject({ houseBeans: 44, oatMilk: 440 });
+    expect(honestRush.stats.ingredientCostCents).toBe(338);
+    const honestInventory = inventoryTotals(honestRun.inventory);
+    expect(honestInventory.houseBeans).toBe(
+      honestRush.openingInventory.houseBeans +
+        honestRush.purchasedInventory.houseBeans -
+        (honestRush.stats.consumed.houseBeans ?? 0),
+    );
+    expect(honestInventory.oatMilk).toBe(
+      honestRush.openingInventory.oatMilk +
+        honestRush.purchasedInventory.oatMilk -
+        (honestRush.stats.consumed.oatMilk ?? 0),
+    );
+
+    const coherentConsumptionForgery = structuredClone(honest);
+    const forgedRun = coherentConsumptionForgery.activeRun;
+    const forgedRush = forgedRun?.rush;
+    const forgedBatch = forgedRun?.inventory.houseBeans[0];
+    if (!forgedRun || !forgedRush || !forgedBatch) {
+      throw new Error('Expected forgeable active-rush beans.');
+    }
+    forgedRush.stats.consumed.houseBeans = (forgedRush.stats.consumed.houseBeans ?? 0) + 1;
+    forgedBatch.quantity -= 1;
+    expect(inventoryTotals(forgedRun.inventory).houseBeans).toBe(
+      forgedRush.openingInventory.houseBeans +
+        forgedRush.purchasedInventory.houseBeans -
+        (forgedRush.stats.consumed.houseBeans ?? 0),
+    );
+    expect(() => importEnvelope(JSON.stringify(coherentConsumptionForgery))).toThrow(
+      'rush.stats.consumed.houseBeans must equal canonical completed and active job consumption',
+    );
+
+    const forgedIngredientCost = structuredClone(honest);
+    if (!forgedIngredientCost.activeRun?.rush) throw new Error('Expected active rush cost.');
+    forgedIngredientCost.activeRun.rush.stats.ingredientCostCents += 1;
+    expect(() => importEnvelope(JSON.stringify(forgedIngredientCost))).toThrow(
+      'rush.stats.ingredientCostCents must equal canonical completed and active job cost',
+    );
+
+    const offMenuOrder = structuredClone(honest);
+    if (!offMenuOrder.activeRun) throw new Error('Expected active run menu.');
+    offMenuOrder.activeRun.plan.activeMenu = ['espresso'];
+    expect(() => importEnvelope(JSON.stringify(offMenuOrder))).toThrow(
+      'order.drinkId must be selected in the active menu',
+    );
+  });
+
+  it('rejects current-day customer sequence zero while retaining service job j0', () => {
+    const valid = parallelServiceEnvelope();
+    expect(() => importEnvelope(serializeEnvelope(valid))).not.toThrow();
+    expect(valid.activeRun?.rush?.serviceJobsByStation.espressoBar?.id).toBe('d3-j0');
+
+    const forged = structuredClone(valid);
+    const rush = forged.activeRun?.rush;
+    if (!rush?.normalQueue[0]) throw new Error('Expected a canonical waiting customer.');
+    rush.normalQueue[0].id = 'd3-c0';
+    expect(() => importEnvelope(JSON.stringify(forged))).toThrow('customer IDs must match the day');
+
+    const emptyCounter = createSaveEnvelope(startRush(createCampaign({ seed: 3_303 })));
+    if (!emptyCounter.activeRun?.rush) throw new Error('Expected an empty current rush.');
+    emptyCounter.activeRun.rush.nextCustomerId = 0;
+    expect(() => importEnvelope(JSON.stringify(emptyCounter))).toThrow(
+      'rush.nextCustomerId is outside its allowed bounds',
     );
   });
 
@@ -452,6 +697,84 @@ function legacyEnvelope(schemaVersion: 1 | 2 | 3): Record<string, unknown> {
   return legacy;
 }
 
+function pre85DepartmentRushEnvelope(): Record<string, unknown> {
+  const envelope = structuredClone(
+    livingRushEnvelope({
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+      scheduledStaffCount: 3,
+      venueId: 'departmentStore',
+    }),
+  ) as unknown as Record<string, unknown>;
+  const activeRun = envelope.activeRun as Record<string, unknown>;
+  const plan = activeRun.plan as Record<string, unknown>;
+  plan.activeMenu = ['flatWhite', 'coldBrew'];
+  delete plan.stationAssignments;
+  delete plan.expressDrinkIds;
+  const rush = activeRun.rush as Record<string, unknown>;
+  const normalQueue = rush.normalQueue as Array<Record<string, unknown>>;
+  const firstCustomer = normalQueue[0];
+  if (!firstCustomer) throw new Error('Expected a waiting migration customer.');
+  firstCustomer.order = {
+    drinkId: 'coldBrew',
+    size: 'regular',
+    milk: 'none',
+    priceCents: 620,
+    ingredientAmounts: [
+      { ingredientId: 'coldBrewConcentrate', amount: 90 },
+      { ingredientId: 'ice', amount: 1 },
+    ],
+    preparationTicks: 8,
+  };
+  const legacyQueue = normalQueue.map(stripCustomerRoute);
+  const jobs = rush.serviceJobsByStation as Record<string, Record<string, unknown> | null>;
+  const activeJob = jobs.espressoBar;
+  if (!activeJob) throw new Error('Expected active migration job.');
+  rush.queue = legacyQueue;
+  rush.activeService = {
+    customer: stripCustomerRoute(activeJob.customer as Record<string, unknown>),
+    remainingTicks: activeJob.remainingTicks,
+    totalTicks: activeJob.totalTicks,
+  };
+  const activity = (rush.recentActivity as Array<Record<string, unknown>>).map((event) => {
+    const legacyEvent = { ...event };
+    delete legacyEvent.stationId;
+    delete legacyEvent.laneId;
+    delete legacyEvent.jobId;
+    return legacyEvent;
+  });
+  activity.push({
+    id: 'd1-e7',
+    sequence: 7,
+    tick: 47,
+    customerId: 'd1-c2',
+    segment: 'commuter',
+    type: 'arrival',
+  });
+  rush.recentActivity = activity;
+  rush.nextActivitySequence = 8;
+  delete (rush.stats as Record<string, unknown>).serviceAggregates;
+  delete rush.normalQueue;
+  delete rush.expressQueue;
+  delete rush.serviceJobsByStation;
+  delete rush.consecutiveExpressStartsByStation;
+  delete rush.nextServiceJobSequence;
+  return envelope;
+}
+
+function stripCustomerRoute(customer: Record<string, unknown>): Record<string, unknown> {
+  const legacy = { ...customer };
+  delete legacy.stationId;
+  delete legacy.laneId;
+  return legacy;
+}
+
 function completeReport(seed: number, difficulty: 'standard' | 'hard'): SaveEnvelope {
   let state = startRush(createCampaign({ seed, difficulty }));
   let safety = 0;
@@ -489,8 +812,19 @@ function departmentWorkforceState(seed: number, staffCount: number): GameState {
       venueId: 'departmentStore',
       staff,
       candidateStaff: currentPool.filter(({ id }) => !hiredIds.has(id)),
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
     },
-    { scheduledStaffIds: staff.slice(0, 10).map(({ id }) => id) },
+    {
+      scheduledStaffIds: staff.slice(0, 10).map(({ id }) => id),
+      stationAssignments: defaultStationAssignments('departmentStore', staff.slice(0, 10)),
+    },
   );
 }
 
@@ -512,7 +846,10 @@ function duplicateManagerState(seed: number): GameState {
       staff,
       candidateStaff: dayTwoPool.filter(({ id }) => id !== dayTwoManager.id),
     },
-    { scheduledStaffIds: staff.map(({ id }) => id) },
+    {
+      scheduledStaffIds: staff.map(({ id }) => id),
+      stationAssignments: defaultStationAssignments('departmentStore', staff),
+    },
   );
 }
 

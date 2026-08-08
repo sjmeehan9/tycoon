@@ -312,3 +312,60 @@ No schema/key bump, dependency, station, express lane, parallel service,
 physical-device access, Git mutation, merge, deployment, or publication belongs
 to this component. The approved title art remains byte-identical at SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.5 three-station and exact parallel-service boundary
+
+Department-store service now has three stable single-server stations in fixed
+order: espresso, brew, and cold. The morning plan assigns each scheduled person
+to exactly one compatible station and may route zero through three eligible
+existing drinks to an express lane. Eligibility is recipe-, equipment-,
+station-, and venue-derived. Every other order remains normal demand; selecting
+express never creates, removes, or changes demand.
+
+Rush state now owns bounded normal and express queues, one nullable canonical
+job per station, per-station express fairness, and a monotonic job sequence.
+Stations complete and start in fixed order. At most two express starts may pass
+compatible normal work already waiting at the same station. Cart, kiosk, and
+cafe use the same structures with one espresso station and one normal lane, so
+their seeded serial outcomes remain intact.
+
+Shared ingredients are consumed atomically and irrevocably when a job starts.
+Completion does not consume again. Reload therefore resumes the exact remaining
+ticks without duplicating stock, cost, activity, revenue, satisfaction, or
+settlement. An unfinished job at rush end keeps its incurred ingredient cost,
+records a job-linked rush-end walkaway, and creates no sale. Each completed job
+appears once in one of six ordered station/lane aggregate buckets with the
+rush-start staff and installed-equipment context.
+
+Current v4 saves predating this component are canonicalized idempotently before
+strict load, recovery, import, export, or write. Singular queue/service fields
+are removed, live customer/activity routes are reconstructed from canonical
+content, and historical report totals with no route evidence are represented
+honestly as espresso/normal history with empty coverage metadata. The v1–v3
+preferences-only reset policy is unchanged.
+
+Strict active rush/event import also reconciles every current inventory total
+to opening stock plus purchases minus canonical consumed totals. This check
+runs before post-rush expiry and fails closed if either stock or consumption was
+altered independently. Retained queued and active-job orders must still belong
+to the validated morning menu, so a coherent stock forgery cannot smuggle an
+off-menu order through canonical consumption evidence. Current-day customer
+identities start at `c1`; service job identities deliberately start at `j0`.
+
+Rush-start coverage metadata is populated only for station/lane pairs active at
+the venue. Legacy one-station venues therefore retain staff and equipment on
+espresso/normal only; their inactive station and express buckets remain empty.
+
+The semantic service hierarchy is scene, dashboard, activity, then stock. The
+dashboard reports combined and per-lane waits, all active jobs, and a
+three-station strip. The representative 360×780 touch layout keeps the scaled
+scene and complete compact dashboard within the initial viewport. Existing 3D
+adapters intentionally project combined waiting and only the first fixed-order
+active job until Component 8.6 delivers the dense multi-customer heritage hall.
+
+Queue/wait demand reads the two canonical waiting queues exactly once; active
+jobs are not counted again. Availability reads the one shared post-consumption
+inventory. Standard/Hard registry authority, presentation speed independence,
+the one-time v4 boundary, and the title art hash remain unchanged. No new
+dependency, physical-device access, hosted release, deployment, or publication
+belongs to this component.

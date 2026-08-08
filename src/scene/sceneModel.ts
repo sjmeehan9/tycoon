@@ -1,14 +1,16 @@
-import type {
-  CosmeticId,
-  CustomerSegment,
-  EquipmentState,
-  GamePhase,
-  GameState,
-  RushActivityEvent,
-  RushSpeed,
-  StaffRole,
-  VenueId,
-  WeatherId,
+import {
+  activeServiceJobs,
+  waitingCustomers,
+  type CosmeticId,
+  type CustomerSegment,
+  type EquipmentState,
+  type GamePhase,
+  type GameState,
+  type RushActivityEvent,
+  type RushSpeed,
+  type StaffRole,
+  type VenueId,
+  type WeatherId,
 } from '../game';
 import { DRINK_MAP, VENUES } from '../content/gameContent';
 import { describeRushActivity } from '../game/selectors';
@@ -64,17 +66,20 @@ export function createSceneSnapshot(
     : cosmetics.includes('wattleAwning')
       ? 'wattleAwning'
       : 'classicAwning';
-  const queueCustomers =
-    game.rush?.queue.slice(0, 8).map(({ id, segment }) => Object.freeze({ id, segment })) ?? [];
-  const activeCustomer = game.rush?.activeService
+  const waiting = game.rush ? waitingCustomers(game.rush) : [];
+  const firstActiveJob = game.rush ? activeServiceJobs(game.rush)[0] : undefined;
+  const queueCustomers = waiting
+    .slice(0, 8)
+    .map(({ id, segment }) => Object.freeze({ id, segment }));
+  const activeCustomer = firstActiveJob
     ? Object.freeze({
-        id: game.rush.activeService.customer.id,
-        segment: game.rush.activeService.customer.segment,
+        id: firstActiveJob.customer.id,
+        segment: firstActiveJob.customer.segment,
         order: Object.freeze({
-          drinkId: game.rush.activeService.customer.order.drinkId,
-          size: game.rush.activeService.customer.order.size,
-          milk: game.rush.activeService.customer.order.milk,
-          priceCents: game.rush.activeService.customer.order.priceCents,
+          drinkId: firstActiveJob.customer.order.drinkId,
+          size: firstActiveJob.customer.order.size,
+          milk: firstActiveJob.customer.order.milk,
+          priceCents: firstActiveJob.customer.order.priceCents,
         }),
       })
     : null;
@@ -86,7 +91,7 @@ export function createSceneSnapshot(
     rushTick: game.rush?.tick ?? 0,
     rushSpeed: game.rush?.speed ?? 1,
     isPaused: game.rush?.isPaused ?? false,
-    queueCount: game.rush?.queue.length ?? 0,
+    queueCount: waiting.length,
     queueCustomers: Object.freeze(queueCustomers),
     queueSegments: Object.freeze(queueCustomers.map(({ segment }) => segment)),
     activeCustomer,

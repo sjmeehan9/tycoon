@@ -155,14 +155,14 @@ export const DEMAND_INFLUENCES = {
   arrivalQueueWait: definition(
     'arrival',
     'Visible queue and wait pressure',
-    '1 − queue length × 0.045.',
+    '1 − combined normal/express waiting count × 0.045, clamped at 0.55 before difficulty.',
     1,
     'negative-only',
     'factor',
     0.24,
     1,
-    'A visible queue can suppress arrivals but cannot create a bonus.',
-    'engine.demandRate.queueWait',
+    'Both canonical queues feed one shared pressure factor; active jobs are not counted again.',
+    'engine.demandRate.waitingCustomers(rush).length',
   ),
   arrivalAvailability: definition(
     'arrival',
@@ -173,8 +173,8 @@ export const DEMAND_INFLUENCES = {
     'factor',
     0,
     1,
-    'Unavailable recipes can suppress arrivals but cannot create a bonus.',
-    'engine.demandRate.availability',
+    'Inventory consumed once at service start feeds one shared availability factor across stations.',
+    'engine.demandRate.sharedInventoryAvailability',
   ),
   arrivalRushEvent: definition(
     'arrival',

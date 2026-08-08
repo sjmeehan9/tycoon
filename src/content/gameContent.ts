@@ -723,6 +723,8 @@ export function createDefaultPlan(): DayPlan {
     dialIn: 'balanced',
     beanId: 'houseBeans',
     scheduledStaffIds: [],
+    stationAssignments: { espressoBar: [], brewBar: [], coldBar: [] },
+    expressDrinkIds: [],
   };
 }
 

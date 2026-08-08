@@ -41,7 +41,7 @@ import { applyDemandInfluence, type ArrivalDemandInfluenceId } from './demandInf
 import {
   addPlannedPurchases,
   completeIngredientTotals,
-  consumeIngredientsLifo,
+  consumeIngredientsAtServiceStart,
   expireInventoryAfterRush,
   extendInventoryRefrigeration,
   hasIngredients,
@@ -49,6 +49,28 @@ import {
   plannedPurchaseTotals,
 } from './inventory';
 import { nextRandom, randomInt } from './prng';
+import {
+  LANE_IDS,
+  MAX_CONSECUTIVE_EXPRESS_STARTS,
+  MAX_EXPRESS_DRINKS,
+  MAX_SERVICE_JOBS_PER_RUSH,
+  STATION_DETAILS,
+  STATION_EQUIPMENT_IDS,
+  STATION_IDS,
+  activeServiceJobs,
+  defaultStationAssignments,
+  emptyExpressStartCounters,
+  emptyServiceJobs,
+  expressDrinkEligible,
+  laneForDrink,
+  serviceConfigFor,
+  serviceAggregatesForPlan,
+  serviceJobId,
+  staffStationCompatible,
+  stationReadyForService,
+  stationForDrink,
+  waitingCustomers,
+} from './serviceStations';
 import {
   CANDIDATES_PER_DAY,
   LEGACY_STAFF_NAMES,
@@ -71,6 +93,7 @@ import type {
   GameState,
   IngredientAmount,
   IngredientId,
+  LaneId,
   MilkChoice,
   Order,
   PlanPatch,
@@ -80,10 +103,13 @@ import type {
   RushState,
   RushStats,
   RushWalkawayReason,
+  ServiceAggregate,
+  ServiceJob,
   SimulationEvent,
   StaffMember,
   StaffRoleOperationalEffect,
   StaffTrait,
+  StationId,
   StepDirection,
 } from './types';
 
@@ -216,7 +242,23 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
     purchases: { ...state.plan.purchases, ...patch.purchases },
     dialIn: patch.dialIn ?? state.plan.dialIn,
     beanId: patch.beanId ?? state.plan.beanId,
-    scheduledStaffIds: patch.scheduledStaffIds ?? state.plan.scheduledStaffIds,
+    scheduledStaffIds: patch.scheduledStaffIds
+      ? [...patch.scheduledStaffIds]
+      : state.plan.scheduledStaffIds,
+    stationAssignments: patch.stationAssignments
+      ? {
+          ...state.plan.stationAssignments,
+          ...Object.fromEntries(
+            Object.entries(patch.stationAssignments).map(([stationId, staffIds]) => [
+              stationId,
+              staffIds ? [...staffIds] : [],
+            ]),
+          ),
+        }
+      : state.plan.stationAssignments,
+    expressDrinkIds: patch.expressDrinkIds
+      ? [...patch.expressDrinkIds]
+      : state.plan.expressDrinkIds,
   };
   validatePlan(state, plan);
   if (purchaseCost(plan) > state.cashCents - CAMPAIGN_RULES.overdraftFloorCents) {
@@ -281,8 +323,11 @@ export function startRush(state: GameState): GameState {
     durationTicks: RUSH_DURATION_TICKS,
     isPaused: false,
     speed: 1,
-    queue: [],
-    activeService: null,
+    normalQueue: [],
+    expressQueue: [],
+    serviceJobsByStation: emptyServiceJobs(),
+    consecutiveExpressStartsByStation: emptyExpressStartCounters(),
+    nextServiceJobSequence: 0,
     pendingEvent: null,
     resolvedEvents: [],
     eventTriggerTicks: createEventTriggerTicks(state),
@@ -300,7 +345,7 @@ export function startRush(state: GameState): GameState {
     nextActivitySequence: 0,
     recentActivity: [],
     chargeGroups: [],
-    stats: emptyRushStats(),
+    stats: emptyRushStats(state),
   };
   return {
     ...state,
@@ -532,6 +577,11 @@ export function promoteVenue(state: GameState): GameState {
     ...state,
     cashCents: state.cashCents - promotion.costCents,
     venueId: promotion.to,
+    plan: {
+      ...state.plan,
+      stationAssignments: defaultStationAssignments(promotion.to, scheduledStaff(state)),
+      expressDrinkIds: [],
+    },
   };
 }
 
@@ -647,8 +697,8 @@ export function staffRoleOperationalEffect(member: StaffMember): StaffRoleOperat
   };
 }
 
-/** Aggregate the exact staff, trait, equipment, and venue effects used by service. */
-export function operationalEffects(state: GameState): OperationalEffects {
+/** Aggregate exact staff, trait, equipment, and venue effects for demand or one station. */
+export function operationalEffects(state: GameState, stationId?: StationId): OperationalEffects {
   let preparationMultiplier = 1;
   let qualityBonus = 0;
   let satisfactionBonus = 0;
@@ -658,7 +708,11 @@ export function operationalEffects(state: GameState): OperationalEffects {
   let proposedManagerReductionTicks = 0;
   let proposedRunnerReductionTicks = 0;
 
-  for (const equipmentId of EQUIPMENT_IDS) {
+  const applicableEquipmentIds =
+    state.venueId === 'departmentStore' && stationId
+      ? STATION_EQUIPMENT_IDS[stationId]
+      : EQUIPMENT_IDS;
+  for (const equipmentId of applicableEquipmentIds) {
     const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
     if (!tier) continue;
     const effects = tier.effects;
@@ -668,7 +722,14 @@ export function operationalEffects(state: GameState): OperationalEffects {
     queueBonus += effects.queueCapacityBonus ?? 0;
   }
 
-  for (const member of scheduledStaff(state)) {
+  const assignedIds =
+    state.venueId === 'departmentStore' && stationId
+      ? new Set(state.plan.stationAssignments[stationId])
+      : null;
+  const applicableStaff = scheduledStaff(state).filter(
+    (member) => assignedIds === null || assignedIds.has(member.id),
+  );
+  for (const member of applicableStaff) {
     const roleEffect = staffRoleOperationalEffect(member);
     switch (roleEffect.operation) {
       case 'coffeePreparation':
@@ -708,7 +769,7 @@ export function operationalEffects(state: GameState): OperationalEffects {
   const equipmentReliabilityDelayTicks =
     state.venueId === 'departmentStore'
       ? Math.ceil(
-          EQUIPMENT_IDS.reduce((total, equipmentId) => {
+          applicableEquipmentIds.reduce((total, equipmentId) => {
             const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
             return total + (tier ? 100 - tier.reliabilityPercent : 0);
           }, 0) / DEPARTMENT_WORKLOAD_DELAYS.reliabilityDeficitPointsPerTick,
@@ -828,47 +889,73 @@ function advanceSingleTick(state: GameState): GameState {
     };
   }
 
-  let working = ageQueue({ ...state, rush: { ...rush, tick: nextTick } });
-  working = progressService(working);
-  working = startNextService(working);
+  let working = ageQueues({ ...state, rush: { ...rush, tick: nextTick } });
+  working = progressServices(working);
+  working = startAvailableServices(working);
   working = maybeAddArrival(working);
   const updatedRush = working.rush;
   if (updatedRush && updatedRush.tick >= updatedRush.durationTicks) return finishRush(working);
   return working;
 }
 
-function ageQueue(state: GameState): GameState {
+function ageQueues(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) return state;
-  const kept: Customer[] = [];
   let abandoned = 0;
   let observedRush = rush;
-  for (const customer of rush.queue) {
-    const aged = { ...customer, waitedTicks: customer.waitedTicks + 1 };
-    if (aged.waitedTicks >= aged.patienceTicks) {
-      abandoned += 1;
-      observedRush = appendWalkawayActivity(observedRush, state.day, aged, 'patience');
-    } else kept.push(aged);
+  const queues: Record<LaneId, Customer[]> = { normal: [], express: [] };
+  for (const laneId of LANE_IDS) {
+    const queue = laneId === 'normal' ? rush.normalQueue : rush.expressQueue;
+    for (const customer of queue) {
+      const aged = { ...customer, waitedTicks: customer.waitedTicks + 1 };
+      if (aged.waitedTicks >= aged.patienceTicks) {
+        abandoned += 1;
+        observedRush = appendWalkawayActivity(observedRush, state.day, aged, 'patience');
+      } else {
+        queues[laneId].push(aged);
+      }
+    }
   }
   return {
     ...state,
     rush: {
       ...observedRush,
-      queue: kept,
+      normalQueue: queues.normal,
+      expressQueue: queues.express,
       stats: { ...observedRush.stats, abandoned: rush.stats.abandoned + abandoned },
     },
   };
 }
 
-function progressService(state: GameState): GameState {
-  const rush = state.rush;
-  const service = rush?.activeService;
-  if (!rush || !service) return state;
-  const remainingTicks = service.remainingTicks - 1;
-  if (remainingTicks > 0) {
-    return { ...state, rush: { ...rush, activeService: { ...service, remainingTicks } } };
+function progressServices(state: GameState): GameState {
+  let working = state;
+  for (const stationId of STATION_IDS) {
+    const rush = working.rush;
+    const job = rush?.serviceJobsByStation[stationId];
+    if (!rush || !job) continue;
+    const remainingTicks = job.remainingTicks - 1;
+    if (remainingTicks > 0) {
+      working = {
+        ...working,
+        rush: {
+          ...rush,
+          serviceJobsByStation: {
+            ...rush.serviceJobsByStation,
+            [stationId]: { ...job, remainingTicks },
+          },
+        },
+      };
+      continue;
+    }
+    working = completeServiceJob(working, job);
   }
-  const customer = service.customer;
+  return working;
+}
+
+function completeServiceJob(state: GameState, job: ServiceJob): GameState {
+  const rush = state.rush;
+  if (!rush) return state;
+  const customer = job.customer;
   const satisfaction = calculateSatisfaction(state, customer);
   const soldCount = rush.stats.soldByDrink[customer.order.drinkId] ?? 0;
   const stats: RushStats = {
@@ -885,33 +972,44 @@ function progressService(state: GameState): GameState {
       ...rush.stats.servedBySegment,
       [customer.segment]: (rush.stats.servedBySegment[customer.segment] ?? 0) + 1,
     },
+    serviceAggregates: recordServiceAggregate(rush.stats.serviceAggregates, job, satisfaction),
   };
   return {
     ...state,
     rush: appendSaleActivity(
       {
         ...rush,
-        activeService: null,
+        serviceJobsByStation: { ...rush.serviceJobsByStation, [job.stationId]: null },
         chargeGroups: recordCanonicalCharge(rush, customer.order),
         stats,
       },
       state.day,
-      customer,
+      job,
     ),
   };
 }
 
-function startNextService(state: GameState): GameState {
+function startAvailableServices(state: GameState): GameState {
   let working = state;
-  while (working.rush && !working.rush.activeService && working.rush.queue.length > 0) {
+  for (const stationId of serviceConfigFor(state.venueId).stationIds) {
+    working = startStationService(working, stationId);
+  }
+  return working;
+}
+
+function startStationService(state: GameState, stationId: StationId): GameState {
+  if (!stationReadyForService(state.venueId, state.equipment, state.plan, stationId)) return state;
+  let working = state;
+  while (working.rush && !working.rush.serviceJobsByStation[stationId]) {
     const rush = working.rush;
-    const customer = rush.queue[0];
-    if (!customer) break;
-    const queue = rush.queue.slice(1);
+    const selected = selectNextCustomer(rush, stationId);
+    if (!selected) break;
+    const customer = selected.customer;
+    const nextQueues = removeQueuedCustomer(rush, selected.laneId, selected.index);
     if (!hasIngredients(working.inventory, customer.order.ingredientAmounts)) {
       const nextRush: RushState = {
         ...rush,
-        queue,
+        ...nextQueues,
         stats: {
           ...rush.stats,
           stockouts: rush.stats.stockouts + 1,
@@ -924,20 +1022,42 @@ function startNextService(state: GameState): GameState {
       };
       continue;
     }
-    const consumed = consumeIngredientsLifo(working.inventory, customer.order.ingredientAmounts);
+    const consumed = consumeIngredientsAtServiceStart(
+      working.inventory,
+      customer.order.ingredientAmounts,
+    );
     const ingredientCost = recipeCost(customer.order.ingredientAmounts);
     const consumedTotals = { ...rush.stats.consumed };
     for (const item of customer.order.ingredientAmounts) {
       consumedTotals[item.ingredientId] = (consumedTotals[item.ingredientId] ?? 0) + item.amount;
     }
+    const job: ServiceJob = {
+      id: serviceJobId(state.day, rush.nextServiceJobSequence),
+      stationId,
+      laneId: selected.laneId,
+      customer,
+      remainingTicks: customer.order.preparationTicks,
+      totalTicks: customer.order.preparationTicks,
+    };
     const nextRush: RushState = {
       ...rush,
-      queue,
-      activeService: {
-        customer,
-        remainingTicks: customer.order.preparationTicks,
-        totalTicks: customer.order.preparationTicks,
+      ...nextQueues,
+      serviceJobsByStation: {
+        ...rush.serviceJobsByStation,
+        [stationId]: job,
       },
+      consecutiveExpressStartsByStation: {
+        ...rush.consecutiveExpressStartsByStation,
+        [stationId]:
+          selected.laneId === 'express' &&
+          rush.normalQueue.some((waiting) => waiting.stationId === stationId)
+            ? Math.min(
+                MAX_CONSECUTIVE_EXPRESS_STARTS,
+                rush.consecutiveExpressStartsByStation[stationId] + 1,
+              )
+            : 0,
+      },
+      nextServiceJobSequence: rush.nextServiceJobSequence + 1,
       stats: {
         ...rush.stats,
         ingredientCostCents: rush.stats.ingredientCostCents + ingredientCost,
@@ -947,10 +1067,46 @@ function startNextService(state: GameState): GameState {
     working = {
       ...working,
       inventory: consumed,
-      rush: appendServiceStartedActivity(nextRush, state.day, customer),
+      rush: appendServiceStartedActivity(nextRush, state.day, job),
     };
   }
   return working;
+}
+
+function selectNextCustomer(
+  rush: RushState,
+  stationId: StationId,
+): { customer: Customer; laneId: LaneId; index: number } | null {
+  const normalIndex = rush.normalQueue.findIndex((customer) => customer.stationId === stationId);
+  const expressIndex = rush.expressQueue.findIndex((customer) => customer.stationId === stationId);
+  const normalWaiting = normalIndex >= 0;
+  const expressWaiting = expressIndex >= 0;
+  if (!normalWaiting && !expressWaiting) return null;
+  const takeExpress =
+    expressWaiting &&
+    (!normalWaiting ||
+      rush.consecutiveExpressStartsByStation[stationId] < MAX_CONSECUTIVE_EXPRESS_STARTS);
+  const laneId: LaneId = takeExpress ? 'express' : 'normal';
+  const index = takeExpress ? expressIndex : normalIndex;
+  const customer = (takeExpress ? rush.expressQueue : rush.normalQueue)[index];
+  return customer ? { customer, laneId, index } : null;
+}
+
+function removeQueuedCustomer(
+  rush: RushState,
+  laneId: LaneId,
+  index: number,
+): Pick<RushState, 'normalQueue' | 'expressQueue'> {
+  if (laneId === 'express') {
+    return {
+      normalQueue: rush.normalQueue,
+      expressQueue: rush.expressQueue.filter((_, queueIndex) => queueIndex !== index),
+    };
+  }
+  return {
+    normalQueue: rush.normalQueue.filter((_, queueIndex) => queueIndex !== index),
+    expressQueue: rush.expressQueue,
+  };
 }
 
 function maybeAddArrival(state: GameState): GameState {
@@ -966,7 +1122,8 @@ function maybeAddArrival(state: GameState): GameState {
   const arrivals = activeRush.stats.arrivals + 1;
   const segmentArrivals = (activeRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1;
   const observedRush = appendArrivalActivity(activeRush, state.day, created.customer);
-  if (activeRush.queue.length >= serviceQueueCapacity(state)) {
+  const waitingCount = waitingCustomers(activeRush).length;
+  if (waitingCount >= serviceQueueCapacity(state)) {
     const rejectedRush: RushState = {
       ...observedRush,
       nextCustomerId: activeRush.nextCustomerId + 1,
@@ -978,7 +1135,7 @@ function maybeAddArrival(state: GameState): GameState {
           [created.customer.segment]: segmentArrivals,
         },
         abandoned: observedRush.stats.abandoned + 1,
-        peakQueue: Math.max(observedRush.stats.peakQueue, observedRush.queue.length),
+        peakQueue: Math.max(observedRush.stats.peakQueue, waitingCount),
       },
     };
     return {
@@ -986,12 +1143,21 @@ function maybeAddArrival(state: GameState): GameState {
       rush: appendWalkawayActivity(rejectedRush, state.day, created.customer, 'queueFull'),
     };
   }
-  const queue = [...activeRush.queue, created.customer];
+  const normalQueue =
+    created.customer.laneId === 'normal'
+      ? [...activeRush.normalQueue, created.customer]
+      : activeRush.normalQueue;
+  const expressQueue =
+    created.customer.laneId === 'express'
+      ? [...activeRush.expressQueue, created.customer]
+      : activeRush.expressQueue;
+  const nextWaitingCount = normalQueue.length + expressQueue.length;
   return {
     ...updated,
     rush: {
       ...observedRush,
-      queue,
+      normalQueue,
+      expressQueue,
       nextCustomerId: activeRush.nextCustomerId + 1,
       stats: {
         ...observedRush.stats,
@@ -1000,7 +1166,7 @@ function maybeAddArrival(state: GameState): GameState {
           ...observedRush.stats.arrivalsBySegment,
           [created.customer.segment]: segmentArrivals,
         },
-        peakQueue: Math.max(activeRush.stats.peakQueue, queue.length),
+        peakQueue: Math.max(activeRush.stats.peakQueue, nextWaitingCount),
       },
     },
   };
@@ -1029,14 +1195,20 @@ function createCustomer(
   rngState = patienceDraw.state;
   const order = makeOrder(state, drink, size, milk);
   const tick = state.rush?.tick ?? 0;
+  const stationId = stationForDrink(state.venueId, order.drinkId);
+  const laneId = laneForDrink(state.venueId, state.equipment, state.plan, order.drinkId);
   return {
     state: { ...state, rngState },
     customer: {
       id: `d${state.day}-c${sequence}`,
       segment,
       order,
+      stationId,
+      laneId,
       arrivedAtTick: tick,
-      patienceTicks: Math.round(patienceDraw.value * operationalEffects(state).patienceMultiplier),
+      patienceTicks: Math.round(
+        patienceDraw.value * operationalEffects(state, stationId).patienceMultiplier,
+      ),
       waitedTicks: 0,
     },
   };
@@ -1044,25 +1216,29 @@ function createCustomer(
 
 function appendArrivalActivity(rush: RushState, day: number, customer: Customer): RushState {
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, null),
     type: 'arrival',
   });
 }
 
-function appendServiceStartedActivity(rush: RushState, day: number, customer: Customer): RushState {
+function appendServiceStartedActivity(rush: RushState, day: number, job: ServiceJob): RushState {
+  const customer = job.customer;
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job.id),
     type: 'serviceStarted',
+    jobId: job.id,
     drinkId: customer.order.drinkId,
     size: customer.order.size,
     milk: customer.order.milk,
   });
 }
 
-function appendSaleActivity(rush: RushState, day: number, customer: Customer): RushState {
+function appendSaleActivity(rush: RushState, day: number, job: ServiceJob): RushState {
+  const customer = job.customer;
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job.id),
     type: 'sale',
+    jobId: job.id,
     drinkId: customer.order.drinkId,
     size: customer.order.size,
     milk: customer.order.milk,
@@ -1108,14 +1284,44 @@ function recordCanonicalCharge(rush: RushState, order: Order): ReportChargeGroup
   ];
 }
 
+function recordServiceAggregate(
+  aggregates: ServiceAggregate[],
+  job: ServiceJob,
+  satisfaction: number,
+): ServiceAggregate[] {
+  if (aggregates.some((aggregate) => aggregate.completedJobIds.includes(job.id))) {
+    throw new GameRuleError(`Service job ${job.id} has already been settled.`);
+  }
+  const completedCount = aggregates.reduce(
+    (total, aggregate) => total + aggregate.completedJobIds.length,
+    0,
+  );
+  if (completedCount >= MAX_SERVICE_JOBS_PER_RUSH) {
+    throw new GameRuleError('Completed service jobs exceeded their configured rush bound.');
+  }
+  return aggregates.map((aggregate) =>
+    aggregate.stationId === job.stationId && aggregate.laneId === job.laneId
+      ? {
+          ...aggregate,
+          completedJobIds: [...aggregate.completedJobIds, job.id],
+          served: aggregate.served + 1,
+          revenueCents: aggregate.revenueCents + job.customer.order.priceCents,
+          totalWaitTicks: aggregate.totalWaitTicks + job.customer.waitedTicks,
+          satisfactionTotal: aggregate.satisfactionTotal + satisfaction,
+        }
+      : aggregate,
+  );
+}
+
 function appendWalkawayActivity(
   rush: RushState,
   day: number,
   customer: Customer,
   reason: RushWalkawayReason,
+  job: ServiceJob | null = null,
 ): RushState {
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job?.id ?? null),
     type: 'walkaway',
     reason,
   });
@@ -1125,13 +1331,20 @@ function activityIdentity(
   rush: RushState,
   day: number,
   customer: Customer,
-): Pick<RushActivityEvent, 'id' | 'sequence' | 'tick' | 'customerId' | 'segment'> {
+  jobId: string | null,
+): Pick<
+  RushActivityEvent,
+  'id' | 'sequence' | 'tick' | 'customerId' | 'segment' | 'stationId' | 'laneId' | 'jobId'
+> {
   return {
     id: `d${day}-e${rush.nextActivitySequence}`,
     sequence: rush.nextActivitySequence,
     tick: rush.tick,
     customerId: customer.id,
     segment: customer.segment,
+    stationId: customer.stationId,
+    laneId: customer.laneId,
+    jobId,
   };
 }
 
@@ -1155,7 +1368,7 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
     state.plan.dialIn === 'speed' ? 0.8 : state.plan.dialIn === 'quality' ? 1.2 : 1;
   const beanMultiplier = BEAN_DETAILS[state.plan.beanId].speed;
   const signMultiplier = state.improvements.includes('street-sign') ? 0.96 : 1;
-  const effects = operationalEffects(state);
+  const effects = operationalEffects(state, stationForDrink(state.venueId, drink.id));
   const equipmentMultiplier = equipmentPreparationMultiplier(state, drink.id);
   return {
     drinkId: drink.id,
@@ -1242,11 +1455,21 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
     const created = createCustomer(working, rush.nextCustomerId);
     const currentRush = created.state.rush;
     if (!currentRush) break;
-    const hasSpace = currentRush.queue.length < serviceQueueCapacity(state);
+    const waitingCount = waitingCustomers(currentRush).length;
+    const hasSpace = waitingCount < serviceQueueCapacity(state);
     const observedRush = appendArrivalActivity(currentRush, state.day, created.customer);
+    const normalQueue =
+      hasSpace && created.customer.laneId === 'normal'
+        ? [...currentRush.normalQueue, created.customer]
+        : currentRush.normalQueue;
+    const expressQueue =
+      hasSpace && created.customer.laneId === 'express'
+        ? [...currentRush.expressQueue, created.customer]
+        : currentRush.expressQueue;
     const nextRush: RushState = {
       ...observedRush,
-      queue: hasSpace ? [...currentRush.queue, created.customer] : currentRush.queue,
+      normalQueue,
+      expressQueue,
       nextCustomerId: currentRush.nextCustomerId + 1,
       stats: {
         ...observedRush.stats,
@@ -1257,10 +1480,7 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
             (observedRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1,
         },
         abandoned: observedRush.stats.abandoned + (hasSpace ? 0 : 1),
-        peakQueue: Math.max(
-          observedRush.stats.peakQueue,
-          currentRush.queue.length + (hasSpace ? 1 : 0),
-        ),
+        peakQueue: Math.max(observedRush.stats.peakQueue, waitingCount + (hasSpace ? 1 : 0)),
       },
     };
     working = {
@@ -1277,37 +1497,48 @@ function finishRush(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) throw new GameRuleError('No service rush is active.');
   let observedRush = rush;
-  if (rush.activeService) {
-    observedRush = appendWalkawayActivity(
-      observedRush,
-      state.day,
-      rush.activeService.customer,
-      'rushEnded',
-    );
+  for (const job of activeServiceJobs(rush)) {
+    observedRush = appendWalkawayActivity(observedRush, state.day, job.customer, 'rushEnded', job);
   }
-  for (const customer of rush.queue) {
+  for (const customer of waitingCustomers(rush)) {
     observedRush = appendWalkawayActivity(observedRush, state.day, customer, 'rushEnded');
   }
+  const unfinishedCount = waitingCustomers(rush).length + activeServiceJobs(rush).length;
+  const completedRush: RushState = {
+    ...observedRush,
+    normalQueue: [],
+    expressQueue: [],
+    serviceJobsByStation: emptyServiceJobs(),
+    stats: { ...observedRush.stats, abandoned: observedRush.stats.abandoned + unfinishedCount },
+  };
   const expiry = expireInventoryAfterRush(state.inventory, state.day);
   const inventory = expiry.inventory;
   const waste = nonZeroIngredientTotals(expiry.expired);
   const remainingInventory = inventoryTotals(inventory);
-  const consumedInventory = completeIngredientTotals(rush.stats.consumed);
+  const consumedInventory = completeIngredientTotals(completedRush.stats.consumed);
   const satisfaction =
-    rush.stats.served > 0 ? Math.round(rush.stats.satisfactionTotal / rush.stats.served) : 35;
+    completedRush.stats.served > 0
+      ? Math.round(completedRush.stats.satisfactionTotal / completedRush.stats.served)
+      : 35;
   const averageWaitSeconds =
-    rush.stats.served > 0
-      ? Math.round((rush.stats.totalWaitTicks / rush.stats.served / TICKS_PER_SECOND) * 10) / 10
+    completedRush.stats.served > 0
+      ? Math.round(
+          (completedRush.stats.totalWaitTicks / completedRush.stats.served / TICKS_PER_SECOND) * 10,
+        ) / 10
       : 0;
   const reputationChange =
     Math.round((satisfaction - 70) / 8) +
-    rush.eventReputationDelta -
-    (rush.stats.stockouts > 3 ? 1 : 0);
-  const eventCash = rush.eventCashDeltaCents;
-  const wageCost = rush.wageCostCents ?? 0;
+    completedRush.eventReputationDelta -
+    (completedRush.stats.stockouts > 3 ? 1 : 0);
+  const eventCash = completedRush.eventCashDeltaCents;
+  const wageCost = completedRush.wageCostCents ?? 0;
   const closingCash =
-    state.cashCents + rush.stats.revenueCents + eventCash - wageCost - rush.operatingCostCents;
-  const explanations = buildExplanations(state, rush, satisfaction);
+    state.cashCents +
+    completedRush.stats.revenueCents +
+    eventCash -
+    wageCost -
+    completedRush.operatingCostCents;
+  const explanations = buildExplanations(state, completedRush, satisfaction);
   const expiredNames = Object.entries(waste).map(
     ([ingredientId, quantity]) =>
       `${INGREDIENT_DETAILS[ingredientId as IngredientId].name} ${String(quantity)}`,
@@ -1317,48 +1548,50 @@ function finishRush(state: GameState): GameState {
       `Expiry waste after the Day ${state.day} rush: ${expiredNames.join(', ')}; older stock stayed usable through this rush before expiring.`,
     );
   }
-  const chargeGroups = finalizedChargeGroups(rush);
+  const chargeGroups = finalizedChargeGroups(completedRush);
+  const serviceAggregates = finalizedServiceAggregates(completedRush.stats);
   const report: DayReport = {
     day: state.day,
     difficulty: state.difficulty,
     weather: state.weather,
-    openingCashCents: rush.openingCashCents,
-    purchaseCostCents: rush.purchaseCostCents,
-    revenueCents: rush.stats.revenueCents,
-    ingredientCostCents: rush.stats.ingredientCostCents,
+    openingCashCents: completedRush.openingCashCents,
+    purchaseCostCents: completedRush.purchaseCostCents,
+    revenueCents: completedRush.stats.revenueCents,
+    ingredientCostCents: completedRush.stats.ingredientCostCents,
     wageCostCents: wageCost,
-    operatingCostCents: rush.operatingCostCents,
+    operatingCostCents: completedRush.operatingCostCents,
     eventCashDeltaCents: eventCash,
     netCashFlowCents:
-      rush.stats.revenueCents +
+      completedRush.stats.revenueCents +
       eventCash -
-      rush.purchaseCostCents -
+      completedRush.purchaseCostCents -
       wageCost -
-      rush.operatingCostCents,
+      completedRush.operatingCostCents,
     closingCashCents: closingCash,
-    arrivals: rush.stats.arrivals,
-    served: rush.stats.served,
-    abandoned: rush.stats.abandoned + rush.queue.length + (rush.activeService ? 1 : 0),
-    stockouts: rush.stats.stockouts,
+    arrivals: completedRush.stats.arrivals,
+    served: completedRush.stats.served,
+    abandoned: completedRush.stats.abandoned,
+    stockouts: completedRush.stats.stockouts,
     averageWaitSeconds,
     satisfactionPercent: satisfaction,
     reputationChange,
     waste,
     remainingInventory,
     inventoryLifecycle: {
-      opening: rush.openingInventory,
-      purchased: rush.purchasedInventory,
+      opening: completedRush.openingInventory,
+      purchased: completedRush.purchasedInventory,
       consumed: consumedInventory,
       expired: expiry.expired,
       remaining: remainingInventory,
     },
-    servedBySegment: rush.stats.servedBySegment,
-    bottleneck: determineBottleneck(state, rush),
+    servedBySegment: completedRush.stats.servedBySegment,
+    serviceAggregates,
+    bottleneck: determineBottleneck(state, completedRush),
     explanations,
     ...(chargeGroups === undefined ? {} : { chargeGroups }),
     settled: false,
   };
-  return { ...state, phase: 'report', inventory, rush: observedRush, report };
+  return { ...state, phase: 'report', inventory, rush: completedRush, report };
 }
 
 function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined {
@@ -1374,6 +1607,42 @@ function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined
     throw new GameRuleError('Canonical sale charges do not reconcile with rush revenue.');
   }
   return rush.chargeGroups.map((group) => ({ ...group }));
+}
+
+function finalizedServiceAggregates(stats: RushStats): ServiceAggregate[] {
+  const jobIds = new Set<string>();
+  const totals = stats.serviceAggregates.reduce(
+    (result, aggregate) => {
+      if (aggregate.completedJobIds.length !== aggregate.served) {
+        throw new GameRuleError('Service aggregate jobs do not reconcile with served customers.');
+      }
+      for (const jobId of aggregate.completedJobIds) {
+        if (jobIds.has(jobId)) throw new GameRuleError(`Service job ${jobId} settled twice.`);
+        jobIds.add(jobId);
+      }
+      return {
+        served: result.served + aggregate.served,
+        revenueCents: result.revenueCents + aggregate.revenueCents,
+        totalWaitTicks: result.totalWaitTicks + aggregate.totalWaitTicks,
+        satisfactionTotal: result.satisfactionTotal + aggregate.satisfactionTotal,
+      };
+    },
+    { served: 0, revenueCents: 0, totalWaitTicks: 0, satisfactionTotal: 0 },
+  );
+  if (
+    totals.served !== stats.served ||
+    totals.revenueCents !== stats.revenueCents ||
+    totals.totalWaitTicks !== stats.totalWaitTicks ||
+    totals.satisfactionTotal !== stats.satisfactionTotal
+  ) {
+    throw new GameRuleError(
+      'Station and lane service aggregates do not reconcile with rush stats.',
+    );
+  }
+  return stats.serviceAggregates.map((aggregate) => ({
+    ...aggregate,
+    completedJobIds: [...aggregate.completedJobIds],
+  }));
 }
 
 function nonZeroIngredientTotals(
@@ -1404,12 +1673,25 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
     );
   }
   if (state.venueId === 'departmentStore') {
-    const effects = operationalEffects(state);
-    const managers = scheduled.filter((member) => member.role === 'manager').length;
-    const runners = scheduled.filter((member) => member.role === 'runner').length;
+    const staffById = new Map(scheduled.map((member) => [member.id, member]));
+    for (const stationId of STATION_IDS) {
+      const assigned = state.plan.stationAssignments[stationId].flatMap((id) => {
+        const member = staffById.get(id);
+        return member ? [member] : [];
+      });
+      const effects = operationalEffects(state, stationId);
+      const served = rush.stats.serviceAggregates
+        .filter((aggregate) => aggregate.stationId === stationId)
+        .reduce((total, aggregate) => total + aggregate.served, 0);
+      explanations.push(
+        `${STATION_DETAILS[stationId].label}: ${assigned.length} assigned, ${served} served; Manager reduction ${effects.managerReductionTicks} with ${effects.coordinationReliabilityDelayTicks} coordination/reliability ticks remaining, Runner reduction ${effects.runnerReductionTicks} with ${effects.handoffWorkloadDelayTicks} replenishment/handoff ticks remaining.`,
+      );
+    }
+    const expressServed = rush.stats.serviceAggregates
+      .filter((aggregate) => aggregate.laneId === 'express')
+      .reduce((total, aggregate) => total + aggregate.served, 0);
     explanations.push(
-      `Manager coverage: ${managers} scheduled; coordination and reliability delay fell ${effects.managerReductionTicks} ticks to ${effects.coordinationReliabilityDelayTicks} ticks per order, including ${effects.equipmentReliabilityDelayTicks} equipment-reliability ticks.`,
-      `Runner coverage: ${runners} scheduled; replenishment and handoff delay fell ${effects.runnerReductionTicks} ticks to ${effects.handoffWorkloadDelayTicks} ticks per order.`,
+      `Lane settlement: ${expressServed} express and ${rush.stats.served - expressServed} normal jobs completed exactly once.`,
     );
   }
   const equipped = EQUIPMENT_IDS.filter((equipmentId) => state.equipment[equipmentId] > 0);
@@ -1437,6 +1719,7 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
 function calculateSatisfaction(state: GameState, customer: Customer): number {
   const rush = state.rush;
   const drink = getDrink(customer.order.drinkId);
+  const stationEffects = operationalEffects(state, customer.stationId);
   const dialQuality = state.plan.dialIn === 'quality' ? 9 : state.plan.dialIn === 'speed' ? -5 : 2;
   const segmentWaitFactor =
     customer.segment === 'commuter' ? 1.35 : customer.segment === 'student' ? 0.8 : 1;
@@ -1449,15 +1732,12 @@ function calculateSatisfaction(state: GameState, customer: Customer): number {
   const beanQuality = BEAN_DETAILS[state.plan.beanId].quality;
   const enthusiastMultiplier = customer.segment === 'enthusiast' ? 1.3 : 1;
   const qualityEffect = Math.round(
-    (dialQuality +
-      beanQuality +
-      operationalEffects(state).qualityBonus +
-      (rush?.qualityBonus ?? 0)) *
+    (dialQuality + beanQuality + stationEffects.qualityBonus + (rush?.qualityBonus ?? 0)) *
       drink.qualitySensitivity *
       enthusiastMultiplier,
   );
   return clamp(
-    78 + qualityEffect + operationalEffects(state).satisfactionBonus - waitPenalty - pricePenalty,
+    78 + qualityEffect + stationEffects.satisfactionBonus - waitPenalty - pricePenalty,
     20,
     100,
   );
@@ -1479,7 +1759,11 @@ export function demandRate(state: GameState): number {
   const baselineVenueFactor = VENUE_DEMAND_FACTOR[state.venueId];
   const baselineScenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
   const baselineTeamFactor = operationalEffects(state).demandMultiplier;
-  const baselineQueueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
+  const baselineQueueFactor = clamp(
+    1 - (rush ? waitingCustomers(rush).length : 0) * 0.045,
+    0.55,
+    1,
+  );
   const availableItems = state.plan.activeMenu.filter((drinkId) => {
     const recipe = getDrink(drinkId).variants[0];
     return recipe
@@ -1594,6 +1878,49 @@ function validatePlan(state: GameState, plan: DayPlan): void {
   ) {
     throw new GameRuleError('Every scheduled role must be eligible for the current venue.');
   }
+  const activeStations = serviceConfigFor(state.venueId).stationIds;
+  const assignedIds = STATION_IDS.flatMap((stationId) => {
+    const ids = plan.stationAssignments[stationId];
+    if (!activeStations.includes(stationId) && ids.length > 0) {
+      throw new GameRuleError('Inactive stations cannot receive staff assignments.');
+    }
+    return ids;
+  });
+  if (new Set(assignedIds).size !== assignedIds.length) {
+    throw new GameRuleError('A scheduled team member can only be assigned to one station.');
+  }
+  const scheduledIdSet = new Set(plan.scheduledStaffIds);
+  if (
+    assignedIds.length !== plan.scheduledStaffIds.length ||
+    assignedIds.some((id) => !scheduledIdSet.has(id))
+  ) {
+    throw new GameRuleError(
+      'Every scheduled team member must have exactly one station assignment.',
+    );
+  }
+  const staffById = new Map(state.staff.map((member) => [member.id, member]));
+  for (const stationId of activeStations) {
+    for (const staffId of plan.stationAssignments[stationId]) {
+      const member = staffById.get(staffId);
+      if (!member || !staffStationCompatible(member.role, stationId, state.venueId)) {
+        throw new GameRuleError('Every station assignment must match the team member’s role.');
+      }
+    }
+  }
+  if (plan.expressDrinkIds.length > MAX_EXPRESS_DRINKS) {
+    throw new GameRuleError(`Choose no more than ${MAX_EXPRESS_DRINKS} express drinks.`);
+  }
+  if (new Set(plan.expressDrinkIds).size !== plan.expressDrinkIds.length) {
+    throw new GameRuleError('Express drink selections must be unique.');
+  }
+  for (const drinkId of plan.expressDrinkIds) {
+    if (!plan.activeMenu.includes(drinkId)) {
+      throw new GameRuleError('Express drinks must be selected from the active menu.');
+    }
+    if (!expressDrinkEligible(state.venueId, state.equipment, drinkId)) {
+      throw new GameRuleError('That drink is not eligible for express service at this station.');
+    }
+  }
 }
 
 function getDrink(drinkId: DrinkId): DrinkConfig {
@@ -1609,7 +1936,7 @@ function createEventTriggerTicks(state: GameState): number[] {
   return [Math.floor(RUSH_DURATION_TICKS * 0.31), Math.floor(RUSH_DURATION_TICKS * 0.68)];
 }
 
-function emptyRushStats(): RushStats {
+function emptyRushStats(state: GameState): RushStats {
   return {
     arrivals: 0,
     served: 0,
@@ -1624,6 +1951,7 @@ function emptyRushStats(): RushStats {
     consumed: {},
     arrivalsBySegment: {},
     servedBySegment: {},
+    serviceAggregates: serviceAggregatesForPlan(state.venueId, state.plan, state.equipment),
   };
 }
 
