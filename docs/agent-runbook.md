@@ -85,7 +85,7 @@ outside a restricted process sandbox.
   change. It covers repeated $0.10 actions, reload, modifiers, 360px touch, and
   exact report/settled-cash reconciliation.
 
-## Rush activity and living scene
+## Rush activity and fixed-isometric service world
 
 - Engine activity IDs are `d{day}-e{sequence}` and use persisted monotonic
   sequence, tick, customer, and segment evidence. Walkaway reason is exactly
@@ -95,20 +95,33 @@ outside a restricted process sandbox.
   successful reservation emits service start; completion later emits the sale
   with the actual engine-recorded charge. At closing, active service precedes
   queued customers in rush-ended order.
-- Canvas always renders from an immutable `SceneSnapshot`. Exact queue truth is
-  uncapped; only the first eight identities are sprites and `+N` carries the
-  remainder. Playback is presentation-only and bounded to three transients and
-  eight queue motions.
-- Pause freezes playback. Reduced motion consumes IDs and settles immediately.
-  A live report transition may finish its already-synced bounded departures;
-  report reload must not replay history or schedule an idle animation loop.
-- Canvas, figcaption, visible HUD, sale/walkaway notes, and activity list must
-  retain text parity. Never encode meaning only in colour, motion, direction,
-  or an icon.
-- Run `tests/e2e/living-rush.spec.ts` in both projects after any engine activity,
-  rush UI, Canvas, persistence, responsive, motion, or scheduling change. It
-  covers exact overflow, counter/service/sale/walkaway evidence, 4× budget,
-  pause, reduced motion, reload, rush close, and 360px containment.
+- `createRenderSnapshot` is the sole service-render boundary. It detaches and
+  deeply freezes exact identity/statistics plus at most 12 visible customers,
+  12 activity rows, and 10 scheduled staff. It carries no command, store,
+  persistence, random-number, tick, inventory-write, or accounting authority.
+- `ServiceWorld` is dynamically imported only during `rush`/`event` and
+  exhaustively dispatches cart, kiosk, and cafe. Every production service route
+  is WebGL2-only; unsupported capability, context loss, or renderer failure
+  produces semantic save-safe recovery and never a Canvas/DOM gameplay path.
+- The camera remains fixed-isometric and orthographic. Device pixel ratio is
+  capped at 1.5; repeated crowds/furnishings/weather use bounded instancing;
+  global lighting remains two lights with one shadow-caster. `useFrame` may
+  alter local mesh matrices only.
+- Pause freezes movement. Reduced motion keeps the complete 3D world mounted
+  with demand rendering and static transforms. Scene name, figcaption, visible
+  HUD, sale/walkaway notes, dashboard, and activity list retain exact textual
+  parity; never encode meaning only in colour, motion, direction, or an icon.
+- Morning planning is a full-width management layout with no 3D, Canvas,
+  thumbnail, placeholder, or reserved preview area. Service direct-child order
+  is scene → dashboard/controls → live activity → stock. At 360×780 the first
+  two sections must fit together without document scroll.
+- Run `tests/unit/scene.test.ts`, `tests/components/presentation.test.tsx`,
+  `tests/e2e/webgl-service.spec.ts`, `tests/e2e/service-layout.spec.ts`, and
+  `tests/e2e/accessibility.spec.ts` after any engine activity, service UI,
+  renderer, persistence, responsive, motion, scheduling, or build-graph change.
+  They cover frozen snapshots, engine equality, every venue, orthographic/DPR/
+  instancing/light budgets, WebGL2 identity, context loss, unsupported routing,
+  speed, reduced motion, reload, exact 360×780 geometry, and cache bounds.
 
 ## Campaign-unique staff names
 
@@ -169,7 +182,27 @@ manual browser-data reset whenever possible. Imported files are limited to
 750 KB and validated completely before current data changes; do not hand-edit
 local-storage payloads.
 
-## Phase 6 final release gate
+## Compact completion and report history
+
+- `closeDay` is the sole settlement boundary and is identity-idempotent after a
+  report has settled. The current report exposes one **Settle & reinvest**
+  action; historical reports expose none.
+- The current-day full report is a native disclosure closed by default. Game
+  menu → Reports reads only bounded `GameState.history`, and a selected settled
+  `DayReport` value is the historical renderer's sole input.
+- `RushState.chargeGroups` accumulates bounded canonical actual-price groups at
+  the sale transition. A reconciled copy enters a new `DayReport` once. Never
+  derive historical charges from `rush.recentActivity`, current stock, or a
+  renderer snapshot.
+- Older schema-v3 reports without charge groups remain unchanged and show
+  **Charge breakdown unavailable for this older report.** Do not estimate or
+  reconstruct missing evidence. Schema version remains 3 throughout Phase 7.
+- Run `tests/unit/engine.test.ts`, `tests/unit/persistence.test.ts`,
+  `tests/components/game-loop.test.tsx`, and
+  `tests/e2e/report-history.spec.ts` after any report, settlement, history,
+  persistence, transfer, or responsive disclosure change.
+
+## Released Phase 6 baseline and Phase 7 merge gate
 
 `docs/phase-6-test-report.md` and `docs/phase-6-release-evidence.md` record the
 approved release as **HOSTED PASS**. Reviewed feature head `c14bd24` merged
@@ -183,3 +216,17 @@ load and hard refresh, assets/installability, desktop and 360px gameplay,
 staff/migration/autosave, active worker/update behavior, offline continuation,
 and runtime health. The Phase 6 evidence also records non-blocking action-runtime
 and upload-input warnings that should be rechecked when workflow pins change.
+
+Phase 7 first produces an automated local merge candidate. After all
+fingerprinted source, test, configuration, and contract-document files are
+stable, record the global fingerprint with
+`python3 scripts/worktree-fingerprint.py`, run the exact Tier 3 sequence once,
+and map every named automated target in `docs/phase-7-test-report.md`. Tier 3
+covers desktop Chromium and the exact 360×780 touch-browser project. Record the
+physical fields—model/OS, browser/WebGL identity, viewport/DPR, dense scene and
+sampling method, frame range, orientation, all venues, reduced motion, visual
+findings, and 30fps disposition—as pending/unclaimed. Agents do not access a
+device. After automated PASS, request explicit merge/publication direction; if
+approved, publish only that exact candidate at the existing public game URL so
+the owner can perform the physical check. Never publish an intermediate or
+unvalidated build.

@@ -32,11 +32,24 @@ test.describe('snapshot-only WebGL service worlds', () => {
     const canvas = frame.locator('.webgl-stage canvas');
     await expect(canvas).toBeVisible();
     await expect(canvas).toHaveAttribute('data-render-authority', 'snapshot-only');
-    expect(
-      await canvas.evaluate(
-        (element) => (element as HTMLCanvasElement).getContext('webgl2') !== null,
-      ),
-    ).toBe(true);
+    const capability = await canvas.evaluate((element) => {
+      const canvasElement = element as HTMLCanvasElement;
+      const context = canvasElement.getContext('webgl2');
+      if (!context) return null;
+      const bounds = canvasElement.getBoundingClientRect();
+      return {
+        drawingBufferRatio: Math.max(
+          canvasElement.width / Math.max(1, bounds.width),
+          canvasElement.height / Math.max(1, bounds.height),
+        ),
+        renderer: String(context.getParameter(context.RENDERER)),
+        version: String(context.getParameter(context.VERSION)),
+      };
+    });
+    expect(capability).not.toBeNull();
+    expect(capability?.version).toMatch(/^WebGL 2\.0/);
+    expect(capability?.renderer.length).toBeGreaterThan(0);
+    expect(capability?.drawingBufferRatio ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(1.51);
     expect(await hasServiceWorldResource(page)).toBe(true);
     await dismissPwaPrompt(page, touch);
 

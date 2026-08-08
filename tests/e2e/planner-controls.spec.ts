@@ -105,8 +105,9 @@ test.describe('exact accessible planner controls', () => {
     await expect(page.locator('.last-sale-note')).toContainText('Flat White');
     await expect(page.locator('.last-sale-note')).toContainText('actual charge');
     await finishRush(page, touch);
+    await activate(page.getByText('View full Day 1 report'), touch);
 
-    const chargeList = page.getByRole('list', { name: 'Recent actual sale charges' });
+    const chargeList = page.getByRole('list', { name: 'Canonical sale charges' });
     await expect(chargeList).toBeVisible();
     const equations = await chargeList.locator('strong').allTextContents();
     expect(equations.length).toBeGreaterThan(0);
@@ -141,7 +142,7 @@ test.describe('exact accessible planner controls', () => {
       openingCash + salesRevenue + eventCash + purchaseCost + wageCost + operatingCost,
     );
 
-    await activate(page.getByRole('button', { name: 'Settle the day' }), touch);
+    await activate(page.getByRole('button', { name: 'Settle & reinvest' }), touch);
     expect(parseMoney(await page.locator('.status-strip dd').first().textContent())).toBe(
       closingCash,
     );

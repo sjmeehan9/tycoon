@@ -1050,16 +1050,17 @@ strictly sequential.
 
 - **Component 7.1 — Human Setup and Phase-7 Gate Reservation:** All Phase 7
   human tasks are isolated here. No account, credential, secret, paid asset, or
-  external service is required. Before implementation, the human confirms that
-  a representative mid-tier WebGL2-capable touch device is available for the
-  phase gate. After Component 7.6 records PASS, the human approves or rejects
-  the phase-7 merge; no hosted publication is required in this phase. The
-  Implement engagement records the phase branch/base and official-source
-  compatibility checklist but makes no runtime change. **Explicit exclusion:**
-  this component does not install packages, alter source/configuration, or
-  claim device or merge approval in advance. **Dependencies:** Phase 6 PASS
-  head plus both coordinator-materialized component breakdowns complete and
-  `Spec-Validated`.
+  external service is required. The human confirms that any physical-device
+  validation will be owner-led against the exact candidate published at the
+  existing public game URL only after local validation, merge, and publication
+  approval. After Component 7.6 records automated PASS, the human approves or
+  rejects the post-gate merge/publication handoff. The Implement engagement
+  records the phase branch/base and official-source compatibility checklist but
+  makes no runtime change. **Explicit exclusion:** this component does not
+  install packages, alter source/configuration, access a physical device,
+  publish an intermediate build, or claim device, merge, or publication
+  approval in advance. **Dependencies:** Phase 6 PASS head plus both
+  coordinator-materialized component breakdowns complete and `Spec-Validated`.
   **Preliminary assurance lane:** fast (lean override); no standard Test
   or Review trigger because this is a non-runtime setup record.
   **Validation tier:** Tier 1 targeted documentary proof.
@@ -1189,18 +1190,20 @@ strictly sequential.
   engagement builds or extends the exact Vitest, React Testing Library, and
   Playwright coverage for every Phase-7 Validation Target, then runs the
   profile's complete Tier 3 sequence once against the final global fingerprint.
-  The phase gate includes desktop Chromium, representative touch-mobile,
-  WebGL2-capable mid-tier mobile inspection, reduced-motion/text parity,
-  unsupported/context-loss handling, all three venue scenes, full daily flow,
-  history persistence, cumulative Phases 1-6 journeys, performance/bundle
-  evidence, and deterministic renderer/engine separation. It records
-  docs/phase-7-test-report.md PASS, updates the phase implementation context and
-  agent runbook, and schedules reconciliation of stale Canvas references in
-  docs/brief.md, docs/requirements.md, docs/solution-design.md, README, and the
-  runbook as explicit Phase-7 documentation work rather than silently leaving
-  contradictory guidance. **Explicit exclusion:** no Phase-8 runtime behavior
-  and no merge before human approval. **Dependencies:** 7.1-7.5 complete with
-  reusable unchanged evidence.
+  The automated phase gate includes desktop Chromium and the exact 360×780
+  touch-browser project, reduced-motion/text parity, unsupported/context-loss
+  handling, all three venue scenes, full daily flow, history persistence,
+  cumulative Phases 1-6 journeys, performance/bundle evidence, and
+  deterministic renderer/engine separation. It records
+  `docs/phase-7-test-report.md` as automated Tier 3 PASS and leaves physical
+  validation explicitly pending and unclaimed. If requested after completion,
+  the repository owner validates the exact hosted candidate at the existing
+  public game URL; agents never access the device. It updates the phase
+  implementation context and runbooks and reconciles stale Canvas references
+  in `docs/brief.md`, `docs/requirements.md`, `docs/solution-design.md`, and
+  README. **Explicit exclusions:** no Phase-8 runtime behavior, physical-device
+  interaction, push, merge, publication, or intermediate/unvalidated hosted
+  build. **Dependencies:** 7.1-7.5 complete with reusable unchanged evidence.
   **Preliminary assurance lane:** phase-gate (lean override).
   The Implement engagement owns the cumulative gate, self-review, fixes,
   report, and commit. **Validation tier:** Tier 3 phase gate.
@@ -1220,15 +1223,25 @@ strictly sequential.
   dashboard are concurrently visible without document scroll, all controls are
   at least 44px, live activity/stock remain reachable, disclosure/focus works,
   and no hover or landscape assumption blocks play.
-- **WebGL and accessibility flows:** On WebGL2 desktop and a representative
-  mid-tier mobile device, validate all three venue worlds, resize/orientation,
-  context recovery, capped DPR, fixed orthographic framing, and dense-service
-  responsiveness. In an unsupported-capability fixture, validate the accessible
-  explanation and save-safe exit. With reduced motion, confirm the 3D scene
-  remains present, motion stops/minimizes, and textual outcomes exactly match.
-  The final Phase-7 candidate contains no Canvas service route for any VenueId,
-  preserves `public/assets/art/laneway-title.webp` unchanged, and carries the
-  warm, original low-poly classic-tycoon direction through all three worlds.
+- **WebGL and accessibility flows:** In real Chromium at desktop and exact
+  360×780 touch-browser viewports, validate all three venue worlds,
+  resize/orientation fixtures, context recovery, capped DPR, fixed orthographic
+  framing, and dense-service responsiveness. In an unsupported-capability
+  fixture, validate the accessible explanation and save-safe exit. With reduced
+  motion, confirm the 3D scene remains present, motion stops/minimizes, and
+  textual outcomes exactly match. The final Phase-7 candidate contains no
+  Canvas service route for any VenueId, preserves
+  `public/assets/art/laneway-title.webp` unchanged, and carries the warm,
+  original low-poly classic-tycoon direction through all three worlds.
+- **Post-completion physical check (not part of automated Tier 3):** Only after
+  the automated candidate passes and receives separate merge/publication
+  approval, the repository owner may validate the exact build at the existing
+  public game URL on a representative WebGL2 touch device. Record model/OS,
+  browser/WebGL identity, portrait and landscape behavior, viewport/DPR, all
+  three venues, dense-scene responsiveness, reduced motion, visual findings,
+  and the 30fps disposition as pending until the owner supplies them. Do not
+  infer a physical result from emulation, access the device through agent
+  tooling, or publish an intermediate candidate.
 - **Critical engine/persistence features:** Equal seeds/plans produce identical
   GameState, DayReport, canonical activity, cash, inventory, and reputation
   with WebGL mounted, unmounted, context-lost, reduced-motion, and at every speed.
@@ -1290,18 +1303,20 @@ strictly sequential.
 - [ ] Every precached file is under the Workbox 1 MB/file ceiling, and dense
       service meets the profile's mobile/desktop responsiveness budgets.
 - [ ] Component 7.6 records Tier 3 PASS for all named Phase-7 targets and the
-      unchanged cumulative suite before merge approval is requested.
+      unchanged cumulative suite before merge/publication approval is
+      requested; owner-led hosted physical validation remains pending and
+      unclaimed until the exact approved build is public.
 
 ### Phase Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| WebGL work leaks game logic into frame callbacks | Determinism, saves, and accounting diverge | One immutable snapshot boundary, renderer dependency rules, mutation/freeze tests, and mount/context/speed equality checks |
-| Three-dimensional scenes exceed mobile GPU or Workbox budgets | Touch play stutters or offline install fails | Procedural geometry, instancing, fixed camera, capped DPR, bounded lights/crowds, lazy chunks, per-file precache assertions, and mid-tier device evidence |
-| Isometric presentation hides important operational state | Strategy becomes less legible than Phase 6 | React dashboard/text stays authoritative; occlusion-safe anchors, non-colour cues, activity/stock panels, and desktop/touch inspections |
-| Reopened reports read current rush state, invent legacy charges, or settle again | Historical evidence lies or cash/inventory changes twice | Use bounded existing `GameState.history`, selected `DayReport` as sole input, post-7.5 charge evidence captured once by `closeDay`, explicit legacy charge-unavailable state, and no-inference/exact-once reload/export tests |
-| Temporary Canvas bridge survives Component 7.3 | Phase 7 could merge with mixed renderers or become an unsupported-WebGL fallback | Make the 7.2 head non-mergeable/non-releasable, remove all Canvas service selection in 7.3, and assert every service VenueId is WebGL-only |
-| Mobile composition scrolls the dashboard below the fold | Core controls fail the 360×780 contract | Fixed geometry assertions, compact dashboard content budget, safe-area tests, and a dedicated touch Playwright journey |
+| Risk                                                                             | Impact                                                                           | Mitigation                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WebGL work leaks game logic into frame callbacks                                 | Determinism, saves, and accounting diverge                                       | One immutable snapshot boundary, renderer dependency rules, mutation/freeze tests, and mount/context/speed equality checks                                                                                                                        |
+| Three-dimensional scenes exceed mobile GPU or Workbox budgets                    | Touch play stutters or offline install fails                                     | Procedural geometry, instancing, fixed camera, capped DPR, bounded lights/crowds, lazy chunks, per-file precache assertions, automated exact-viewport evidence, and an owner-led post-publication device check against the exact hosted candidate |
+| Isometric presentation hides important operational state                         | Strategy becomes less legible than Phase 6                                       | React dashboard/text stays authoritative; occlusion-safe anchors, non-colour cues, activity/stock panels, and desktop/touch inspections                                                                                                           |
+| Reopened reports read current rush state, invent legacy charges, or settle again | Historical evidence lies or cash/inventory changes twice                         | Use bounded existing `GameState.history`, selected `DayReport` as sole input, post-7.5 charge evidence captured once by `closeDay`, explicit legacy charge-unavailable state, and no-inference/exact-once reload/export tests                     |
+| Temporary Canvas bridge survives Component 7.3                                   | Phase 7 could merge with mixed renderers or become an unsupported-WebGL fallback | Make the 7.2 head non-mergeable/non-releasable, remove all Canvas service selection in 7.3, and assert every service VenueId is WebGL-only                                                                                                        |
+| Mobile composition scrolls the dashboard below the fold                          | Core controls fail the 360×780 contract                                          | Fixed geometry assertions, compact dashboard content budget, safe-area tests, and a dedicated touch Playwright journey                                                                                                                            |
 
 ---
 
@@ -1419,14 +1434,16 @@ Phase-8 report-history UI.
 - **Component 8.1 — Human Setup and Final Release Gates:** All Phase 8 human
   tasks are isolated here. No new account, credential, secret, paid asset, or
   runtime service is required. Before implementation, the human confirms access
-  to the existing GitHub repository/Actions/Pages controls and a representative
-  mid-tier WebGL2 touch device. After the local Component-8.9 phase gate records
-  PASS, the human separately approves or rejects the phase-8 merge and public
-  Pages publication; only after approval does the Implement engagement run the
-  established release workflow and collect hosted evidence. Repository
-  visibility changes remain human-authorized. **Explicit exclusion:** no
-  publication, merge, package change, or claimed approval occurs in this setup
-  component. **Dependencies:** Phase 7 PASS head and existing Pages channel.
+  to the existing GitHub repository/Actions/Pages controls and confirms whether
+  the owner will perform a physical check against the exact hosted candidate.
+  After the local Component-8.9 phase gate records PASS, the human separately
+  approves or rejects the phase-8 merge and public Pages publication; only after
+  approval does the Implement engagement run the established release workflow
+  and collect automated hosted evidence. The owner alone accesses the physical
+  device. Repository visibility changes remain human-authorized. **Explicit
+  exclusion:** no publication, merge, package change, device access, or claimed
+  approval occurs in this setup component. **Dependencies:** Phase 7 PASS head
+  and existing Pages channel.
   **Preliminary assurance lane:** fast (lean override); no standard Test or
   Review trigger because this is a non-runtime setup record.
   **Validation tier:** Tier 1 targeted documentary proof.
@@ -1656,10 +1673,12 @@ Phase-8 report-history UI.
   path. Update prompting never refreshes active service without consent and
   safely resumes the v4 campaign. Dense department-store rendering uses bounded
   crowds, instancing, LOD, capped DPR, orthographic camera, minimized reduced-
-  motion work, and practical initial compressed assets to maintain at least
-  responsive 30 FPS on the representative mid-tier mobile device and target 60
-  FPS desktop. Lighthouse mobile evidence targets at least 90 in every profile-
-  named category it exposes. Dependency/license/security, no-runtime-network,
+  motion work, and practical initial compressed assets to meet automated
+  responsiveness budgets and target 60 FPS desktop. The owner records the real
+  mid-tier-device 30fps disposition only against the exact hosted candidate
+  after local PASS and publication approval. Lighthouse mobile evidence targets
+  at least 90 in every profile-named category it exposes.
+  Dependency/license/security, no-runtime-network,
   offline cold/warm reload, cache invalidation, Pages routing, and update
   recovery are release-complete locally. Implement re-verifies current official
   Three.js/R3F/Vite/Workbox/browser guidance before final lock/config changes.
@@ -1719,15 +1738,16 @@ Phase-8 report-history UI.
   and complete dashboard remain together without document scroll, all controls
   are at least 44px, station and express configuration are accessible without
   hover, and activity/stock/report detail remain reachable.
-- **WebGL/accessibility/performance flows:** On desktop and the representative
-  mid-tier WebGL2 device, validate the complete heritage hall, ten scheduled
+- **WebGL/accessibility/performance flows:** In the automated desktop and exact
+  touch-browser projects, validate the complete heritage hall, ten scheduled
   staff, multiple customers/jobs, three stations, both lanes, equipment and
   physical upgrades, warm original low-poly direction, Melbourne heritage
   tiles, timber, brass, escalators, distinct service bays, fixed orthographic
   framing, capped DPR, instancing/LOD, context recovery, pause/speed/reload, at
-  least responsive 30 FPS mobile and target 60 FPS desktop. Unsupported WebGL2
-  and reduced-motion fixtures retain accessible explanation or complete text
-  parity as applicable.
+  least responsive automated mobile behavior, and target 60 FPS desktop.
+  Unsupported WebGL2 and reduced-motion fixtures retain accessible explanation
+  or complete text parity as applicable. After exact-candidate publication,
+  only the owner may record the representative-device 30fps disposition.
 - **Reset/difficulty engine targets:** Every supported v1/v2/v3 primary,
   backup/last-known-good, recovery, and imported envelope traverses the same
   allowlisted v4 reset. Exactly sound, ambience, and reduced motion survive;
@@ -1758,6 +1778,7 @@ Phase-8 report-history UI.
   its neutral baseline, domain, directions, clamps, boundaries, and matching
   proof are registered. Difficulty records remain separate; shared unlocks are
   economically neutral.
+
 - **Progression/workforce/equipment targets:** VenueId is exhaustive across four
   values; the campaign has exactly 40 days; victory on Day 40 requires the
   department store plus configured cash/reputation; bankruptcy remains a
@@ -1861,69 +1882,69 @@ Phase-8 report-history UI.
 
 ### Phase Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Legacy backup/recovery/import resurrects discarded state or repeats the reset | Trust loss, hidden cross-version advantage, or onboarding loop | One allowlisted v1/v2/v3 normalization path, exact three-preference copy, verified v4 marker, quarantine of legacy recovery candidates, and primary/backup/recovery/import fixtures |
+| Risk                                                                                                                          | Impact                                                          | Mitigation                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legacy backup/recovery/import resurrects discarded state or repeats the reset                                                 | Trust loss, hidden cross-version advantage, or onboarding loop  | One allowlisted v1/v2/v3 normalization path, exact three-preference copy, verified v4 marker, quarantine of legacy recovery candidates, and primary/backup/recovery/import fixtures                                                          |
 | Registry misses an influence/domain, Standard changes only one price path, or difficulty compounds/clamps/couples to scenario | Standard or Hard becomes unfair and balance evidence is invalid | Engine-registry exhaustiveness, separate Standard arrival/order-choice price proofs, typed factor domains, bidirectional supported-sign tests, one-sided no-invented-direction tests, clamps/boundaries, visible rules, and seeded campaigns |
-| Four venues/three equipment tiers leave stale exhaustive assumptions | Runtime crash or inaccessible progression | Compiler-exhaustive VenueId handling, data-driven tier validation, migration fixtures, exhaustive UI/engine/renderer tests |
-| Ten staff and parallel jobs introduce nondeterministic races or double settlement | Inventory/cash/report corruption | Pure stable ordering, station-scoped job IDs, explicit reservations, exact-once invariants, speed/reload equality, and frozen snapshots |
-| Express routing starves normal customers or bypasses eligibility | One dominant strategy and confusing service | Bounded fair queue policy, typed eligibility, zero-to-three validation, abandonment/satisfaction simulations, and causal report explanations |
-| Dense hall exceeds mobile/WebGL/offline budgets | Final tier becomes unplayable | Bounded crowds, instancing, LOD, capped DPR, orthographic camera, lazy chunks, 1 MB assertions, mid-tier device/FPS and Lighthouse evidence |
-| Forty-day economy is unwinnable or trivial on either difficulty | Core campaign goal fails | Typed tunables, multi-seed multiple-strategy scripts, promotion/Day-40 boundary fixtures, sensitivity checks, and no hidden meta bonuses |
-| PWA update or Pages publication strands v4 saves | Hosted release loses progress or fails offline | Consent-based update, last-known-good persistence, offline/subpath automation, explicit release identity, hosted smoke, and superseding-build rollback procedure |
+| Four venues/three equipment tiers leave stale exhaustive assumptions                                                          | Runtime crash or inaccessible progression                       | Compiler-exhaustive VenueId handling, data-driven tier validation, migration fixtures, exhaustive UI/engine/renderer tests                                                                                                                   |
+| Ten staff and parallel jobs introduce nondeterministic races or double settlement                                             | Inventory/cash/report corruption                                | Pure stable ordering, station-scoped job IDs, explicit reservations, exact-once invariants, speed/reload equality, and frozen snapshots                                                                                                      |
+| Express routing starves normal customers or bypasses eligibility                                                              | One dominant strategy and confusing service                     | Bounded fair queue policy, typed eligibility, zero-to-three validation, abandonment/satisfaction simulations, and causal report explanations                                                                                                 |
+| Dense hall exceeds mobile/WebGL/offline budgets                                                                               | Final tier becomes unplayable                                   | Bounded crowds, instancing, LOD, capped DPR, orthographic camera, lazy chunks, 1 MB assertions, automated exact-touch/Lighthouse evidence, and owner-led FPS follow-up against the exact hosted candidate                                    |
+| Forty-day economy is unwinnable or trivial on either difficulty                                                               | Core campaign goal fails                                        | Typed tunables, multi-seed multiple-strategy scripts, promotion/Day-40 boundary fixtures, sensitivity checks, and no hidden meta bonuses                                                                                                     |
+| PWA update or Pages publication strands v4 saves                                                                              | Hosted release loses progress or fails offline                  | Consent-based update, last-known-good persistence, offline/subpath automation, explicit release identity, hosted smoke, and superseding-build rollback procedure                                                                             |
 
 ---
 
 ## Requirements-to-Component Traceability
 
-| Requirement area | Delivering component(s) | Validation evidence |
-|---|---|---|
-| Approved-plan implementation entry contract | Pre-7.1 coordinator gate | Both phase breakdowns exist, preserve file ownership/acceptance/dependencies/Technical Validation/lane/tier, and mark every component `Spec-Validated` before Implement begins |
-| Single-player browser game; no accounts/backend/runtime services | 1.2, 3.4 | Phase 1 real-stack flow; Phase 3 network/dependency review |
-| Plan -> rush -> report -> reinvest daily loop | 1.2 | Phase 1 desktop/mobile complete-day flows |
-| Seeded campaign and pure deterministic commands/state | 1.2, 2.2, 2.4 | Seed equality, speed independence, full-campaign simulations |
-| 60-90 second rush, pause, 1x/2x/4x, automatic service, 0-2 choices | 1.2, 2.2 | Rush controls and seeded event Playwright/engine tests |
-| Ten drinks, recipes, sizes, dairy/oat/soy, ingredients, beans, dial-in; no Phase-8 menu expansion | 2.2, 8.7 | Exhaustive recipe/material tests, operations flows, and final content-inventory assertion |
-| Demand factors and four readable customer segments | 2.2, 8.2, 8.7 | One-factor direction/multiplier tests, causal UI/report assertions, and campaign balance |
-| Staff roles, stats, traits, rotating hire pool, daily scheduling | 2.3, 8.4 | Hiring/scheduling/payroll/effect tests including Manager/Runner and ten-person bounds |
-| Required equipment and economic/operational effects | 2.3, 8.3 | Per-equipment day simulations, three-tier category validation, and upgrade UI/scene tests |
-| Cart -> kiosk -> cafe capacity, demand, equipment, and visuals; department-store extension | 2.3, 3.2, 8.3, 8.6 | Promotion flows, four-value state tests, and scene assertions |
-| Configured Day 30 victory and day-close overdraft bankruptcy; v4 Day-40 replacement | 2.4, 8.3, 8.7 | Boundary tests, near-ending UI flows, and full Day 1-30/Day 1-40 campaigns |
-| Endless unlock; achievements/cosmetics/records/scenarios; no power bonus | 2.4, 8.2, 8.7 | Meta-persistence, difficulty partition/shared unlocks, and fresh-run economy tests |
-| Responsive desktop/mobile management; Canvas through Phase 6 and fixed-isometric WebGL from Phase 7 | 1.2, 1.3, 3.2, 3.3, 7.2, 7.3, 7.4 | 360px touch and desktop flows; three-venue scene/layout and immutable-snapshot tests |
-| Original cohesive visual/audio direction, including warm low-poly classic-tycoon worlds, unchanged laneway title asset, and heritage-hall motifs | 3.2, 7.2, 7.3, 8.6 | Asset hash/provenance, unchanged `public/assets/art/laneway-title.webp`, three/four-venue scene assertions, tiles/timber/brass/escalator/service-bay inspection, ambience and consent tests |
-| Keyboard, 44px touch, reduced motion, colour-safe/text summaries | 3.3, 7.4, 8.6 | RTL semantics/focus tests, reduced-motion snapshot parity, and desktop/touch Playwright flows |
-| Autosave active run/preferences/records/unlocks safely during service | 1.2, 1.3, 2.4, 7.5, 8.2, 8.5 | Phase reloads, exact-once close, report history, v4 and parallel-job state round trips |
-| Version/migrate saves; export/import; corrupt/incompatible recovery | 2.4, 7.5, 8.2 | Legacy/additive/breaking migration fixtures and transfer/recovery/reset Playwright flows |
-| Installable complete offline runtime and consent-based safe updates | 3.4, 8.8, 8.9 | Offline/relaunch/update Playwright flow for final lazy WebGL runtime and hosted Pages build |
-| Public types and campaign/day/endless engine boundaries | 1.2, 2.2, 2.3, 2.4, 8.2, 8.3, 8.4, 8.5 | Tests consume public exports; v4 difficulty/venue/staff/station/queue/job contracts are exhaustive |
-| Typed configurable tuning and balanced viable strategies | 2.2, 2.4, 8.2, 8.7 | Validated content, one-factor difficulty proofs, and multi-seed Day 1-40 simulations |
-| Security/privacy: bounded input, no secrets/telemetry/personal data | 2.4, 3.4, 8.2, 8.8 | Adversarial import/reset tests and final release network/config/dependency review |
-| GitHub Pages `/tycoon/`, README/contribution, MIT, public repository | 3.1, 3.4, 3.5, 8.8, 8.9 | Local subpath plus final hosted desktop/touch/WebGL/offline release checks |
-| Desktop/mobile, accessibility, performance, offline, and cumulative QA | 1.4, 2.5, 3.5, 7.6, 8.9 | PASS phase reports, exact tier sequences, mid-tier WebGL inspection, and hosted release identity |
-| Exact non-editable planner price/supply steppers and persistence | 4.2 | Relative-command unit/RTL tests and desktop/360px Playwright bounds/reload flows |
-| Amended base price, modifier charges, revenue, and cash reconciliation | 4.3 | Per-sale engine invariants and single-drink production Playwright report flow |
-| Dated inventory, LIFO, expiry, refrigeration, and schema-v3 migration | 5.2 | Multi-age conservation/migration tests and multi-day reload/import flows |
-| Weighted serves estimate, live stock, and expiry reporting | 5.3, 5.4 | One-factor estimate tests and desktop/mobile planner-rush-report flows |
-| Deterministic rush activity and expressive reduced-motion parity | 6.2, 6.3 | Stream equality/reload tests and desktop/mobile Canvas/text journeys |
-| Campaign-wide non-repeating displayed staff names | 6.4 | Pool exhaustion, long/endless, reload/import, and fresh-run tests |
-| Snapshot-only Three.js/React Three Fiber architecture, official-source verification, and lazy chunks under Workbox's 1 MB/file ceiling | 7.2, 7.6, 8.8, 8.9 | Dependency record; mutation/equality tests; bundle/precache manifest assertions; cumulative release gate |
-| Complete cart, kiosk, and cafe fixed-isometric service worlds with no final Canvas path | 7.2, 7.3 | The 7.2 kiosk/cafe Canvas bridge is phase-branch-only and non-releasable; 7.3 removes it and VenueId-exhaustive tests prove final WebGL-only service |
-| WebGL2 requirement, accessible unsupported handling, orthographic/instanced/capped-DPR rendering, and reduced-motion/text parity | 7.2, 7.3, 7.6 | Capability/context fixtures, reduced-motion equality, renderer inspection, and mid-tier device evidence |
-| Service-only immersion; full-width morning planning with no preview scene; scene -> dashboard -> activity -> stock; 360×780 no-scroll scene/dashboard | 7.4 | Desktop/touch geometry, absence-of-preview, focus, keyboard, touch, and exact 360×780 Playwright assertions |
-| Compact completion, exact-once `Settle & reinvest`, and truthful reopened reports from existing history | 7.5, 8.7 | Reports in Game menu; bounded `GameState.history`; selected `DayReport` sole input; post-7.5 charge parity; Phase-6/v3 stored-field rendering plus accessible older-report charge-unavailable state; no reconstruction/current-rush read; reload/export/import proof |
-| v3 -> v4 preferences-only reset boundary with complete supported-legacy coverage and onboarding replay | 8.2 | v1/v2/v3 primary, backup, recovery, and imported fixtures share one three-preference allowlist; resurrection/repeat-reset tests prove verified-v4 idempotence |
-| Immutable Standard/Hard selection, Standard preselected/accessibly described, scenario orthogonality, separate records, shared non-power unlocks | 8.2, 8.7 | Campaign-creation/round-trip UI, independent scenario/difficulty changes, immutable command rejection, record partition, and unlock-neutrality tests |
-| Exhaustive typed baseline/domain registry for every current and new Phase-8 arrival/order-choice demand influence | 8.2 | Technical Validation separately registers aggregate/average-menu-price arrival and segment-specific per-drink order-choice price, plus reputation, improvements, dial-in, bean, weather, venue, scenario, team/traits/equipment, queue/wait, stock, rush-event multiplier, segment appeal, and order-choice weather; new sources fail until domain/proof registration |
-| Standard applies one +20-25% multiplier to both registered price paths with all non-price influences baseline; Hard covers every registry domain at +60-75% over today's baseline | 8.2, 8.7 | Separate Standard price-path proofs; bidirectional neutral/both-sign/clamp/boundary tests; one-sided neutral/every-supported-direction/clamp/boundary/no-invented-direction tests; no Standard compounding/scenario coupling; multi-seed balance |
-| Forty-day cart -> kiosk -> cafe -> department-store progression and Day-40 victory | 8.3, 8.7 | Four-VenueId exhaustiveness, promotion/boundary fixtures, complete seeded campaigns, victory/bankruptcy/endless flows |
-| Equipment generalized from two to three tiers with commercial final equipment | 8.3 | Category-exhaustive content validation, purchase/effect/persistence tests, and planner/scene assertions |
-| Department roster/schedule limits, ten scheduled staff, Manager and Runner | 8.4 | Ten/eleven boundary, hiring/payroll/effect/name/persistence/report tests |
-| Three authoritative station assignments, normal/express queues, multiple service jobs, and up to three eligible express drinks | 8.5 | Assignment/eligibility bounds, seeded concurrency, stock contention, fairness, reload, and exact-once settlement tests |
-| Station/lane identities in bounded canonical activity and immutable multi-customer snapshots | 8.5, 8.6 | Activity schema bounds, frozen snapshot/mutation tests, equal-seed WebGL/text parity, and dense hall inspection |
-| Complete Melbourne-heritage hall, larger crowds, events, cosmetics, physical upgrades, and station-aware report history | 8.6, 8.7 | Warm low-poly hall inspection proves heritage tiles, timber, brass, escalators, distinct service bays, content/visible effects, event choices, unlock neutrality, report round trips, and full campaigns |
-| Final PWA/offline/update, performance, Lighthouse, and hosted release | 8.8, 8.9 | Offline/update/subpath automation, per-file cache ceiling, FPS/Lighthouse evidence, and public build verification |
-| Explicit non-goals retained through the expansion | 1.2, 2.3, 2.4, 3.4, 7.2, 8.3, 8.5, 8.7 | Scope self-review confirms no food/new drinks/new ingredients, manual making, weekly rosters, multiple locations, accounts, multiplayer, localization, paid content, analytics, or runtime live services |
+| Requirement area                                                                                                                                                                  | Delivering component(s)                | Validation evidence                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Approved-plan implementation entry contract                                                                                                                                       | Pre-7.1 coordinator gate               | Both phase breakdowns exist, preserve file ownership/acceptance/dependencies/Technical Validation/lane/tier, and mark every component `Spec-Validated` before Implement begins                                                                                                                                                                                        |
+| Single-player browser game; no accounts/backend/runtime services                                                                                                                  | 1.2, 3.4                               | Phase 1 real-stack flow; Phase 3 network/dependency review                                                                                                                                                                                                                                                                                                            |
+| Plan -> rush -> report -> reinvest daily loop                                                                                                                                     | 1.2                                    | Phase 1 desktop/mobile complete-day flows                                                                                                                                                                                                                                                                                                                             |
+| Seeded campaign and pure deterministic commands/state                                                                                                                             | 1.2, 2.2, 2.4                          | Seed equality, speed independence, full-campaign simulations                                                                                                                                                                                                                                                                                                          |
+| 60-90 second rush, pause, 1x/2x/4x, automatic service, 0-2 choices                                                                                                                | 1.2, 2.2                               | Rush controls and seeded event Playwright/engine tests                                                                                                                                                                                                                                                                                                                |
+| Ten drinks, recipes, sizes, dairy/oat/soy, ingredients, beans, dial-in; no Phase-8 menu expansion                                                                                 | 2.2, 8.7                               | Exhaustive recipe/material tests, operations flows, and final content-inventory assertion                                                                                                                                                                                                                                                                             |
+| Demand factors and four readable customer segments                                                                                                                                | 2.2, 8.2, 8.7                          | One-factor direction/multiplier tests, causal UI/report assertions, and campaign balance                                                                                                                                                                                                                                                                              |
+| Staff roles, stats, traits, rotating hire pool, daily scheduling                                                                                                                  | 2.3, 8.4                               | Hiring/scheduling/payroll/effect tests including Manager/Runner and ten-person bounds                                                                                                                                                                                                                                                                                 |
+| Required equipment and economic/operational effects                                                                                                                               | 2.3, 8.3                               | Per-equipment day simulations, three-tier category validation, and upgrade UI/scene tests                                                                                                                                                                                                                                                                             |
+| Cart -> kiosk -> cafe capacity, demand, equipment, and visuals; department-store extension                                                                                        | 2.3, 3.2, 8.3, 8.6                     | Promotion flows, four-value state tests, and scene assertions                                                                                                                                                                                                                                                                                                         |
+| Configured Day 30 victory and day-close overdraft bankruptcy; v4 Day-40 replacement                                                                                               | 2.4, 8.3, 8.7                          | Boundary tests, near-ending UI flows, and full Day 1-30/Day 1-40 campaigns                                                                                                                                                                                                                                                                                            |
+| Endless unlock; achievements/cosmetics/records/scenarios; no power bonus                                                                                                          | 2.4, 8.2, 8.7                          | Meta-persistence, difficulty partition/shared unlocks, and fresh-run economy tests                                                                                                                                                                                                                                                                                    |
+| Responsive desktop/mobile management; Canvas through Phase 6 and fixed-isometric WebGL from Phase 7                                                                               | 1.2, 1.3, 3.2, 3.3, 7.2, 7.3, 7.4      | 360px touch and desktop flows; three-venue scene/layout and immutable-snapshot tests                                                                                                                                                                                                                                                                                  |
+| Original cohesive visual/audio direction, including warm low-poly classic-tycoon worlds, unchanged laneway title asset, and heritage-hall motifs                                  | 3.2, 7.2, 7.3, 8.6                     | Asset hash/provenance, unchanged `public/assets/art/laneway-title.webp`, three/four-venue scene assertions, tiles/timber/brass/escalator/service-bay inspection, ambience and consent tests                                                                                                                                                                           |
+| Keyboard, 44px touch, reduced motion, colour-safe/text summaries                                                                                                                  | 3.3, 7.4, 8.6                          | RTL semantics/focus tests, reduced-motion snapshot parity, and desktop/touch Playwright flows                                                                                                                                                                                                                                                                         |
+| Autosave active run/preferences/records/unlocks safely during service                                                                                                             | 1.2, 1.3, 2.4, 7.5, 8.2, 8.5           | Phase reloads, exact-once close, report history, v4 and parallel-job state round trips                                                                                                                                                                                                                                                                                |
+| Version/migrate saves; export/import; corrupt/incompatible recovery                                                                                                               | 2.4, 7.5, 8.2                          | Legacy/additive/breaking migration fixtures and transfer/recovery/reset Playwright flows                                                                                                                                                                                                                                                                              |
+| Installable complete offline runtime and consent-based safe updates                                                                                                               | 3.4, 8.8, 8.9                          | Offline/relaunch/update Playwright flow for final lazy WebGL runtime and hosted Pages build                                                                                                                                                                                                                                                                           |
+| Public types and campaign/day/endless engine boundaries                                                                                                                           | 1.2, 2.2, 2.3, 2.4, 8.2, 8.3, 8.4, 8.5 | Tests consume public exports; v4 difficulty/venue/staff/station/queue/job contracts are exhaustive                                                                                                                                                                                                                                                                    |
+| Typed configurable tuning and balanced viable strategies                                                                                                                          | 2.2, 2.4, 8.2, 8.7                     | Validated content, one-factor difficulty proofs, and multi-seed Day 1-40 simulations                                                                                                                                                                                                                                                                                  |
+| Security/privacy: bounded input, no secrets/telemetry/personal data                                                                                                               | 2.4, 3.4, 8.2, 8.8                     | Adversarial import/reset tests and final release network/config/dependency review                                                                                                                                                                                                                                                                                     |
+| GitHub Pages `/tycoon/`, README/contribution, MIT, public repository                                                                                                              | 3.1, 3.4, 3.5, 8.8, 8.9                | Local subpath plus final hosted desktop/touch/WebGL/offline release checks                                                                                                                                                                                                                                                                                            |
+| Desktop/mobile, accessibility, performance, offline, and cumulative QA                                                                                                            | 1.4, 2.5, 3.5, 7.6, 8.9                | PASS automated phase reports, exact tier sequences, exact hosted release identity, and separately recorded owner-led device inspection                                                                                                                                                                                                                                |
+| Exact non-editable planner price/supply steppers and persistence                                                                                                                  | 4.2                                    | Relative-command unit/RTL tests and desktop/360px Playwright bounds/reload flows                                                                                                                                                                                                                                                                                      |
+| Amended base price, modifier charges, revenue, and cash reconciliation                                                                                                            | 4.3                                    | Per-sale engine invariants and single-drink production Playwright report flow                                                                                                                                                                                                                                                                                         |
+| Dated inventory, LIFO, expiry, refrigeration, and schema-v3 migration                                                                                                             | 5.2                                    | Multi-age conservation/migration tests and multi-day reload/import flows                                                                                                                                                                                                                                                                                              |
+| Weighted serves estimate, live stock, and expiry reporting                                                                                                                        | 5.3, 5.4                               | One-factor estimate tests and desktop/mobile planner-rush-report flows                                                                                                                                                                                                                                                                                                |
+| Deterministic rush activity and expressive reduced-motion parity                                                                                                                  | 6.2, 6.3                               | Stream equality/reload tests and desktop/mobile Canvas/text journeys                                                                                                                                                                                                                                                                                                  |
+| Campaign-wide non-repeating displayed staff names                                                                                                                                 | 6.4                                    | Pool exhaustion, long/endless, reload/import, and fresh-run tests                                                                                                                                                                                                                                                                                                     |
+| Snapshot-only Three.js/React Three Fiber architecture, official-source verification, and lazy chunks under Workbox's 1 MB/file ceiling                                            | 7.2, 7.6, 8.8, 8.9                     | Dependency record; mutation/equality tests; bundle/precache manifest assertions; cumulative release gate                                                                                                                                                                                                                                                              |
+| Complete cart, kiosk, and cafe fixed-isometric service worlds with no final Canvas path                                                                                           | 7.2, 7.3                               | The 7.2 kiosk/cafe Canvas bridge is phase-branch-only and non-releasable; 7.3 removes it and VenueId-exhaustive tests prove final WebGL-only service                                                                                                                                                                                                                  |
+| WebGL2 requirement, accessible unsupported handling, orthographic/instanced/capped-DPR rendering, and reduced-motion/text parity                                                  | 7.2, 7.3, 7.6                          | Capability/context fixtures, reduced-motion equality, desktop/exact-touch renderer inspection, and a pending owner-led hosted-device check                                                                                                                                                                                                                            |
+| Service-only immersion; full-width morning planning with no preview scene; scene -> dashboard -> activity -> stock; 360×780 no-scroll scene/dashboard                             | 7.4                                    | Desktop/touch geometry, absence-of-preview, focus, keyboard, touch, and exact 360×780 Playwright assertions                                                                                                                                                                                                                                                           |
+| Compact completion, exact-once `Settle & reinvest`, and truthful reopened reports from existing history                                                                           | 7.5, 8.7                               | Reports in Game menu; bounded `GameState.history`; selected `DayReport` sole input; post-7.5 charge parity; Phase-6/v3 stored-field rendering plus accessible older-report charge-unavailable state; no reconstruction/current-rush read; reload/export/import proof                                                                                                  |
+| v3 -> v4 preferences-only reset boundary with complete supported-legacy coverage and onboarding replay                                                                            | 8.2                                    | v1/v2/v3 primary, backup, recovery, and imported fixtures share one three-preference allowlist; resurrection/repeat-reset tests prove verified-v4 idempotence                                                                                                                                                                                                         |
+| Immutable Standard/Hard selection, Standard preselected/accessibly described, scenario orthogonality, separate records, shared non-power unlocks                                  | 8.2, 8.7                               | Campaign-creation/round-trip UI, independent scenario/difficulty changes, immutable command rejection, record partition, and unlock-neutrality tests                                                                                                                                                                                                                  |
+| Exhaustive typed baseline/domain registry for every current and new Phase-8 arrival/order-choice demand influence                                                                 | 8.2                                    | Technical Validation separately registers aggregate/average-menu-price arrival and segment-specific per-drink order-choice price, plus reputation, improvements, dial-in, bean, weather, venue, scenario, team/traits/equipment, queue/wait, stock, rush-event multiplier, segment appeal, and order-choice weather; new sources fail until domain/proof registration |
+| Standard applies one +20-25% multiplier to both registered price paths with all non-price influences baseline; Hard covers every registry domain at +60-75% over today's baseline | 8.2, 8.7                               | Separate Standard price-path proofs; bidirectional neutral/both-sign/clamp/boundary tests; one-sided neutral/every-supported-direction/clamp/boundary/no-invented-direction tests; no Standard compounding/scenario coupling; multi-seed balance                                                                                                                      |
+| Forty-day cart -> kiosk -> cafe -> department-store progression and Day-40 victory                                                                                                | 8.3, 8.7                               | Four-VenueId exhaustiveness, promotion/boundary fixtures, complete seeded campaigns, victory/bankruptcy/endless flows                                                                                                                                                                                                                                                 |
+| Equipment generalized from two to three tiers with commercial final equipment                                                                                                     | 8.3                                    | Category-exhaustive content validation, purchase/effect/persistence tests, and planner/scene assertions                                                                                                                                                                                                                                                               |
+| Department roster/schedule limits, ten scheduled staff, Manager and Runner                                                                                                        | 8.4                                    | Ten/eleven boundary, hiring/payroll/effect/name/persistence/report tests                                                                                                                                                                                                                                                                                              |
+| Three authoritative station assignments, normal/express queues, multiple service jobs, and up to three eligible express drinks                                                    | 8.5                                    | Assignment/eligibility bounds, seeded concurrency, stock contention, fairness, reload, and exact-once settlement tests                                                                                                                                                                                                                                                |
+| Station/lane identities in bounded canonical activity and immutable multi-customer snapshots                                                                                      | 8.5, 8.6                               | Activity schema bounds, frozen snapshot/mutation tests, equal-seed WebGL/text parity, and dense hall inspection                                                                                                                                                                                                                                                       |
+| Complete Melbourne-heritage hall, larger crowds, events, cosmetics, physical upgrades, and station-aware report history                                                           | 8.6, 8.7                               | Warm low-poly hall inspection proves heritage tiles, timber, brass, escalators, distinct service bays, content/visible effects, event choices, unlock neutrality, report round trips, and full campaigns                                                                                                                                                              |
+| Final PWA/offline/update, performance, Lighthouse, and hosted release                                                                                                             | 8.8, 8.9                               | Offline/update/subpath automation, per-file cache ceiling, FPS/Lighthouse evidence, and public build verification                                                                                                                                                                                                                                                     |
+| Explicit non-goals retained through the expansion                                                                                                                                 | 1.2, 2.3, 2.4, 3.4, 7.2, 8.3, 8.5, 8.7 | Scope self-review confirms no food/new drinks/new ingredients, manual making, weekly rosters, multiple locations, accounts, multiplayer, localization, paid content, analytics, or runtime live services                                                                                                                                                              |
 
 ## Cross-Cutting Concerns
 
@@ -2058,9 +2079,10 @@ Phase-8 report-history UI.
   are the release-safety and rollback protections; a bad publication is stopped
   or superseded through the Pages workflow without discarding local saves.
 - Phases 4–5 validate locally on their phase branches. Phase 6 repeats hosted
-  verification after its human-approved merge. Phase 7 validates locally plus
-  representative WebGL2 device inspection; no publication is required. Phase 8
-  first records cumulative local PASS, then awaits explicit merge/publication
+  verification after its human-approved merge. Phase 7 first records automated
+  local PASS, then leaves merge, publication, and owner-led physical validation
+  of the exact hosted candidate as a separate approved handoff. Phase 8 first
+  records cumulative local PASS, then awaits explicit merge/publication
   approval, deploys the exact approved build, and records hosted desktop/touch-
   mobile/WebGL2/offline/update evidence separately.
 - Release safety is save-version aware: Phase 7 preserves v3; Phase 8 performs
@@ -2073,34 +2095,34 @@ Phase-8 report-history UI.
 
 ### External Dependencies
 
-| Dependency | Needed | Risk if delayed | Mitigation/owner |
-|---|---|---|---|
-| Node 22.12+, pnpm 10, compatible pinned frontend/test packages | Phase 1 onward | Build or browser incompatibility | Implement agent pins the lockfile and validates Vite modern-browser/Safari 16.4+ baseline |
-| Three.js, React Three Fiber, WebGL2, and Workbox-compatible lazy bundles | Phase 7 onward | Service world cannot ship reliably or offline | Implement re-verifies official compatibility/licensing/bundling sources before each dependency/config lock, pins versions, and retains capability/bundle fixtures |
-| Representative mid-tier WebGL2 touch device | Components 7.1/7.6 and 8.1/8.9 | Dense mobile GPU behavior cannot be claimed | Human reserves access in X.1; Implement records device/browser/FPS evidence at each phase gate |
-| GitHub Actions and Pages | Phase 3, Phase 6, and final Component 8.9 hosted gates | Public URL cannot be verified | Keep local production proof cumulative; human approves release before hosted claims |
-| Human phase merge and final publication approval | Components 7.1 and 8.1; each additive phase after PASS | Merge/public release remains blocked | Isolate every human task in X.1, report local PASS separately, and never infer merge/publication or hosted PASS |
+| Dependency                                                               | Needed                                                 | Risk if delayed                                                              | Mitigation/owner                                                                                                                                                  |
+| ------------------------------------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Node 22.12+, pnpm 10, compatible pinned frontend/test packages           | Phase 1 onward                                         | Build or browser incompatibility                                             | Implement agent pins the lockfile and validates Vite modern-browser/Safari 16.4+ baseline                                                                         |
+| Three.js, React Three Fiber, WebGL2, and Workbox-compatible lazy bundles | Phase 7 onward                                         | Service world cannot ship reliably or offline                                | Implement re-verifies official compatibility/licensing/bundling sources before each dependency/config lock, pins versions, and retains capability/bundle fixtures |
+| Representative mid-tier WebGL2 touch device                              | Post-gate hosted checks after Components 7.6 and 8.9   | Dense mobile GPU behavior cannot be claimed until a real hosted check occurs | Human validates only the exact approved candidate at the existing public URL and records device/browser/FPS evidence; agents do not access the device             |
+| GitHub Actions and Pages                                                 | Phase 3, Phase 6, and final Component 8.9 hosted gates | Public URL cannot be verified                                                | Keep local production proof cumulative; human approves release before hosted claims                                                                               |
+| Human phase merge and final publication approval                         | Components 7.1 and 8.1; each additive phase after PASS | Merge/public release remains blocked                                         | Isolate every human task in X.1, report local PASS separately, and never infer merge/publication or hosted PASS                                                   |
 
 ### Technical Risks
 
-| Risk | Impact | Likelihood | Mitigation Strategy | Owner |
-|---|---|---|---|---|
-| Economy cannot produce fair victory and bankruptcy paths | High | Medium | Typed tuning, one-factor tests, multi-seed complete campaigns, explicit boundary cases | Implement agent |
-| Engine outcome couples to Canvas frame timing or speed | High | Medium | Pure tick commands, immutable snapshots, seeded PRNG state, speed-independence tests from Phase 1 | Implement agent |
-| Mobile planner becomes dense or blocks actions | High | Medium | 360px baseline, progressive tab disclosure, touch E2E in every phase | Implement agent |
-| Save/update incompatibility loses a campaign | High | Medium | Versioned envelope, last-known-good writes, idempotent settlement, migrations, deferred updates, adversarial tests | Implement agent |
-| PWA serves stale or broken `/tycoon/` assets | High | Medium | Local subpath preview, explicit update prompt, cache-completeness tests, hosted refresh/offline checks | Implement agent |
-| Pixel/audio assets breach size, consistency, or provenance goals | Medium | Medium | Constrained palette/logical resolution, optimized sprite sheets/audio, provenance inventory, Lighthouse/bundle checks | Implement agent |
-| Planner activations display one value but persist or charge another | High | Medium | Integer relative commands, immediate autosave, bounded steppers, observable actual charges, full-path reconciliation tests | Implement agent |
-| Batch aging/migration creates, loses, or double-consumes stock | High | Medium | Bounded schema-v3 migration, LIFO/expiry invariants, multi-day conservation and recovery fixtures | Implement agent |
-| Rush animation diverges from deterministic outcomes or staff names repeat | High | Medium | Canonical bounded activity/name state, renderer-only consumption, equal-seed/reload/exhaustion tests | Implement agent |
-| WebGL renderer changes simulation or exceeds mobile/cache limits | High | Medium | Frozen bounded snapshots, dependency rules, instancing, orthographic camera, capped DPR, lazy chunks, 1 MB/file assertions, and mid-tier device proof | Implement agent |
-| Legacy save/recovery path repeats the v4 reset or resurrects discarded progress/meta/history | High | Low | One v1/v2/v3 primary/backup/recovery/import normalizer, sound/ambience/reduced-motion allowlist, verified v4 marker, legacy recovery quarantine, and resurrection fixtures | Implement agent |
-| Demand registry omits an influence/domain, Standard misses a price path, or difficulty compounds/couples/clamps incorrectly | High | Medium | Engine-registry exhaustiveness, Standard default/orthogonality, separate aggregate-arrival and per-drink order-choice price proofs, domain-aware supported-direction/no-invention tests, clamps/boundaries, visible rules, and multi-seed balance | Implement agent |
-| Four-tier progression leaves two-tier/three-venue assumptions | High | Medium | Exhaustive VenueId compilation, data-driven tier validators, full category fixtures, and cumulative campaign/renderer tests | Implement agent |
-| Parallel stations double-consume stock or settle revenue twice | High | Medium | Stable seeded ordering, station/job identities, explicit reservations, exact-once invariants, and pause/speed/reload equality | Implement agent |
-| Department campaign is unbalanced or dense hall is unplayable | High | Medium | Day 1-40 multi-strategy simulations, bounded crowds, instancing/LOD/capped DPR, 30/60-FPS evidence, and full 360×780 flow | Implement agent |
-| Hosted PWA update loses v4 state or serves a partial WebGL graph | High | Medium | Consent-based activation, last-known-good state, complete offline manifest tests, exact build identity, hosted offline/update smoke, and superseding-build rollback | Implement agent |
+| Risk                                                                                                                        | Impact | Likelihood | Mitigation Strategy                                                                                                                                                                                                                               | Owner                                 |
+| --------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Economy cannot produce fair victory and bankruptcy paths                                                                    | High   | Medium     | Typed tuning, one-factor tests, multi-seed complete campaigns, explicit boundary cases                                                                                                                                                            | Implement agent                       |
+| Engine outcome couples to Canvas frame timing or speed                                                                      | High   | Medium     | Pure tick commands, immutable snapshots, seeded PRNG state, speed-independence tests from Phase 1                                                                                                                                                 | Implement agent                       |
+| Mobile planner becomes dense or blocks actions                                                                              | High   | Medium     | 360px baseline, progressive tab disclosure, touch E2E in every phase                                                                                                                                                                              | Implement agent                       |
+| Save/update incompatibility loses a campaign                                                                                | High   | Medium     | Versioned envelope, last-known-good writes, idempotent settlement, migrations, deferred updates, adversarial tests                                                                                                                                | Implement agent                       |
+| PWA serves stale or broken `/tycoon/` assets                                                                                | High   | Medium     | Local subpath preview, explicit update prompt, cache-completeness tests, hosted refresh/offline checks                                                                                                                                            | Implement agent                       |
+| Pixel/audio assets breach size, consistency, or provenance goals                                                            | Medium | Medium     | Constrained palette/logical resolution, optimized sprite sheets/audio, provenance inventory, Lighthouse/bundle checks                                                                                                                             | Implement agent                       |
+| Planner activations display one value but persist or charge another                                                         | High   | Medium     | Integer relative commands, immediate autosave, bounded steppers, observable actual charges, full-path reconciliation tests                                                                                                                        | Implement agent                       |
+| Batch aging/migration creates, loses, or double-consumes stock                                                              | High   | Medium     | Bounded schema-v3 migration, LIFO/expiry invariants, multi-day conservation and recovery fixtures                                                                                                                                                 | Implement agent                       |
+| Rush animation diverges from deterministic outcomes or staff names repeat                                                   | High   | Medium     | Canonical bounded activity/name state, renderer-only consumption, equal-seed/reload/exhaustion tests                                                                                                                                              | Implement agent                       |
+| WebGL renderer changes simulation or exceeds mobile/cache limits                                                            | High   | Medium     | Frozen bounded snapshots, dependency rules, instancing, orthographic camera, capped DPR, lazy chunks, 1 MB/file assertions, exact-viewport browser proof, and owner-led hosted-device follow-up                                                   | Implement agent plus repository owner |
+| Legacy save/recovery path repeats the v4 reset or resurrects discarded progress/meta/history                                | High   | Low        | One v1/v2/v3 primary/backup/recovery/import normalizer, sound/ambience/reduced-motion allowlist, verified v4 marker, legacy recovery quarantine, and resurrection fixtures                                                                        | Implement agent                       |
+| Demand registry omits an influence/domain, Standard misses a price path, or difficulty compounds/couples/clamps incorrectly | High   | Medium     | Engine-registry exhaustiveness, Standard default/orthogonality, separate aggregate-arrival and per-drink order-choice price proofs, domain-aware supported-direction/no-invention tests, clamps/boundaries, visible rules, and multi-seed balance | Implement agent                       |
+| Four-tier progression leaves two-tier/three-venue assumptions                                                               | High   | Medium     | Exhaustive VenueId compilation, data-driven tier validators, full category fixtures, and cumulative campaign/renderer tests                                                                                                                       | Implement agent                       |
+| Parallel stations double-consume stock or settle revenue twice                                                              | High   | Medium     | Stable seeded ordering, station/job identities, explicit reservations, exact-once invariants, and pause/speed/reload equality                                                                                                                     | Implement agent                       |
+| Department campaign is unbalanced or dense hall is unplayable                                                               | High   | Medium     | Day 1-40 multi-strategy simulations, bounded crowds, instancing/LOD/capped DPR, 30/60-FPS evidence, and full 360×780 flow                                                                                                                         | Implement agent                       |
+| Hosted PWA update loses v4 state or serves a partial WebGL graph                                                            | High   | Medium     | Consent-based activation, last-known-good state, complete offline manifest tests, exact build identity, hosted offline/update smoke, and superseding-build rollback                                                                               | Implement agent                       |
 
 ## Change Management
 
@@ -2114,13 +2136,13 @@ Phase-8 report-history UI.
 
 ### Amendment Log
 
-| Date | Phase/Component | Change | Reason | Impact |
-|---|---|---|---|---|
-| 2026-07-18 | All | Initial three-phase lean plan | User-approved delivery structure and sole-Implement override | Establishes 14 components and cumulative gates |
-| 2026-07-18 | Phases 4–6 | Additive feedback plan | User approved exact planning, stock lifecycle/intelligence, living rush, and unique names under the same lean override | Adds 14 components and extends cumulative gates to six phases |
-| 2026-08-08 | Phases 7–8 | Next-Level Evolution additive plan | User directed an approval-ready WebGL service-world bridge followed by one breaking 40-day department-store campaign contract under the lean two-role restriction | Adds 15 components, one v3-to-v4 preferences-only reset, cumulative WebGL/engine/PWA gates, and final hosted release evidence |
-| 2026-08-08 | Entry gate; 7.2–7.5; 8.2; 8.6; phase gates | Approval-gate precision revision | Approval review required materialized specs, exhaustive difficulty/reset proof, canonical report history, and fixed presentation decisions | Preserves 8 phases/43 components while making implementation entry, legacy reset, demand registry, Canvas bridge removal, report settlement/history, and visual acceptance executable |
-| 2026-08-08 | 7.5; 8.2; phase gates and traceability | Final price-domain/report precision | Approval review separated Standard's two price paths, made factor proof domain-aware, and bounded legacy charge-report expectations | Preserves 8 phases/43 components while adding separate Standard price proofs, no-invented-direction rules, post-7.5 charge parity, and explicit Phase-6/v3 charge-unavailable handling |
+| Date       | Phase/Component                            | Change                              | Reason                                                                                                                                                            | Impact                                                                                                                                                                                 |
+| ---------- | ------------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-18 | All                                        | Initial three-phase lean plan       | User-approved delivery structure and sole-Implement override                                                                                                      | Establishes 14 components and cumulative gates                                                                                                                                         |
+| 2026-07-18 | Phases 4–6                                 | Additive feedback plan              | User approved exact planning, stock lifecycle/intelligence, living rush, and unique names under the same lean override                                            | Adds 14 components and extends cumulative gates to six phases                                                                                                                          |
+| 2026-08-08 | Phases 7–8                                 | Next-Level Evolution additive plan  | User directed an approval-ready WebGL service-world bridge followed by one breaking 40-day department-store campaign contract under the lean two-role restriction | Adds 15 components, one v3-to-v4 preferences-only reset, cumulative WebGL/engine/PWA gates, and final hosted release evidence                                                          |
+| 2026-08-08 | Entry gate; 7.2–7.5; 8.2; 8.6; phase gates | Approval-gate precision revision    | Approval review required materialized specs, exhaustive difficulty/reset proof, canonical report history, and fixed presentation decisions                        | Preserves 8 phases/43 components while making implementation entry, legacy reset, demand registry, Canvas bridge removal, report settlement/history, and visual acceptance executable  |
+| 2026-08-08 | 7.5; 8.2; phase gates and traceability     | Final price-domain/report precision | Approval review separated Standard's two price paths, made factor proof domain-aware, and bounded legacy charge-report expectations                               | Preserves 8 phases/43 components while adding separate Standard price proofs, no-invented-direction rules, post-7.5 charge parity, and explicit Phase-6/v3 charge-unavailable handling |
 
 ## Approval
 

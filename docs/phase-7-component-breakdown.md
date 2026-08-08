@@ -50,10 +50,12 @@ the complete Tier 3 gate. Component 7.1 is documentary Tier 1 proof.
   tests cover pure snapshot adapters and deterministic presentation models;
   jsdom tests must not pretend to prove GPU rendering.
 - Preserve `public/assets/art/laneway-title.webp` byte-for-byte.
-- Human validation is reserved on a representative mid-tier WebGL2 touch device
-  at the Phase 7 gate. Desktop target is 1280×800; mobile target is exactly
-  360×780 with the scene and complete rush dashboard visible together without
-  document scrolling.
+- Automated Phase 7 validation uses real Chromium at 1280×800 and the exact
+  360×780 touch-browser project, with the scene and complete rush dashboard
+  visible together without document scrolling. Any representative-device check
+  is owner-led only after automated PASS and separate merge/publication
+  approval, against the exact candidate at the existing public game URL. Agents
+  do not access the device or claim the pending physical result.
 
 ## Component 7.1 — Human Setup and Phase-7 Gate Reservation
 
@@ -61,15 +63,17 @@ Status: **Spec-Validated**
 
 ### Runtime outcome
 
-The approved branch, ownership, compatibility checklist, device evidence path,
-and merge gate are recorded before package or gameplay work begins.
+The approved branch, ownership, compatibility checklist, hosted owner-device
+evidence path, and post-gate approval boundary are recorded before package or
+gameplay work begins.
 
 ### Deliverables and ownership
 
 - Confirm `phase-7` branches from approved head `1f54d61` and contains no
   gameplay commit on `main`.
-- Record the user's 2026-08-08 approval and the representative WebGL2 touch
-  device reservation for Component 7.6.
+- Record the user's 2026-08-08 approval and the later override that makes any
+  physical check owner-led against the exact hosted candidate after automated
+  Component 7.6 PASS and separate merge/publication approval.
 - Record that Phase 7 requires no account, credential, secret, paid asset,
   backend, or publication action.
 - Initialize the phase implementation context, progress record, component
@@ -94,16 +98,17 @@ Phases 1–6, and both component breakdowns marked `Spec-Validated`.
 
 Branch/head and documentation inspection are sufficient because this component
 changes no runtime. The recorded compatibility checklist must cite primary
-sources and distinguish planned physical-device evidence from completed proof.
-No package or product test is required until the first runtime slice.
+sources and distinguish the pending owner-led hosted-device check from completed
+automated proof. No package or product test is required until the first runtime
+slice.
 
 ### Acceptance mapping
 
 - Both Phase 7 and Phase 8 breakdowns name files, dependencies, Technical
   Validation, acceptance criteria, assurance lane, and validation tier for all
   15 additive components.
-- The compatibility checklist and device gate are explicit and unclaimed work
-  is not recorded as complete.
+- The compatibility checklist and hosted-device follow-up are explicit and
+  unclaimed work is not recorded as complete.
 - No package, runtime source, deployment, merge, or publication change occurs.
 
 ### Validation gate
@@ -463,11 +468,12 @@ human merge gate.
 - Run Tier 3 exactly once against the final global fingerprint after all focused
   failures are resolved.
 - Inspect the 1280×800 desktop build, exact 360×780 touch layout, reduced-motion
-  mode, unsupported/context-loss fixtures, and representative mid-tier WebGL2
-  touch device.
-- Record frame responsiveness, capped DPR, instancing/draw-call strategy, lazy
-  chunking, and Workbox per-file sizes without claiming synthetic results as
-  physical-device evidence.
+  mode, and unsupported/context-loss fixtures in real Chromium. Record any
+  physical-device check as a pending owner action against the exact hosted
+  candidate after separate merge/publication approval.
+- Record automated browser responsiveness, capped DPR,
+  instancing/draw-call strategy, lazy chunking, and Workbox per-file sizes
+  without claiming these synthetic/desktop results as physical-device proof.
 - Reconcile stale Canvas guidance in `docs/brief.md`,
   `docs/requirements.md`, `docs/solution-design.md`, README, and runbooks while
   leaving Phase 8 campaign changes marked planned until delivered.
@@ -475,6 +481,9 @@ human merge gate.
   duration, global fingerprint, PASS/FAIL, and any residual risk.
 - Complete phase implementation context, component overview, progress, and
   agent state; commit only after PASS.
+- Leave push, merge, publication, and owner-led hosted-device validation to the
+  coordinator's post-gate handoff. Never publish an intermediate or unvalidated
+  build and never access the user's device.
 
 ### File ownership
 
@@ -501,18 +510,25 @@ Components 7.1–7.5 complete and committed with reusable unchanged evidence.
 - Browser geometry proves the exact mobile viewport contract. Production
   manifest inspection proves lazy chunks and the 1 MB/file cache ceiling.
 - No PASS is recorded if the Canvas gameplay bridge remains, the title asset
-  changes, report history reads current rush state, or device evidence is absent.
+  changes, report history reads current rush state, or an automated named target
+  fails. A physical-device result is not part of the automated Tier 3 verdict;
+  it remains explicitly pending and unclaimed until the owner tests the exact
+  hosted candidate.
 
 ### Acceptance mapping
 
 - Every Phase 7 acceptance criterion in `docs/phase-plan.md` has named evidence.
 - Completed Phases 1–6 journeys remain passing.
-- `docs/phase-7-test-report.md` records Tier 3 PASS for the final fingerprint.
-- The branch is pushed only after PASS and awaits explicit human merge approval;
-  no hosted publication is required for Phase 7.
+- `docs/phase-7-test-report.md` records automated Tier 3 PASS for the final
+  fingerprint and labels hosted physical validation pending/unclaimed.
+- Component 7.6 performs no push, merge, publication, or device interaction.
+  The coordinator may request separate human merge/publication approval after
+  PASS so the owner can validate the exact build at the existing public URL.
 
 ### Validation gate
 
-Assurance lane `phase-gate (lean override)`, Tier 3 cumulative phase gate. The
-same Implement engagement fixes failures, reruns invalidated evidence, performs
-self-review, writes the report, and commits the validated final head.
+Assurance lane `phase-gate (lean override)`, Tier 3 cumulative automated phase
+gate. The same Implement engagement fixes failures, reruns invalidated
+evidence, performs self-review, writes the report, and commits the validated
+final head. Hosted physical validation remains a distinct post-completion human
+check and does not change or embellish the automated verdict.

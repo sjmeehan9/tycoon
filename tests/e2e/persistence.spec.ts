@@ -19,7 +19,10 @@ test.describe('autosaved continuation', () => {
     const activeProgress = page.getByRole('progressbar');
     await expect
       .poll(async () => Number(await activeProgress.getAttribute('aria-valuenow')), {
-        timeout: 8_000,
+        // Four production WebGL contexts share the local phase-gate runner.
+        // Keep the same autosave checkpoint outcome without treating wall time
+        // under that contention as a renderer performance claim.
+        timeout: 20_000,
       })
       .toBeGreaterThanOrEqual(20);
     await page.reload();

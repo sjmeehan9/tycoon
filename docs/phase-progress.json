@@ -89,20 +89,21 @@
       "phase": 7,
       "phaseId": 7,
       "phaseName": "Fixed-Isometric Service World",
-      "status": "in-progress",
+      "status": "automated-pass-awaiting-human-handoff",
       "branch": "phase-7",
       "baseSha": "1f54d612f0e34b779dc83c76ba5ce50d3f720fa4",
       "approvedOn": "2026-08-08",
       "componentBreakdownDoc": "docs/phase-7-component-breakdown.md",
       "deviceGate": {
-        "status": "reserved",
-        "evidenceDueIn": "7.6",
-        "description": "Representative mid-tier WebGL2-capable touch device confirmed and reserved; physical evidence is not yet complete."
+        "status": "pending-owner-hosted-validation",
+        "evidenceDueIn": "post-gate exact-candidate publication",
+        "description": "Automated Tier 3 passed; physical Safari/mobile-GPU/FPS validation is pending and unclaimed. It may be performed only by the repository owner against the exact hosted candidate after separate merge/publication approval."
       },
       "mergeGate": {
-        "status": "reserved",
-        "after": "7.6 local Tier 3 PASS",
-        "owner": "Human"
+        "status": "awaiting-explicit-approval",
+        "after": "7.6 automated Tier 3 PASS",
+        "owner": "Human",
+        "publicationRequiredForDeviceCheck": true
       },
       "components": [
         {
@@ -302,18 +303,19 @@
           "deliveryBudget": "single-agent-run",
           "assuranceLane": "phase-gate (lean override)",
           "assuranceReasons": [
-            "Phase-final component owns cumulative Tier 3 validation, physical-device evidence, documentation reconciliation, phase report, self-review, and commit under the approved lean override."
+            "Phase-final component owns cumulative automated Tier 3 validation, documentation reconciliation, phase report, and self-review under the approved lean override.",
+            "The user override routes physical Safari/mobile-GPU/FPS validation to the repository owner against the exact hosted candidate after separate merge/publication approval; Implement performs no device access, push, merge, or publication."
           ],
           "validationTier": "phase",
           "validationOwner": "Implement",
           "commitOwner": "Implement",
           "fingerprintScope": ["."],
-          "evidenceFingerprint": null,
-          "validationEvidence": null,
-          "authorRepairUsed": false,
-          "remediationCycles": 0,
-          "disposition": null,
-          "status": "spec-validated"
+          "evidenceFingerprint": "10555250b730a5dbde62f51801d70ae96254b10b2359083666be2e157b881186",
+          "validationEvidence": "docs/phase-7-test-report.md",
+          "authorRepairUsed": true,
+          "remediationCycles": 2,
+          "disposition": "automated-tier-3-pass",
+          "status": "committed"
         }
       ]
     }

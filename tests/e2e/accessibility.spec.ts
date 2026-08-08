@@ -23,6 +23,8 @@ test.describe('accessible primary flow', () => {
     const settings = page.getByRole('tab', { name: 'Settings' });
     await settings.focus();
     await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('tab', { name: 'Reports' })).toBeFocused();
+    await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('tab', { name: 'Records' })).toBeFocused();
     await page.keyboard.press('Home');
     await expect(settings).toBeFocused();
@@ -47,7 +49,7 @@ test.describe('accessible primary flow', () => {
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await expect(page.getByText(/Day 1 report\. Served/)).toBeAttached();
     await expectNoSeriousViolations(page);
-    await activateWithKeyboard(page, page.getByRole('button', { name: 'Settle the day' }));
+    await activateWithKeyboard(page, page.getByRole('button', { name: 'Settle & reinvest' }));
     await expect(page.getByText('First-day guide · step 4/4')).toBeVisible();
   });
 
@@ -83,7 +85,7 @@ test.describe('accessible primary flow', () => {
     await finishRushByTouch(page);
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await expect(page.getByText(/Day 1 report\. Served/)).toBeAttached();
-    await page.getByRole('button', { name: 'Settle the day' }).tap();
+    await page.getByRole('button', { name: 'Settle & reinvest' }).tap();
     await expect(page.getByRole('heading', { name: 'Equipment workshop' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => window.innerWidth),

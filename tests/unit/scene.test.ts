@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -322,6 +323,55 @@ describe('snapshot-driven pixel scene', () => {
 });
 
 describe('snapshot-only WebGL contract', () => {
+  it('pins the audited MIT renderer stack and its React 19 peer contract exactly', () => {
+    const application = packageManifest('package.json');
+    const fiber = packageManifest('node_modules/@react-three/fiber/package.json');
+    const three = packageManifest('node_modules/three/package.json');
+    const threeTypes = packageManifest('node_modules/@types/three/package.json');
+
+    expect(application.dependencies).toMatchObject({
+      '@react-three/fiber': '9.7.0',
+      react: '19.2.7',
+      'react-dom': '19.2.7',
+      three: '0.185.1',
+    });
+    expect(application.devDependencies).toMatchObject({ '@types/three': '0.185.4' });
+    expect(fiber).toMatchObject({
+      license: 'MIT',
+      peerDependencies: {
+        react: '>=19 <19.3',
+        'react-dom': '>=19 <19.3',
+        three: '>=0.156',
+      },
+      version: '9.7.0',
+    });
+    expect(three).toMatchObject({ license: 'MIT', version: '0.185.1' });
+    expect(threeTypes).toMatchObject({ license: 'MIT', version: '0.185.4' });
+    expect(readFileSync('node_modules/three/LICENSE', 'utf8')).toContain('MIT License');
+    expect(readFileSync('node_modules/@types/three/LICENSE', 'utf8')).toContain('MIT License');
+
+    const lockfile = readFileSync('pnpm-lock.yaml', 'utf8');
+    expect(lockfile).toContain("'@react-three/fiber@9.7.0'");
+    expect(lockfile).toContain("'@types/three@0.185.4'");
+    expect(lockfile).toContain('three@0.185.1');
+  });
+
+  it('keeps the complete 3D renderer graph free of gameplay and persistence authorities', () => {
+    const sourceFiles = walkFiles('src/scene/three').filter((path) => /\.tsx?$/.test(path));
+    const source = sourceFiles.map((path) => readFileSync(path, 'utf8')).join('\n');
+    const serviceWorld = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+
+    expect(sourceFiles.length).toBeGreaterThanOrEqual(9);
+    expect(serviceWorld).toContain('const { game, meta, preferences } = useGame();');
+    expect(source).not.toMatch(
+      /\b(?:advanceTick|createCampaign|startRush|resolveEvent|closeDay|continueEndless|adjustPlanPrice|adjustPlanPurchase|dispatch)\b/,
+    );
+    expect(source).not.toMatch(
+      /(?:localStorage|sessionStorage|indexedDB|XMLHttpRequest|fetch\s*\(|Math\.random|Date\.now)/,
+    );
+    expect(source).not.toMatch(/from ['"][^'"]*(?:persistence|components)[^'"]*['"]/);
+  });
+
   it('provides immutable bounded and venue-distinct layouts for every service VenueId', () => {
     const venueIds: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
     expect(Object.keys(VENUE_LAYOUTS)).toEqual(venueIds);
@@ -473,6 +523,25 @@ describe('snapshot-only WebGL contract', () => {
 function deeplyFrozen(value: unknown): boolean {
   if (value === null || typeof value !== 'object') return true;
   return Object.isFrozen(value) && Object.values(value).every((nested) => deeplyFrozen(nested));
+}
+
+interface PackageManifest {
+  readonly dependencies?: Readonly<Record<string, string>>;
+  readonly devDependencies?: Readonly<Record<string, string>>;
+  readonly license?: string;
+  readonly peerDependencies?: Readonly<Record<string, string>>;
+  readonly version?: string;
+}
+
+function packageManifest(path: string): PackageManifest {
+  return JSON.parse(readFileSync(path, 'utf8')) as PackageManifest;
+}
+
+function walkFiles(directory: string): string[] {
+  return readdirSync(directory).flatMap((entry) => {
+    const path = join(directory, entry);
+    return statSync(path).isDirectory() ? walkFiles(path) : [path];
+  });
 }
 
 function withinFloor(

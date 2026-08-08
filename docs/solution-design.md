@@ -11,15 +11,16 @@ drift to the coordinator.
 ## Architecture overview
 
 A static Vite PWA runs entirely in the browser. React owns accessible management
-UI and application composition. Canvas 2D owns the fixed-resolution animated
-cafe scene. A pure deterministic TypeScript engine accepts commands and advances
-seeded simulation state without reading the DOM, clock, storage, or network.
+UI and application composition. A lazy Three.js/React Three Fiber renderer owns
+the fixed-isometric WebGL2 service presentation. A pure deterministic TypeScript
+engine accepts commands and advances seeded simulation state without reading the
+DOM, render clock, storage, or network.
 
 ```text
 React commands -> application controller -> pure simulation engine -> GameState
       ^                                                        |
       |                                                        v
-accessible panels <- selectors/reports <- immutable snapshots -> Canvas scene
+accessible panels <- selectors/reports <- immutable snapshots -> WebGL2 scene
                                       |
                                       v
                          versioned browser save adapter
@@ -28,7 +29,8 @@ accessible panels <- selectors/reports <- immutable snapshots -> Canvas scene
 ## Technology stack
 
 - React 19.2, strict TypeScript, Vite 8.1, pnpm 10, Node 22.
-- Canvas 2D with nearest-neighbour sprite rendering; React DOM for controls.
+- Three.js 0.185.1 and React Three Fiber 9.7.0 for lazy WebGL2 service
+  rendering; React DOM for all controls and authoritative text.
 - Vitest and React Testing Library; Playwright for desktop/touch-mobile E2E.
 - `vite-plugin-pwa` for manifest, update prompting, and offline asset caching.
 - ESLint and formatting checks compatible with the repository standards.
@@ -46,8 +48,10 @@ accessible panels <- selectors/reports <- immutable snapshots -> Canvas scene
   history, and event-choice orchestration.
 - **Persistence:** versioned save envelope, autosave, migration, import/export,
   corruption recovery, and settings/meta separation.
-- **Presentation:** responsive app shell, morning planner, rush HUD/scene, event
-  dialog, day report, hiring/upgrades, records/help/settings, and onboarding.
+- **Presentation:** responsive app shell, scene-free morning planner,
+  fixed-isometric service world, complete rush dashboard, event dialog, compact
+  day result and disclose-on-request report, reopenable report history,
+  hiring/upgrades, records/help/settings, and onboarding.
 - **PWA/release:** icons/manifest, offline cache, safe update prompt, CI, Pages,
   README, license, and public release configuration.
 
@@ -76,17 +80,22 @@ Autosaves use recoverable last-known-good behavior and never interrupt gameplay.
 
 ## Performance and accessibility
 
-Simulation ticks are deterministic and decoupled from animation frames. Canvas
-work uses sprite sheets and a small logical resolution; panels use semantic DOM.
-Mobile controls, keyboard navigation, reduced motion, non-colour status cues,
-and textual summaries are first-class acceptance requirements.
+Simulation ticks are deterministic and decoupled from animation frames. The
+service renderer receives one detached, deeply frozen, bounded snapshot; its
+frame callbacks may change local mesh transforms only. Worlds use an
+orthographic camera, capped DPR, bounded lights/shadows/crowds, and instanced
+repeated geometry. Panels use semantic DOM. At 360×780, scene and complete
+dashboard fit together above the fold. Mobile controls, keyboard navigation,
+reduced motion, non-colour status cues, and textual summaries are first-class
+acceptance requirements. Unsupported WebGL2 receives semantic save-safe
+guidance and never a 2D gameplay fallback.
 
 ## Development, testing, and deployment
 
-The exact commands and budgets are in `docs/project-profile.md`. Each of the
-three phases must remain runnable, add vertical user value, run the cumulative
-suite, and produce a PASS phase report. The sole Implement agent performs its
-own tests, fixes, review, and documentation under the user's lean-team override.
+The exact commands and budgets are in `docs/project-profile.md`. Each additive
+phase must remain runnable, add vertical user value, run the cumulative suite,
+and produce a PASS phase report. The sole Implement agent performs its own
+tests, fixes, review, and documentation under the user's lean-team override.
 
 ## Cost and external services
 
@@ -96,5 +105,8 @@ and Pages are the only release infrastructure.
 ## Key decisions and non-goals
 
 All product decisions, assumptions, and exclusions from `docs/requirements.md`
-are approved. Internal simplification is welcome only when it preserves the full
-observable feature set and quality bar.
+are approved. Phase 7 deliberately retains schema v3, the 30-day campaign, one
+balanced mode, and cart/kiosk/cafe. Phase 8 alone owns the v4 reset,
+Standard/Hard demand contracts, 40-day campaign, and department-store venue.
+Internal simplification is welcome only when it preserves the full observable
+feature set and quality bar.

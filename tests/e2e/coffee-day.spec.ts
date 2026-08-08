@@ -44,6 +44,7 @@ test.describe('complete specialty coffee trading day', () => {
         await page.waitForTimeout(250);
       }
     }
+    await page.getByText('View full Day 1 report').click();
     await expect(page.getByRole('heading', { name: 'Customers served' })).toBeVisible();
     await expect(page.getByText(/single origin changed shot quality/i)).toBeVisible();
     await expect(page.getByText(/weather:/i)).toBeVisible();

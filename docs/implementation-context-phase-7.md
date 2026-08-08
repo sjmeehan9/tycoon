@@ -25,20 +25,22 @@
 ### Human and external setup
 
 - The user's approval-and-proceed response answered the combined plan approval
-  and representative-device confirmation request. Access to a representative
-  mid-tier WebGL2-capable touch device is therefore **confirmed and reserved**
-  for Component 7.6.
-- Reservation is not physical-device proof. Device model, operating system,
-  browser/WebGL identity, viewport, DPR, dense-scene state, sampling method,
-  observed responsiveness/frame range, and visual findings remain to be
-  captured during Component 7.6. No synthetic result may be labelled as that
-  physical evidence.
+  and original representative-device confirmation request. The user later
+  superseded that gate: Component 7.6 must perform no physical-device access or
+  interaction. Automated Tier 3 covers desktop Chromium and the exact 360×780
+  touch-browser suite.
+- If physical validation is requested after implementation, its sole permitted
+  path is owner-led testing of the exact candidate at the existing public game
+  URL after automated PASS and separate merge/publication approval. That hosted
+  check remains pending and unclaimed; emulation or desktop WebGL evidence is
+  never labelled physical proof.
 - No account, credential, secret, environment variable, paid asset, backend,
   analytics service, asset CDN, runtime API, or publication action is required
   for Phase 7.
-- The later human gate remains intact: after Component 7.6 records local Tier 3
-  PASS, the user must approve or reject the `phase-7` merge. Phase 7 does not
-  publish a Pages release.
+- The later human gate remains intact: after Component 7.6 records automated
+  local Tier 3 PASS, the coordinator requests explicit merge/publication
+  direction. Component 7.6 itself performs no push, merge, publication, or
+  device interaction, and no intermediate/unvalidated build is published.
 
 ### Branch and Git boundary
 
@@ -69,7 +71,7 @@ before installation.
 | WebGL requirement and capability path | Current [Three.js WebGLRenderer documentation](https://threejs.org/docs/pages/WebGLRenderer.html) states that the renderer uses WebGL2 and that WebGL1 has been unsupported since r163. The official [WebGL capability helper](https://threejs.org/docs/pages/WebGL.html) exposes WebGL2 availability and an unsupported message.                                               | Require WebGL2 before mounting the production scene. Unsupported capability receives semantic React guidance, never Canvas gameplay. Runtime/context-loss proof is reserved for 7.2 and 7.6. |
 | Fixed-isometric camera                | The official [OrthographicCamera contract](https://threejs.org/docs/pages/OrthographicCamera.html) keeps rendered object size independent of camera distance.                                                                                                                                                                                                                   | Use a responsive orthographic frustum and fixed isometric orientation; executable resize/framing proof belongs to 7.2.                                                                       |
 | Repeated geometry budget              | The official [InstancedMesh contract](https://threejs.org/docs/pages/InstancedMesh.html) identifies reduced draw calls as its purpose for repeated geometry/materials.                                                                                                                                                                                                          | Repeated people/furnishings use bounded instancing; draw-call evidence belongs to runtime components and the phase gate.                                                                     |
-| High-density mobile rendering         | The official [Three.js responsive-rendering guide](https://threejs.org/manual/en/responsive.html) warns that unrestricted device-pixel ratio multiplies GPU work and documents limiting the drawing buffer.                                                                                                                                                                     | Cap DPR/internal pixel count. Physical mid-tier evidence remains reserved for 7.6.                                                                                                           |
+| High-density mobile rendering         | The official [Three.js responsive-rendering guide](https://threejs.org/manual/en/responsive.html) warns that unrestricted device-pixel ratio multiplies GPU work and documents limiting the drawing buffer.                                                                                                                                                                     | Cap DPR/internal pixel count and prove it in the exact 360×780 browser project. Owner-led hosted-device validation remains a post-completion check.                                          |
 | Lazy production chunks                | Current [Vite feature documentation](https://vite.dev/guide/features.html) documents dynamic-import code splitting, and [Vite production-build guidance](https://vite.dev/guide/build) exposes chunk strategy configuration.                                                                                                                                                    | The service route must be dynamically imported and its emitted graph inspected in 7.2; no chunk claim is made in 7.1.                                                                        |
 | Workbox file ceiling                  | The official [Workbox build reference](https://developer.chrome.com/docs/workbox/modules/workbox-build) supports `maximumFileSizeToCacheInBytes`.                                                                                                                                                                                                                               | Retain the stricter project limit of `1_000_000` bytes per precached file and prove the emitted manifest after production builds.                                                            |
 | Dependency licensing                  | The official [React Three Fiber license](https://github.com/pmndrs/react-three-fiber/blob/master/LICENSE) and [Three.js license](https://github.com/mrdoob/three.js/blob/dev/LICENSE) are MIT.                                                                                                                                                                                  | Compatible with the repository's MIT release model. Exact installed-package license files must be re-audited in 7.2/7.6.                                                                     |
@@ -87,12 +89,13 @@ version and does not change the approved architecture.
    behavior, and inspect lazy chunks plus Workbox sizes.
 2. **Components 7.2–7.5:** complete one Tier 2 gate for each unchanged scoped
    candidate and commit sequentially before entering the next component.
-3. **Component 7.6:** run the cumulative Tier 3 gate for the final global
-   fingerprint and collect the reserved desktop, exact 360×780 touch,
-   reduced-motion, unsupported/context-loss, and representative physical-device
-   evidence without claiming publication.
-4. **Post-7.6 human gate:** request explicit approval before merging
-   `phase-7`; no hosted publication is part of Phase 7.
+3. **Component 7.6:** run the cumulative automated Tier 3 gate for the final
+   global fingerprint and collect desktop, exact 360×780 touch, reduced-motion,
+   unsupported/context-loss, and all named Phase 7 evidence. Record physical
+   validation as pending/unclaimed.
+4. **Post-7.6 human gate:** request explicit merge/publication direction. If
+   approved, publish only the exact validated candidate at the existing public
+   game URL so the owner—not an agent—can perform any physical-device check.
 
 ## Phase 7 delivery state after Component 7.5
 
@@ -110,11 +113,13 @@ version and does not change the approved architecture.
   reads scene → dashboard/controls → live activity → stock.
 - Component 7.5: Tier 2 PASS at scoped fingerprint
   `ea64d40f3f724941cfa9abdea3e24e4f47a619a144c46ab00f2445eb9c835f71`;
-  serialized staging/commit handoff is pending. Day completion is compact,
-  settlement remains exact-once, and bounded campaign reports are reopenable
-  as read-only stored values.
-- Component 7.6: next. It owns the cumulative phase gate, physical-device
-  evidence, full-suite reconciliation, and phase documentation.
+  committed on `phase-7` at `385bfe2`. Day completion is compact, settlement
+  remains exact-once, and bounded campaign reports are reopenable as read-only
+  stored values.
+- Component 7.6: in progress. It owns the cumulative automated phase gate,
+  full-suite reconciliation, and phase documentation. Owner-led hosted-device
+  validation is a separate post-completion action and remains pending. No Phase
+  8 runtime work has started.
 
 ## Component 7.2 — Snapshot-Only WebGL Cart Service
 
@@ -341,3 +346,85 @@ VenueLayout>`. It defines bounded customer/staff/service/activity/stock
 - Full interfaces, ownership, commands, decisions, gotchas, spec mapping, and
   validation evidence are in
   `docs/components/phase-7-component-7-5-overview.md`.
+
+## Component 7.6 — Phase-7 Validation and Documentation
+
+### Cumulative proof boundary
+
+- Components 7.1–7.5 are committed in dependency order at `a586120`,
+  `8060579`, `f73900c`, `59934be`, and `385bfe2`; their scoped fingerprints and
+  unchanged overview evidence remain reusable.
+- Existing Vitest/React Testing Library/Playwright coverage maps every named
+  Phase 7 target across deterministic engine equality, immutable snapshot
+  separation, all three venues, WebGL2 capability/context loss, reduced motion,
+  exact 360×780 geometry, compact/history reports, schema-v3 persistence and
+  transfer, Phases 1–6 journeys, PWA/offline behavior, and the production
+  manifest/cache graph.
+- `tests/unit/scene.test.ts` now additionally audits the exact installed
+  R3F/Three/type pins, React 19 peer contract, MIT metadata/license texts, and
+  a complete renderer-source graph free of gameplay/persistence authorities.
+  `tests/e2e/webgl-service.spec.ts` now records actual WebGL2 identity and
+  drawing-buffer DPR against the 1.5 ceiling.
+- The superseded agent-led physical harness was removed. Component 7.6 neither
+  launches nor controls a device. The test report carries a concise owner
+  checklist for the exact hosted candidate and labels every physical field
+  pending/unclaimed until the user supplies it.
+
+### Cumulative Phase 6 assertion reconciliation
+
+- Compact reports retain the same cash, staffing, charge, lifecycle, causal,
+  victory, bankruptcy, and exact-once settlement proofs. Cumulative journeys
+  now first activate `View full Day N report`, assert the details were collapsed
+  beforehand where relevant, and settle through the canonical
+  `Settle & reinvest` action.
+- The new Reports tab sits between Settings and Records. The keyboard journey
+  now proves both ArrowRight transitions plus Home return instead of assuming
+  the old adjacent Settings → Records order.
+- Management-screen Canvas expectations are replaced with stronger scene-free
+  planning/reinvestment assertions. Original art remains checked on the title
+  screen; service then proves the responsive snapshot-only WebGL stage, bounded
+  viewport, WebGL2-ready canvas, and absence of the 320×180 Canvas bridge.
+- The living-rush journey preserves queue/activity/HUD truth, reload equality,
+  reduced-motion, active-to-paused frame-loop behavior, responsive bounds, and
+  report transition. Obsolete Canvas width/height and transient-sprite
+  attributes are replaced by WebGL frame/snapshot bounds and complete renderer
+  teardown at the compact report.
+- Browser-loop liveness now proves ordered callbacks plus the renderer's
+  active-to-paused transition without an unprofiled wall-time/FPS threshold.
+  The autosave journey retains its `progress >= 20` checkpoint with enough wait
+  time for four simultaneous production WebGL contexts to share the local
+  runner. These stabilizations are not desktop or physical FPS claims; the
+  physical disposition remains pending for the owner-hosted check.
+
+### Documentation boundary
+
+- `docs/brief.md`, `docs/requirements.md`, `docs/solution-design.md`, README,
+  and both runbooks now describe the Phase 7 WebGL service authority, scene-free
+  planning, service-first information order, compact/reopenable reports, and
+  automated browser gate without retaining contradictory Canvas/2D guidance.
+- The same documents explicitly separate current Phase 7 behavior—schema v3,
+  one balanced mode, 30 days, cart/kiosk/cafe—from planned Phase 8 behavior:
+  one v4 reset, Standard/Hard demand, 40 days, and the department-store venue.
+  No Phase 8 runtime behavior is implemented or represented as current.
+
+### Automated final gate and hosted-device handoff
+
+- After every fingerprinted source, test, configuration, and contract document
+  is stable, compute one unscoped global fingerprint and run exactly one
+  unchanged Tier 3 sequence: frozen install, build, lint, unit/component tests,
+  then complete Playwright. Only fingerprint-excluded reports/state may be
+  finalized afterward.
+- Tier 3 is authoritative for the automated Phase 7 verdict. It includes the
+  production desktop project and the exact 360×780 touch-browser project, all
+  three WebGL worlds, capability/context-loss/reduced-motion fixtures,
+  deterministic engine separation, layout/report journeys, cumulative Phases
+  1–6, performance/bundle targets, and offline behavior.
+- Physical Safari/GPU/FPS behavior is not claimed by Component 7.6. The report
+  records model/OS, browser/WebGL identity, viewport/DPR, portrait/landscape,
+  all venues, dense responsiveness/frame range, reduced motion, visual
+  findings, and 30fps disposition as pending/unclaimed.
+- Component 7.6 stops after automated PASS and its verified handoff. It does not
+  push, merge, publish, or access a device. Following explicit human approval,
+  the coordinator may arrange publication of that exact validated candidate at
+  the existing public game URL; only the repository owner performs the later
+  physical check. No intermediate/unvalidated build may be published.
