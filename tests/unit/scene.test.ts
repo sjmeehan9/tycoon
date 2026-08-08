@@ -1,8 +1,13 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  advanceTick,
   createCampaign,
   describeRushActivity,
+  setRushSpeed,
   startRush,
   type Customer,
   type RushActivityEvent,
@@ -23,6 +28,16 @@ import {
   syncScenePlayback,
   walkawayVisualLabel,
 } from '../../src/scene/scenePlayback';
+import {
+  ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+  orthographicProjection,
+} from '../../src/scene/three/camera';
+import { MAX_DEVICE_PIXEL_RATIO, boundedDevicePixelRatio } from '../../src/scene/three/materials';
+import {
+  MAX_RENDER_ACTIVITY_EVENTS,
+  MAX_RENDER_QUEUE_CUSTOMERS,
+  createRenderSnapshot,
+} from '../../src/scene/three/renderSnapshot';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 describe('snapshot-driven pixel scene', () => {
@@ -296,6 +311,87 @@ describe('snapshot-driven pixel scene', () => {
     expect(settled.queueMotions.every((motion) => motion.fromIndex === motion.toIndex)).toBe(true);
   });
 });
+
+describe('snapshot-only WebGL contract', () => {
+  it('copies, bounds, and deeply freezes every renderer-facing branch', () => {
+    const game = livingRushEnvelope({ paused: true, reducedMotion: true }).activeRun;
+    if (!game?.rush) throw new Error('Expected living-rush fixture.');
+    const snapshot = createRenderSnapshot(game, true, ['classicAwning']);
+    expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
+    expect(snapshot.service.activity.length).toBeLessThanOrEqual(MAX_RENDER_ACTIVITY_EVENTS);
+    expect(snapshot.service.queueCount).toBe(12);
+    expect(snapshot.service.active).toMatchObject({ id: 'd1-c1', progress: 0.4 });
+    expect(snapshot.presentation).toEqual({ reducedMotion: true, animate: false });
+    expect(snapshot.operation.stock).toHaveLength(9);
+    expect(deeplyFrozen(snapshot)).toBe(true);
+
+    const capturedCustomer = snapshot.service.queue[0]?.id;
+    game.rush.queue[0]!.id = 'mutated-after-snapshot';
+    expect(snapshot.service.queue[0]?.id).toBe(capturedCustomer);
+    expect(() => {
+      (snapshot.operation.stock[0] as { quantity: number }).quantity = 999_999;
+    }).toThrow(TypeError);
+  });
+
+  it.each([1, 2, 4] as const)(
+    'cannot alter deterministic engine truth while mounted at %d× or reduced motion',
+    (speed) => {
+      const base = livingRushEnvelope({ paused: false }).activeRun;
+      if (!base?.rush) throw new Error('Expected living-rush fixture.');
+      let observed = setRushSpeed(base, speed);
+      let control = setRushSpeed(base, speed);
+      let ticks = 0;
+      while (observed.phase === 'rush' && ticks < 400) {
+        createRenderSnapshot(observed, false, ['classicAwning']);
+        createRenderSnapshot(observed, true, ['classicAwning']);
+        observed = advanceTick(observed);
+        ticks += 1;
+      }
+      let controlTicks = 0;
+      while (control.phase === 'rush' && controlTicks < 400) {
+        control = advanceTick(control);
+        controlTicks += 1;
+      }
+      expect(ticks).toBeLessThan(400);
+      expect(controlTicks).toBe(ticks);
+      expect(observed.phase).toBe('report');
+      expect(observed).toEqual(control);
+      expect(observed).toMatchObject({
+        cashCents: control.cashCents,
+        inventory: control.inventory,
+        reputation: control.reputation,
+        report: control.report,
+      });
+    },
+  );
+
+  it('keeps a fixed orthographic scale and caps invalid or dense displays', () => {
+    expect(orthographicProjection(1_600, 900)).toEqual({
+      left: -(ORTHOGRAPHIC_VERTICAL_HALF_EXTENT * 1_600) / 900,
+      right: (ORTHOGRAPHIC_VERTICAL_HALF_EXTENT * 1_600) / 900,
+      top: ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+      bottom: -ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
+      near: 0.1,
+      far: 100,
+    });
+    expect(orthographicProjection(320, 180).top).toBe(orthographicProjection(1_600, 900).top);
+    expect(boundedDevicePixelRatio(3)).toBe(MAX_DEVICE_PIXEL_RATIO);
+    expect(boundedDevicePixelRatio(0)).toBe(1);
+    expect(boundedDevicePixelRatio(Number.NaN)).toBe(1);
+  });
+
+  it('keeps the approved title art byte-identical', () => {
+    const digest = createHash('sha256')
+      .update(readFileSync('public/assets/art/laneway-title.webp'))
+      .digest('hex');
+    expect(digest).toBe('5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37');
+  });
+});
+
+function deeplyFrozen(value: unknown): boolean {
+  if (value === null || typeof value !== 'object') return true;
+  return Object.isFrozen(value) && Object.values(value).every((nested) => deeplyFrozen(nested));
+}
 
 function sceneCustomer(id: string): Customer {
   return {

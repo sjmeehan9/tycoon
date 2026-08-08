@@ -147,6 +147,7 @@ all controls/text remain semantic React UI.
 ### File ownership
 
 - `package.json`, `pnpm-lock.yaml`, `vite.config.ts`
+- `docs/project-profile.md` (exact 3D dependency pins only)
 - `src/App.tsx`
 - `src/scene/sceneModel.ts`
 - `src/scene/three/ServiceWorld.tsx`

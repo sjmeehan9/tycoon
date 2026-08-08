@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react';
+
 import { useGame } from './app/GameContext';
 import { AudioDirector } from './audio/AudioDirector';
 import { GameAnnouncer } from './accessibility/GameAnnouncer';
@@ -16,6 +18,10 @@ import { CanvasScene } from './scene/CanvasScene';
 import { VENUES } from './content/gameContent';
 import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
+const LazyServiceWorld = lazy(() =>
+  import('./scene/three/ServiceWorld').then(({ ServiceWorld }) => ({ default: ServiceWorld })),
+);
+
 /** Root game composition. */
 export default function App(): React.JSX.Element {
   const { clearMessage, game, message } = useGame();
@@ -32,6 +38,9 @@ export default function App(): React.JSX.Element {
     );
   }
 
+  const serviceActive = game.phase === 'rush' || game.phase === 'event';
+  const webglCartActive = serviceActive && game.venueId === 'cart';
+
   return (
     <>
       <AudioDirector />
@@ -42,17 +51,34 @@ export default function App(): React.JSX.Element {
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <main className="game-layout">
           <div className="scene-column">
-            <CanvasScene />
+            {webglCartActive ? (
+              <Suspense
+                fallback={
+                  <div className="scene-frame scene-loading" role="status">
+                    Preparing the 3D cart…
+                  </div>
+                }
+              >
+                <LazyServiceWorld />
+              </Suspense>
+            ) : serviceActive ? (
+              // Temporary branch-only bridge. Component 7.3 replaces kiosk/cafe service worlds.
+              <div data-renderer-bridge="temporary-kiosk-cafe">
+                <CanvasScene />
+              </div>
+            ) : (
+              <CanvasScene />
+            )}
             <section className="scene-caption" aria-label="Current venue">
               <strong>{VENUES[game.venueId].name}</strong>
               <span>{VENUES[game.venueId].description}</span>
             </section>
-            {game.phase === 'rush' || game.phase === 'event' ? <RushStockGrid /> : null}
+            {serviceActive ? <RushStockGrid /> : null}
           </div>
           <div className="control-column" tabIndex={-1}>
             <OnboardingGuide />
             {game.phase === 'planning' ? <Planner /> : null}
-            {game.phase === 'rush' || game.phase === 'event' ? <RushPanel /> : null}
+            {serviceActive ? <RushPanel /> : null}
             {game.phase === 'report' ? <ReportPanel /> : null}
             {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
             {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}

@@ -1,15 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
 import { BrowserSaveStore, parseEnvelope, SAVE_KEY } from '../../src/persistence/saveStore';
+import { WebGLBoundary } from '../../src/scene/three/WebGLBoundary';
 import { livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 let playMock: ReturnType<typeof vi.fn<() => Promise<void>>>;
 
-describe('pixel presentation and audio consent', () => {
+describe('snapshot presentation and audio consent', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   beforeEach(() => {
     playMock = vi.fn(() => Promise.resolve());
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(playMock);
@@ -20,17 +23,20 @@ describe('pixel presentation and audio consent', () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
-    const scene = screen.getByRole('img', { name: /Coffee Cart in/ });
-    expect(scene).toHaveAttribute('width', '320');
-    expect(scene).toHaveAttribute('height', '180');
-    expect(scene).toHaveAttribute('data-animation', 'still');
+    const planningScene = screen.getByRole('img', { name: /Coffee Cart in/ });
+    expect(planningScene).toHaveAttribute('width', '320');
+    expect(planningScene).toHaveAttribute('height', '180');
+    expect(planningScene).toHaveAttribute('data-animation', 'still');
 
     await user.click(screen.getByRole('button', { name: 'Open the cart' }));
-    expect(scene).toHaveAttribute('data-animation', 'active');
+    const serviceScene = await screen.findByRole('img', { name: /Coffee Cart in/ });
+    expect(serviceScene.closest('figure')).toHaveAttribute('data-renderer', 'webgl');
+    expect(serviceScene.closest('figure')).toHaveAttribute('data-animation', 'active');
+    expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
     await user.click(screen.getByRole('button', { name: 'Game menu' }));
     await user.click(screen.getByRole('tab', { name: 'Settings' }));
     await user.click(screen.getByRole('checkbox', { name: 'Reduce motion' }));
-    expect(scene).toHaveAttribute('data-animation', 'still');
+    expect(serviceScene.closest('figure')).toHaveAttribute('data-animation', 'still');
   });
 
   it('keeps audio off initially, then persists independent consent controls', async () => {
@@ -53,18 +59,6 @@ describe('pixel presentation and audio consent', () => {
   });
 
   it('renders exact dense-rush truth with static reduced-motion evidence', async () => {
-    const fillText = vi.fn<(text: string, x: number, y: number) => void>();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
-      () =>
-        ({
-          clearRect: vi.fn(),
-          fillRect: vi.fn(),
-          fillText,
-          imageSmoothingEnabled: false,
-          fillStyle: '',
-          font: '',
-        }) as unknown as CanvasRenderingContext2D,
-    );
     new BrowserSaveStore(window.localStorage).save(
       livingRushEnvelope({ paused: true, reducedMotion: true }),
     );
@@ -73,14 +67,14 @@ describe('pixel presentation and audio consent', () => {
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
 
     const scene = screen.getByRole('img', { name: /12 customers waiting/ });
-    expect(scene).toHaveAttribute('data-animation', 'still');
-    expect(scene).toHaveAttribute('data-queue-count', '12');
-    expect(scene).toHaveAttribute('data-queue-overflow', '4');
-    expect(scene).toHaveAttribute('data-active-customer', 'd1-c1');
-    expect(scene).toHaveAttribute('data-last-event', 'd1-e6');
-    expect(scene.closest('figure')).toHaveAttribute('data-reduced-motion', 'true');
+    const frame = scene.closest('figure');
+    expect(frame).toHaveAttribute('data-animation', 'still');
+    expect(frame).toHaveAttribute('data-queue-count', '12');
+    expect(frame).toHaveAttribute('data-queue-overflow', '0');
+    expect(frame).toHaveAttribute('data-last-event', 'd1-e6');
+    expect(frame).toHaveAttribute('data-reduced-motion', 'true');
+    expect(frame).toHaveAttribute('data-snapshot-only', 'true');
     expect(screen.getByText('QUEUE 12')).toBeVisible();
-    expect(screen.getByText('+4 beyond view')).toBeVisible();
     expect(screen.getByText('SALE +$7.25')).toBeVisible();
     expect(screen.getByText('OUT OF STOCK')).toBeVisible();
     expect(
@@ -89,27 +83,48 @@ describe('pixel presentation and audio consent', () => {
     expect(document.querySelector('.last-walkaway-note')).toHaveTextContent(
       /Latest walkaway:.*out of stock/i,
     );
-    await waitFor(() =>
-      expect(fillText.mock.calls.map(([label]) => label)).toEqual(
-        expect.arrayContaining(['QUEUE 12', 'SALE +$7.25', 'OUT OF STOCK']),
-      ),
-    );
   });
 
-  it('freezes, resumes, and re-freezes bounded Canvas motion at the persisted 4× speed', async () => {
+  it('freezes, resumes, and re-freezes local WebGL motion at the persisted 4× speed', async () => {
     new BrowserSaveStore(window.localStorage).save(livingRushEnvelope({ paused: true }));
     const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     const scene = screen.getByRole('img', { name: /12 customers waiting/ });
-    expect(scene).toHaveAttribute('data-animation', 'still');
-    expect(scene).toHaveAttribute('data-speed', '4');
+    const frame = scene.closest('figure');
+    expect(frame).toHaveAttribute('data-animation', 'still');
+    expect(frame).toHaveAttribute('data-speed', '4');
 
     await user.click(screen.getByRole('button', { name: 'Resume' }));
-    expect(scene).toHaveAttribute('data-animation', 'active');
+    expect(frame).toHaveAttribute('data-animation', 'active');
     await user.click(screen.getByRole('button', { name: 'Pause' }));
-    expect(scene).toHaveAttribute('data-animation', 'still');
-    expect(scene.closest('figure')).toHaveAttribute('data-paused', 'true');
+    expect(frame).toHaveAttribute('data-animation', 'still');
+    expect(frame).toHaveAttribute('data-paused', 'true');
+  });
+
+  it('handles an explicit WebGL2 context loss without a Canvas fallback or game command', async () => {
+    class FakeWebGL2RenderingContext {}
+    vi.stubGlobal('WebGL2RenderingContext', FakeWebGL2RenderingContext);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      (contextId) =>
+        (contextId === 'webgl2'
+          ? new FakeWebGL2RenderingContext()
+          : null) as unknown as RenderingContext,
+    );
+    const user = userEvent.setup();
+    render(
+      <WebGLBoundary sceneLabel="Snapshot-only test world">
+        {({ generation }) => <canvas data-generation={generation} data-testid="registered-webgl" />}
+      </WebGLBoundary>,
+    );
+    const canvas = await screen.findByTestId('registered-webgl');
+    const lost = new Event('webglcontextlost', { cancelable: true });
+    canvas.dispatchEvent(lost);
+    expect(lost.defaultPrevented).toBe(true);
+    expect(await screen.findByRole('alert')).toHaveTextContent('3D context was interrupted');
+    expect(document.querySelector('canvas[role="img"]')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Retry 3D scene' }));
+    expect(await screen.findByTestId('registered-webgl')).toHaveAttribute('data-generation', '1');
   });
 });
 

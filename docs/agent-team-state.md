@@ -6,7 +6,8 @@ Phase 7 sequential implementation — the user approved the complete Phases 7–
 plan and authorized immediate implementation. Both required component
 breakdowns are `Spec-Validated`; Component 7.1 has reserved the human/device
 gates and established the documentation baseline on `phase-7`. Component 7.2
-is next and has not begun.
+has a complete Tier 2 PASS; Component 7.3 is next and must remove the temporary
+kiosk/cafe Canvas bridge before the branch is mergeable or releasable.
 
 ## Next-Level Evolution Stage Progress
 
@@ -19,7 +20,8 @@ is next and has not begun.
 - [x] User approves the complete plan
 - [x] Sequential Implement delivery begins on Phase 7
 - [x] Component 7.1 records the branch, official-source checklist, device reservation, and merge gate
-- [ ] Component 7.2 delivers the snapshot-only WebGL cart service
+- [x] Component 7.2 delivers the snapshot-only WebGL cart service
+- [ ] Component 7.3 completes kiosk and cafe isometric service worlds
 
 ## Lean team contract
 
@@ -63,7 +65,7 @@ is next and has not begun.
 | next_level_plan           | Technical Business Analyst | retired — stalled  | Intake/context audit; no artifact mutation returned                      |
 | next_level_plan_recovery  | Technical Business Analyst | done               | Comprehensive and corrected Phases 7–8 plan                             |
 | plan_feasibility_audit    | Implement                  | done — ready       | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | active — 7.1 done  | Sequential Phases 7–8 delivery; paused before Component 7.2             |
+| next_level_implement      | Implement                  | active — 7.2 PASS  | Sequential Phases 7–8 delivery; stops before Component 7.3              |
 
 ## Previous release human task gate
 
@@ -118,6 +120,7 @@ is next and has not begun.
 | 2026-08-08 | Approve complete Phases 7–8 plan                    | User authorized immediate implementation after the audited planning gate                                         | Phase 7+ delivery |
 | 2026-08-08 | Reserve representative WebGL2 touch-device evidence | The approval response answered the combined plan/device request; reservation is confirmed but physical proof remains due in 7.6 | Components 7.1/7.6 |
 | 2026-08-08 | Materialize both additive component breakdowns      | All 15 components now carry ownership, dependencies, Technical Validation, acceptance, lane, tier, and `Spec-Validated` status | Phases 7–8 entry |
+| 2026-08-08 | Pin the snapshot-only cart renderer stack           | R3F 9.7.0, Three 0.185.1, and `@types/three` 0.185.4 build with React 19.2/Vite 8.1; renderer input is one frozen bounded snapshot | Component 7.2 |
 
 ## Drift log
 
@@ -130,6 +133,7 @@ is next and has not begun.
 | 2026-07-19 | Pages workflow emitted compatibility warnings           | Node action-runtime and upload-input annotations were non-blocking; jobs, deployment, assets, and public runtime all passed  |
 | 2026-08-08 | Initial Phase 7+ TBA engagement produced no artifact after bounded follow-ups | Coordinator retired the stalled engagement and re-onboarded the same permitted role with a narrower write-first contract |
 | 2026-08-08 | R3F stable release advanced after planning research | Official releases now list v9.7.0 rather than v9.6.1 as latest stable; Component 7.1 selects no dependency and Component 7.2 must re-check and build-test its exact pin |
+| 2026-08-08 | Component 7.2 profile ownership was incomplete | Coordinator granted a bounded clarification: replace only the pending 3D version text with tested exact pins and add that line to 7.2 ownership/fingerprint scope |
 
 ## Deferred log
 
@@ -139,3 +143,6 @@ is next and has not begun.
   behavior.
 - Version 1 exclusions remain explicit non-goals in `docs/requirements.md`, not
   deferred required behavior.
+- The temporary Component 7.2 kiosk/cafe Canvas bridge is mandatory
+  intermediate sequencing, not released debt. Component 7.3 owns its removal;
+  until then the `phase-7` head is non-mergeable and non-releasable.

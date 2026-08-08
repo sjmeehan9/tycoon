@@ -88,7 +88,8 @@ describe('onboarding and accessible interaction', () => {
     expect(screen.getByRole('list', { name: 'Recent rush activity' })).toHaveTextContent(
       'started large oat Flat White service',
     );
-    expect(scene).toHaveAttribute('data-animation', 'still');
+    expect(scene.closest('figure')).toHaveAttribute('data-animation', 'still');
+    expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
   });
 });
 

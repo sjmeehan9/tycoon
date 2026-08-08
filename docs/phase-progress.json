@@ -154,6 +154,7 @@
             "package.json",
             "pnpm-lock.yaml",
             "vite.config.ts",
+            "docs/project-profile.md",
             "src/App.tsx",
             "src/scene/sceneModel.ts",
             "src/scene/three",
@@ -165,12 +166,12 @@
             "tests/e2e/webgl-service.spec.ts",
             "tests/fixtures/campaignFixtures.ts"
           ],
-          "evidenceFingerprint": null,
-          "validationEvidence": null,
+          "evidenceFingerprint": "8759d86a444de478015effb331e6633fcbae379dd7ab7979537292e5df067824",
+          "validationEvidence": "docs/components/phase-7-component-7-2-overview.md",
           "authorRepairUsed": false,
           "remediationCycles": 0,
-          "disposition": null,
-          "status": "spec-validated"
+          "disposition": "tier-2-pass",
+          "status": "committed"
         },
         {
           "id": "7.3",

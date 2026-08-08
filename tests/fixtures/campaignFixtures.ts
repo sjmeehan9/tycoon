@@ -10,6 +10,7 @@ import {
   type DayReport,
   type GameState,
   type SaveEnvelope,
+  type VenueId,
 } from '../../src/game';
 import {
   createDefaultMeta,
@@ -155,11 +156,13 @@ export interface LivingRushOptions {
   endingSoon?: boolean;
   paused?: boolean;
   reducedMotion?: boolean;
+  venueId?: VenueId;
 }
 
 /** Deterministic dense rush used to prove queue overflow, evidence, and static parity. */
 export function livingRushEnvelope(options: LivingRushOptions = {}): SaveEnvelope {
-  const started = startRush(createCampaign({ seed: 6_303 }));
+  const campaign = createCampaign({ seed: 6_303 });
+  const started = startRush({ ...campaign, venueId: options.venueId ?? campaign.venueId });
   if (!started.rush) throw new Error('Living-rush fixture requires an active rush.');
   const activeCustomer = livingRushCustomer('d1-c1', 'enthusiast');
   const queue = Array.from({ length: 12 }, (_, index) =>

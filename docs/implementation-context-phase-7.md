@@ -94,8 +94,69 @@ version and does not change the approved architecture.
 4. **Post-7.6 human gate:** request explicit approval before merging
    `phase-7`; no hosted publication is part of Phase 7.
 
-## Phase 7 delivery state after Component 7.1
+## Phase 7 delivery state after Component 7.2
 
 - Component 7.1: documentary Tier 1 gate complete and committed on `phase-7`.
-- Component 7.2: next, queued; no package or runtime work has begun.
-- Components 7.3–7.6: queued in approved dependency order.
+- Component 7.2: Tier 2 PASS at scoped fingerprint
+  `8759d86a444de478015effb331e6633fcbae379dd7ab7979537292e5df067824`;
+  commit is owned by Implement.
+- Component 7.3: next. It must replace the explicit kiosk/cafe Canvas bridge
+  before the Phase 7 branch can be considered mergeable or releasable.
+- Components 7.4–7.6: queued in approved dependency order.
+
+## Component 7.2 — Snapshot-Only WebGL Cart Service
+
+### Exact dependency and capability record
+
+- Pinned: Three.js `0.185.1`, `@react-three/fiber` `9.7.0`, and
+  `@types/three` `0.185.4`. Installed license metadata/files are MIT.
+- Registry peer metadata for R3F 9.7.0 accepts React and React DOM
+  `>=19 <19.3` and Three `>=0.156`; the repository uses React 19.2.7.
+- A TypeScript/R3F/Three/Vite production capability build passed before the
+  production world was completed. Current official Three documentation remains
+  WebGL2-only and current R3F releases retain React 19.2 support.
+- `docs/project-profile.md` now records these exact pins under the coordinator's
+  bounded ownership clarification; the same clarification is present in the
+  Component 7.2 breakdown ownership and progress fingerprint scope.
+
+### Runtime and authority boundary
+
+- `App` dynamically imports `ServiceWorld` only for cart `rush`/`event` phases.
+  Production HTML loads no 3D chunk initially, and browser resource timing
+  confirms `ServiceWorld` is absent before service.
+- `createRenderSnapshot` copies and recursively freezes bounded identity,
+  queue, active service, activity, staff, equipment, stock, statistics, and
+  motion data. It carries no command or store reference.
+- Fixed-isometric camera, procedural cart geometry, capped 1.5 DPR, 1,024px
+  basic shadow map, bounded instanced tiles/people/rain, and local transform-only
+  animation form the production renderer. Reduced motion retains the entire
+  world with demand rendering and static transforms.
+- Queue/counter/service, sale/walkaway exits, equipment, stock, weather, and
+  activity have both 3D/HUD and semantic text parity.
+- Explicit unsupported WebGL2, context loss/restoration, and renderer-error
+  paths give retry/reload guidance. Renderer failure never selects Canvas and
+  never issues a game command.
+
+### Intermediate merge boundary
+
+- Kiosk and cafe service saves remain runnable through
+  `data-renderer-bridge="temporary-kiosk-cafe"`. This bridge is selected only
+  by venue and is exercised for both venues on desktop and touch mobile.
+- The Component 7.2 head is therefore **non-mergeable and non-releasable**.
+  Component 7.3 must replace both remaining service worlds and delete the
+  bridge. Component 7.4 later owns removal of non-service planning animation and
+  the approved service information-flow ordering.
+
+### Production and validation evidence
+
+- Scoped fingerprint:
+  `8759d86a444de478015effb331e6633fcbae379dd7ab7979537292e5df067824`.
+- Tier 2: build PASS; lint PASS; 126/126 Vitest PASS; profiled cart-day,
+  accessibility, and WebGL service paths PASS with 12 browser tests and two
+  intentional project skips across desktop and 360×780 touch mobile.
+- Production chunks: `ServiceWorld` 178,073 bytes; `three-webgl` 724,513 bytes;
+  main 322,544 bytes. All 19 Workbox entries are below 1,000,000 bytes.
+- Approved title SHA-256 remains
+  `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+- Full contracts, commands, durations, screenshots, caveats, and spec mapping
+  are in `docs/components/phase-7-component-7-2-overview.md`.

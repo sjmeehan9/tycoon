@@ -302,6 +302,87 @@ small {
   aspect-ratio: 16 / 9;
   image-rendering: pixelated;
 }
+.scene-loading,
+.webgl-stage {
+  aspect-ratio: 16 / 9;
+}
+.scene-loading {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  color: var(--cream);
+  font-weight: 900;
+}
+.webgl-stage {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #78949b;
+}
+.webgl-stage > div,
+.webgl-stage canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.webgl-stage canvas {
+  aspect-ratio: auto;
+  image-rendering: auto;
+}
+.webgl-static-backdrop {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: #f2d7aa;
+  background:
+    linear-gradient(145deg, transparent 0 45%, rgba(47, 33, 24, 0.25) 45% 55%, transparent 55%),
+    linear-gradient(#78949b 0 45%, #a9543f 45% 68%, #5a4a43 68%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(1rem, 4vw, 2.3rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+.webgl-context-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: rgba(29, 23, 20, 0.58);
+}
+.webgl-status-message,
+.webgl-recovery {
+  position: absolute;
+  z-index: 4;
+  right: clamp(0.45rem, 2vw, 1rem);
+  bottom: clamp(0.45rem, 2vw, 1rem);
+  left: clamp(0.45rem, 2vw, 1rem);
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: rgba(255, 244, 214, 0.96);
+  box-shadow: 2px 2px 0 rgba(47, 33, 24, 0.55);
+}
+.webgl-recovery {
+  display: grid;
+  max-width: 38rem;
+  gap: 0.35rem;
+}
+.webgl-recovery p {
+  margin: 0;
+  font-size: clamp(0.72rem, 1.5vw, 0.9rem);
+}
+.webgl-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.webgl-recovery .button,
+.webgl-recovery .button-secondary {
+  min-height: 38px;
+  padding: 0.35rem 0.6rem;
+}
+.webgl-scene-hud .webgl-stock-signal {
+  background: #cfe2c7;
+}
 .scene-hud {
   position: absolute;
   z-index: 2;
@@ -1386,6 +1467,19 @@ legend {
   .scene-hud span {
     padding: 0.12rem 0.22rem;
     border-width: 1px;
+  }
+  .webgl-recovery {
+    max-height: calc(100% - 0.7rem);
+    overflow-y: auto;
+    padding: 0.45rem 0.55rem;
+  }
+  .webgl-recovery p {
+    font-size: 0.68rem;
+  }
+  .webgl-recovery .button,
+  .webgl-recovery .button-secondary {
+    min-height: 34px;
+    font-size: 0.7rem;
   }
   .rush-stock-heading {
     display: block;

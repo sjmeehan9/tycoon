@@ -186,11 +186,9 @@ No `.env.local` is required for the game. Never add secrets to the repository.
 - Vite 8.1.x
 - TypeScript, Vitest, Playwright, ESLint, and `vite-plugin-pwa`: pin mutually
   compatible current stable releases in `pnpm-lock.yaml` during implementation.
-- The approved 3D implementation may add Three.js, React Three Fiber, and small
-  supporting packages only after the Implement agent verifies current React 19,
-  Vite, browser, licensing, and bundle compatibility against official sources
-  during component Technical Validation; exact versions are then pinned in the
-  lockfile and recorded here.
+- Three.js `0.185.1`, React Three Fiber `9.7.0`, and `@types/three` `0.185.4`
+  are the exact MIT-licensed 3D pins verified against React 19.2 and Vite 8.1
+  during Component 7.2 Technical Validation.
 - Target Vite's modern-browser baseline, including Safari 16.4 or newer.
 
 ## Standards file
