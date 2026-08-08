@@ -205,6 +205,31 @@ export function candidateStaffName(seed: number, day: number, index: number): st
   return staffNameAtOrdinal(seed, candidateStaffOrdinal(day, index));
 }
 
+/** Return the canonical deterministic identity for one candidate slot. */
+export function candidateStaffId(seed: number, day: number, index: number): string {
+  candidateStaffOrdinal(day, index);
+  return `staff-${normalizeSeed(seed).toString(16)}-${day}-${index}`;
+}
+
+/** Parse a canonical candidate identity belonging to the supplied campaign seed. */
+export function candidateStaffSlotFromId(
+  id: string,
+  seed: number,
+): { day: number; index: number } | null {
+  const match = /^staff-([0-9a-f]+)-(\d+)-([0-3])$/.exec(id);
+  if (!match) return null;
+  const expectedSeed = normalizeSeed(seed);
+  if (match[1] !== expectedSeed.toString(16)) return null;
+  const day = Number(match[2]);
+  const index = Number(match[3]);
+  try {
+    candidateStaffOrdinal(day, index);
+  } catch {
+    return null;
+  }
+  return { day, index };
+}
+
 /** Resolve any valid ordinal in the complete 65,536-name namespace. */
 export function staffNameAtOrdinal(seed: number, ordinal: number): string {
   const normalizedSeed = normalizeSeed(seed);

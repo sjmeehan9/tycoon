@@ -2,13 +2,19 @@ import { useState } from 'react';
 
 import { useGame } from '../app/GameContext';
 import { SCENARIO_DETAILS } from '../content/gameContent';
-import type { ScenarioId } from '../game';
+import {
+  DIFFICULTY_DESCRIPTIONS,
+  DIFFICULTY_LABELS,
+  type Difficulty,
+  type ScenarioId,
+} from '../game';
 
 /** New/continue campaign entry screen. */
 export function TitleScreen(): React.JSX.Element {
   const { continueCampaign, hasSave, meta, resetCampaign, startCampaign } = useGame();
   const [seed, setSeed] = useState(2607);
   const [scenarioId, setScenarioId] = useState<ScenarioId>('lanewayClassic');
+  const [difficulty, setDifficulty] = useState<Difficulty>('standard');
 
   return (
     <main className="title-screen">
@@ -43,6 +49,27 @@ export function TitleScreen(): React.JSX.Element {
         <p className="field-help" id="seed-help">
           The same seed and decisions produce the same customers and outcomes.
         </p>
+        <fieldset aria-describedby="difficulty-help" className="difficulty-picker">
+          <legend>Difficulty</legend>
+          {(['standard', 'hard'] as const).map((id) => (
+            <label className={difficulty === id ? 'is-selected' : ''} key={id}>
+              <input
+                checked={difficulty === id}
+                name="campaign-difficulty"
+                onChange={() => setDifficulty(id)}
+                type="radio"
+                value={id}
+              />
+              <span>
+                <strong>{DIFFICULTY_LABELS[id]}</strong>
+                <small>{DIFFICULTY_DESCRIPTIONS[id]}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <p className="field-help" id="difficulty-help">
+          Difficulty is locked for this campaign. Scenario selection stays independent.
+        </p>
         <label className="seed-field">
           Scenario
           <select
@@ -59,7 +86,7 @@ export function TitleScreen(): React.JSX.Element {
         <div className="title-actions">
           <button
             className="button button-primary"
-            onClick={() => startCampaign(seed, scenarioId)}
+            onClick={() => startCampaign(seed, scenarioId, difficulty)}
             type="button"
           >
             Start new campaign

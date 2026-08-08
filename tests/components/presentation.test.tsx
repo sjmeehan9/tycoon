@@ -7,7 +7,7 @@ import { GameProvider } from '../../src/app/GameContext';
 import { SERVICE_DASHBOARD_FIELDS } from '../../src/components/RushPanel';
 import { BrowserSaveStore, parseEnvelope, SAVE_KEY } from '../../src/persistence/saveStore';
 import { WebGLBoundary } from '../../src/scene/three/WebGLBoundary';
-import { livingRushEnvelope } from '../fixtures/campaignFixtures';
+import { denseDepartmentRushEnvelope, livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 let playMock: ReturnType<typeof vi.fn<() => Promise<void>>>;
 
@@ -65,10 +65,20 @@ describe('snapshot presentation and audio consent', () => {
 
   it('keeps audio off initially, then persists independent consent controls', async () => {
     const user = userEvent.setup();
+    const createElementSpy = vi.spyOn(document, 'createElement');
     renderGame();
     expect(playMock).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    const gameMenu = await screen.findByRole('button', { name: 'Game menu' });
+    expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(0);
+    await user.click(gameMenu);
+    await waitFor(() =>
+      expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(
+        3,
+      ),
+    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift' }));
+    expect(createElementSpy.mock.calls.filter(([tagName]) => tagName === 'audio')).toHaveLength(3);
     await user.click(screen.getByRole('tab', { name: 'Settings' }));
     const sounds = screen.getByRole('checkbox', { name: 'Interface sounds' });
     const ambience = screen.getByRole('checkbox', { name: 'Cafe ambience' });
@@ -110,29 +120,44 @@ describe('snapshot presentation and audio consent', () => {
   });
 
   it.each([
-    { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const, world: 'laneway-cart' },
+    {
+      venueId: 'cart' as const,
+      staffCount: 2,
+      visibleCustomers: 12,
+      weather: 'sunny' as const,
+      world: 'laneway-cart',
+    },
     {
       venueId: 'kiosk' as const,
       staffCount: 3,
+      visibleCustomers: 12,
       weather: 'rainy' as const,
       world: 'sheltered-coffee-kiosk',
     },
     {
       venueId: 'cafe' as const,
       staffCount: 5,
+      visibleCustomers: 12,
       weather: 'coldSnap' as const,
       world: 'laneway-specialty-cafe',
+    },
+    {
+      venueId: 'departmentStore' as const,
+      staffCount: 8,
+      visibleCustomers: 13,
+      weather: 'mild' as const,
+      world: 'heritage-department-store-coffee-hall',
     },
   ])('routes $venueId service exclusively through its complete WebGL world', async (fixture) => {
     new BrowserSaveStore(window.localStorage).save(
       livingRushEnvelope({
         equipment: {
-          grinder: 2,
-          espressoMachine: 2,
-          batchBrewer: 2,
-          refrigeration: 2,
-          pos: 2,
-          serviceCounter: 2,
+          grinder: 3,
+          espressoMachine: 3,
+          batchBrewer: 3,
+          refrigeration: 3,
+          pos: 3,
+          serviceCounter: 3,
         },
         queueCount: 16,
         scheduledStaffCount: fixture.staffCount,
@@ -154,17 +179,69 @@ describe('snapshot presentation and audio consent', () => {
     expect(frame).toHaveAttribute('data-weather', fixture.weather);
     expect(frame).toHaveAttribute('data-light-count', '2');
     expect(frame).toHaveAttribute('data-shadow-light-count', '1');
-    expect(frame).toHaveAttribute('data-visible-customers', '12');
-    expect(frame).toHaveAttribute('data-max-visible-customers', '12');
+    expect(frame).toHaveAttribute('data-visible-customers', String(fixture.visibleCustomers));
+    expect(frame).toHaveAttribute(
+      'data-max-visible-customers',
+      fixture.venueId === 'departmentStore' ? '18' : '12',
+    );
     expect(frame).toHaveAttribute('data-max-visible-staff', '10');
     expect(frame).toHaveAttribute(
       'data-equipment',
-      'grinder:2,espressoMachine:2,batchBrewer:2,refrigeration:2,pos:2,serviceCounter:2',
+      'grinder:3,espressoMachine:3,batchBrewer:3,refrigeration:3,pos:3,serviceCounter:3',
+    );
+    expect(frame).toHaveAttribute(
+      'data-queue-capacity',
+      ({ cart: '16', kiosk: '19', cafe: '23', departmentStore: '32' } as const)[fixture.venueId],
     );
     expect(screen.getByText('+4 beyond view')).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('3D service needs WebGL 2');
     expect(document.querySelector('[data-renderer-bridge]')).not.toBeInTheDocument();
     expect(document.querySelector('canvas[width="320"]')).not.toBeInTheDocument();
+  });
+
+  it('exposes complete dense department truth, registries, and static lifecycle parity', async () => {
+    new BrowserSaveStore(window.localStorage).save(denseDepartmentRushEnvelope(true));
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+
+    const scene = screen.getByRole('img', { name: /30 customers waiting/ });
+    const frame = scene.closest('figure');
+    expect(frame).toHaveAttribute('data-animation', 'still');
+    expect(frame).toHaveAttribute('data-queue-count', '30');
+    expect(frame).toHaveAttribute('data-queue-normal', '12');
+    expect(frame).toHaveAttribute('data-queue-express', '18');
+    expect(frame).toHaveAttribute('data-queue-overflow', '18');
+    expect(frame).toHaveAttribute('data-visible-customers', '18');
+    expect(frame).toHaveAttribute('data-max-visible-customers', '18');
+    expect(frame).toHaveAttribute('data-staff-count', '10');
+    expect(frame).toHaveAttribute('data-active-job-ids', 'd3-j0,d3-j1,d3-j2');
+    expect(frame).toHaveAttribute('data-draw-call-budget', '72');
+    expect(frame).toHaveAttribute('data-triangle-budget', '60000');
+    expect(frame).toHaveAttribute('data-effect-cap', '6');
+    expect(frame).toHaveAttribute(
+      'data-motif-registry',
+      'patterned-heritage-tiles,timber-panelling-counters,brass-rails-details,visible-escalators,three-distinct-service-bays',
+    );
+    expect(frame).toHaveAttribute(
+      'data-equipment-registry',
+      'grinder,espressoMachine,batchBrewer,refrigeration,pos,serviceCounter',
+    );
+    expect(frame).toHaveAttribute(
+      'data-upgrade-anchor-registry',
+      'hallEntry,espressoBay,brewBay,coldBay',
+    );
+    expect(frame).toHaveAttribute('data-bay-registry', 'espressoBar,brewBar,coldBar');
+    expect(frame?.getAttribute('data-customer-entity-ids')?.split(',')).toHaveLength(18);
+    expect(frame?.getAttribute('data-staff-entity-ids')?.split(',')).toHaveLength(10);
+    expect(scene).toHaveAccessibleName(/3 active service jobs/);
+    expect(scene).toHaveAccessibleName(/12 normal, 18 express/);
+    expect(screen.getByText('+18 beyond view')).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Live station service' })).toHaveTextContent(
+      'Espresso',
+    );
+    expect(screen.getByRole('list', { name: 'Recent rush activity' })).toHaveTextContent('d3-c40');
+    expect(screen.getByRole('list', { name: 'Recent rush activity' })).toHaveTextContent('d3-c42');
   });
 
   it('freezes, resumes, and re-freezes local WebGL motion at the persisted 4× speed', async () => {

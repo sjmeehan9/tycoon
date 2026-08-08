@@ -1,9 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ARRIVAL_BASE_RATE,
+  BALANCE_RANGES,
+  CAMPAIGN_RULES,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
+  INITIAL_CASH_CENTS,
+  INITIAL_REPUTATION,
+} from '../../src/content/gameContent';
+import {
+  applyDemandInfluence,
+  ARRIVAL_DEMAND_ENGINE_INFLUENCES,
   advanceTick,
+  baseDrinkChoiceWeight,
+  candidatePoolForDay,
   createCampaign,
+  DEMAND_INFLUENCES,
+  DEMAND_INFLUENCE_IDS,
+  DIFFICULTY_DEVIATION_MULTIPLIERS,
   demandRate,
+  ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES,
+  operationalEffects,
   prepareDay,
   resolveEvent,
   startRush,
@@ -40,6 +58,139 @@ function completeRush(initial: GameState): GameState {
 }
 
 describe('explainable demand factors', () => {
+  it('keeps every frozen economy value inside its approved typed envelope', () => {
+    const inside = (
+      value: number,
+      range: Readonly<{ minimum: number; maximum: number }>,
+    ): boolean => value >= range.minimum && value <= range.maximum;
+
+    expect(inside(ARRIVAL_BASE_RATE, BALANCE_RANGES.arrivalBaseRate)).toBe(true);
+    expect(inside(INITIAL_CASH_CENTS, BALANCE_RANGES.initialCashCents)).toBe(true);
+    expect(inside(INITIAL_REPUTATION, BALANCE_RANGES.initialReputation)).toBe(true);
+    expect(
+      inside(
+        DIFFICULTY_DEVIATION_MULTIPLIERS.standard.price,
+        BALANCE_RANGES.standardPriceMultiplier,
+      ),
+    ).toBe(true);
+    expect(DIFFICULTY_DEVIATION_MULTIPLIERS.standard.nonPrice).toBe(1);
+    expect(
+      inside(DIFFICULTY_DEVIATION_MULTIPLIERS.hard.price, BALANCE_RANGES.hardDemandMultiplier),
+    ).toBe(true);
+    expect(DIFFICULTY_DEVIATION_MULTIPLIERS.hard.nonPrice).toBe(
+      DIFFICULTY_DEVIATION_MULTIPLIERS.hard.price,
+    );
+    expect(inside(CAMPAIGN_RULES.victoryCashCents, BALANCE_RANGES.victoryCashCents)).toBe(true);
+    expect(inside(CAMPAIGN_RULES.victoryReputation, BALANCE_RANGES.victoryReputation)).toBe(true);
+    expect(inside(CAMPAIGN_RULES.reputationSoftCeiling, BALANCE_RANGES.reputationSoftCeiling)).toBe(
+      true,
+    );
+    expect(inside(CAMPAIGN_RULES.overdraftFloorCents, BALANCE_RANGES.overdraftFloorCents)).toBe(
+      true,
+    );
+
+    for (const equipmentId of EQUIPMENT_IDS) {
+      for (const tier of EQUIPMENT[equipmentId].tiers) {
+        expect(inside(tier.costCents, BALANCE_RANGES.equipmentPurchaseCents)).toBe(true);
+        expect(inside(tier.operatingCostCents, BALANCE_RANGES.equipmentOperatingCents)).toBe(true);
+      }
+    }
+
+    for (let day = 1; day <= CAMPAIGN_RULES.durationDays; day += 1) {
+      for (const candidate of candidatePoolForDay(8_707, day)) {
+        const roundedBase =
+          Math.round((1_600 + candidate.speed * 8 + candidate.skill * 10) / 50) * 50;
+        const rolePremium = candidate.role === 'barista' ? 0 : 800;
+        expect(candidate.wageCents).toBe(roundedBase + rolePremium);
+        expect(inside(candidate.wageCents, BALANCE_RANGES.generatedWageCents)).toBe(true);
+      }
+    }
+  });
+
+  it('keeps the engine influence sets exhaustive with the typed registry', () => {
+    expect(
+      [...ARRIVAL_DEMAND_ENGINE_INFLUENCES, ...ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES].sort(),
+    ).toEqual([...DEMAND_INFLUENCE_IDS].sort());
+    expect(Object.keys(DEMAND_INFLUENCES).sort()).toEqual([...DEMAND_INFLUENCE_IDS].sort());
+    for (const definition of Object.values(DEMAND_INFLUENCES)) {
+      expect(definition.baseline.length).toBeGreaterThan(0);
+      expect(definition.engineSource.length).toBeGreaterThan(0);
+      expect(definition.boundary.length).toBeGreaterThan(0);
+      expect(definition.clamp.minimum).toBeLessThan(definition.clamp.maximum);
+    }
+  });
+
+  it('applies domain-aware Hard deviations and Standard price-only policy', () => {
+    for (const influenceId of DEMAND_INFLUENCE_IDS) {
+      const definition = DEMAND_INFLUENCES[influenceId];
+      const positiveDelta = Math.min((definition.clamp.maximum - definition.neutral) / 4, 0.02);
+      const negativeDelta = Math.min((definition.neutral - definition.clamp.minimum) / 4, 0.02);
+      const hardMultiplier =
+        definition.application === 'price-slope'
+          ? DIFFICULTY_DEVIATION_MULTIPLIERS.hard.price
+          : DIFFICULTY_DEVIATION_MULTIPLIERS.hard.nonPrice;
+
+      expect(applyDemandInfluence('standard', influenceId, definition.neutral)).toBe(
+        definition.neutral,
+      );
+      expect(applyDemandInfluence('hard', influenceId, definition.neutral)).toBe(
+        definition.neutral,
+      );
+
+      if (definition.domain !== 'negative-only') {
+        const baseline = definition.neutral + positiveDelta;
+        const hard = applyDemandInfluence('hard', influenceId, baseline);
+        expect((hard - definition.neutral) / positiveDelta).toBeCloseTo(hardMultiplier, 8);
+      } else {
+        expect(applyDemandInfluence('hard', influenceId, definition.neutral + positiveDelta)).toBe(
+          definition.neutral,
+        );
+      }
+
+      if (definition.domain !== 'positive-only') {
+        const baseline = definition.neutral - negativeDelta;
+        const hard = applyDemandInfluence('hard', influenceId, baseline);
+        expect((definition.neutral - hard) / negativeDelta).toBeCloseTo(hardMultiplier, 8);
+      } else {
+        expect(applyDemandInfluence('hard', influenceId, definition.neutral - negativeDelta)).toBe(
+          definition.neutral,
+        );
+      }
+
+      const standardBaseline =
+        definition.domain === 'negative-only'
+          ? definition.neutral - negativeDelta
+          : definition.neutral + positiveDelta;
+      const standard = applyDemandInfluence('standard', influenceId, standardBaseline);
+      const expectedMultiplier =
+        definition.application === 'price-slope'
+          ? DIFFICULTY_DEVIATION_MULTIPLIERS.standard.price
+          : DIFFICULTY_DEVIATION_MULTIPLIERS.standard.nonPrice;
+      expect(
+        Math.abs(standard - definition.neutral) / Math.abs(standardBaseline - definition.neutral),
+      ).toBeCloseTo(expectedMultiplier, 8);
+
+      expect(applyDemandInfluence('hard', influenceId, 1_000_000_000)).toBe(
+        definition.domain === 'negative-only' ? definition.neutral : definition.clamp.maximum,
+      );
+      expect(applyDemandInfluence('hard', influenceId, -1_000_000_000)).toBe(
+        definition.domain === 'positive-only' ? definition.neutral : definition.clamp.minimum,
+      );
+    }
+  });
+
+  it('uses the configured Standard and Hard slope once on the arrival price path', () => {
+    expect(arrivalPriceSlope('standard')).toBeCloseTo(1.225, 8);
+    expect(arrivalPriceSlope('hard')).toBeCloseTo(1.7, 8);
+    expect(arrivalPriceSlope('hard')).not.toBeCloseTo(1.225 * 1.7, 4);
+  });
+
+  it('uses the configured Standard and Hard slope once on segment order price choice', () => {
+    expect(orderPriceSlope('standard')).toBeCloseTo(1.225, 8);
+    expect(orderPriceSlope('hard')).toBeCloseTo(1.7, 8);
+    expect(orderPriceSlope('hard')).not.toBeCloseTo(1.225 * 1.7, 4);
+  });
+
   it('moves in the configured direction for price, reputation, quality, venue, and weather', () => {
     const cheap = startRush(
       prepareDay(stockedCampaign(), {
@@ -61,6 +212,9 @@ describe('explainable demand factors', () => {
     expect(demandRate({ ...cheap, venueId: 'cafe' })).toBeGreaterThan(
       demandRate({ ...cheap, venueId: 'cart' }),
     );
+    expect(demandRate({ ...cheap, venueId: 'departmentStore' })).toBeGreaterThan(
+      demandRate({ ...cheap, venueId: 'cafe' }),
+    );
     expect(demandRate({ ...cheap, weather: 'coldSnap' })).toBeGreaterThan(
       demandRate({ ...cheap, weather: 'rainy' }),
     );
@@ -79,10 +233,24 @@ describe('explainable demand factors', () => {
     const queued = {
       ...stocked,
       rush: stocked.rush
-        ? { ...stocked.rush, queue: Array.from({ length: 6 }, () => dummy) }
+        ? { ...stocked.rush, normalQueue: Array.from({ length: 6 }, () => dummy) }
         : null,
     };
     expect(demandRate(stocked)).toBeGreaterThan(demandRate(queued));
+    const splitAcrossLanes = {
+      ...stocked,
+      rush: stocked.rush
+        ? {
+            ...stocked.rush,
+            normalQueue: Array.from({ length: 2 }, () => dummy),
+            expressQueue: Array.from({ length: 4 }, () => ({
+              ...dummy,
+              laneId: 'express' as const,
+            })),
+          }
+        : null,
+    };
+    expect(demandRate(splitAcrossLanes)).toBe(demandRate(queued));
     const eventLift = {
       ...stocked,
       rush: stocked.rush ? { ...stocked.rush, demandMultiplier: 1.2 } : null,
@@ -106,12 +274,80 @@ describe('explainable demand factors', () => {
     }
     expect(seen).toEqual(new Set(['commuter', 'student', 'enthusiast', 'regular']));
   });
+
+  it('keeps department venue and commercial team-equipment source values inside exact Hard bounds', () => {
+    const venue = DEMAND_INFLUENCES.arrivalVenue;
+    expect(venue.engineSource).toBe('engine.demandRate.VENUE_DEMAND_FACTOR[state.venueId]');
+    expect(applyDemandInfluence('standard', 'arrivalVenue', 1.62)).toBeCloseTo(1.62, 8);
+    expect(applyDemandInfluence('hard', 'arrivalVenue', 1.62)).toBeCloseTo(2.054, 8);
+    expect(venue.clamp.maximum).toBeGreaterThanOrEqual(2.054);
+
+    const base = createCampaign({ seed: 8_303 });
+    const staff = Array.from({ length: 10 }, (_, index) => ({
+      ...base.candidateStaff[index % base.candidateStaff.length]!,
+      id: `demand-staff-${index}`,
+      name: `Demand Staff ${index}`,
+      trait: 'peoplePerson' as const,
+      hiredOnDay: 1,
+    }));
+    const department = {
+      ...base,
+      venueId: 'departmentStore' as const,
+      staff,
+      equipment: { ...base.equipment, pos: 3 },
+      plan: { ...base.plan, scheduledStaffIds: staff.map(({ id }) => id) },
+    };
+    const baselineTeamEquipment = operationalEffects(department).demandMultiplier;
+    const hardTeamEquipment = applyDemandInfluence(
+      'hard',
+      'arrivalTeamEquipment',
+      baselineTeamEquipment,
+    );
+    expect(DEMAND_INFLUENCES.arrivalTeamEquipment.engineSource).toBe(
+      'engine.demandRate.operationalEffects(state).demandMultiplier',
+    );
+    expect(baselineTeamEquipment).toBeCloseTo(1.05 ** 10 * 1.07, 8);
+    expect(
+      applyDemandInfluence('standard', 'arrivalTeamEquipment', baselineTeamEquipment),
+    ).toBeCloseTo(baselineTeamEquipment, 8);
+    expect(hardTeamEquipment).toBeCloseTo(1 + (baselineTeamEquipment - 1) * 1.7, 8);
+    expect(hardTeamEquipment).toBeLessThanOrEqual(
+      DEMAND_INFLUENCES.arrivalTeamEquipment.clamp.maximum,
+    );
+  });
 });
+
+function arrivalPriceSlope(difficulty: GameState['difficulty']): number {
+  const campaign = createCampaign({ seed: 9_001, difficulty });
+  const neutral = prepareDay(campaign, {
+    activeMenu: ['espresso', 'flatWhite'],
+    pricesCents: { espresso: 450, flatWhite: 550 },
+  });
+  const higher = prepareDay(campaign, {
+    activeMenu: ['espresso', 'flatWhite'],
+    pricesCents: { espresso: 540, flatWhite: 640 },
+  });
+  const observedHigherFactor =
+    (demandRate(startRush(higher)) / demandRate(startRush(neutral))) * 1.15;
+  return (1.15 - observedHigherFactor) / 0.1;
+}
+
+function orderPriceSlope(difficulty: GameState['difficulty']): number {
+  const campaign = createCampaign({ seed: 9_002, difficulty });
+  const neutral = prepareDay(campaign, { pricesCents: { flatWhite: 550 } });
+  const higher = prepareDay(campaign, { pricesCents: { flatWhite: 626 } });
+  const neutralWeight = baseDrinkChoiceWeight(neutral, 'commuter', 'flatWhite');
+  const higherWeight = baseDrinkChoiceWeight(higher, 'commuter', 'flatWhite');
+  const observedHigherFactor = (higherWeight / neutralWeight) * 1.25;
+  return (1.25 - observedHigherFactor) / 0.1;
+}
 
 function createDummyCustomer(): Customer {
   return {
     id: 'waiting',
     segment: 'commuter',
+    stationId: 'espressoBar',
+    laneId: 'normal',
     arrivedAtTick: 0,
     patienceTicks: 100,
     waitedTicks: 20,

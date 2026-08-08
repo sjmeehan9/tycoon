@@ -4,7 +4,7 @@ import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { growthReadyEnvelope } from '../fixtures/campaignFixtures';
 
 test.describe('staff and investment operations', () => {
-  test('hires both roles, schedules service, settles payroll, and reaches equipment growth', async ({
+  test('hires both cart-eligible roles, schedules service, settles payroll, and reaches equipment growth', async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -49,17 +49,19 @@ test.describe('staff and investment operations', () => {
     await expect(page.getByText('Current: +2 cup quality')).toBeVisible();
   });
 
-  test('promotes the validated business from cart through kiosk to cafe', async ({ page }) => {
+  test('promotes the validated business from cart through kiosk and cafe to the department store', async ({
+    page,
+  }) => {
     await page.goto('./');
     await importSave(page, serializeEnvelope(growthReadyEnvelope()));
     await expect(page.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Day 18/30 · Coffee Cart' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Day 18/40 · Coffee Cart' })).toBeVisible();
     await expect(page.locator('figure[data-renderer]')).toHaveCount(0);
 
     await page.getByRole('button', { name: /Buy Grinder level 1/ }).click();
     await page.getByRole('button', { name: /Buy Espresso machine level 1/ }).click();
     await page.getByRole('button', { name: 'Promote to Coffee Kiosk' }).click();
-    await expect(page.getByRole('heading', { name: 'Day 18/30 · Coffee Kiosk' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Day 18/40 · Coffee Kiosk' })).toBeVisible();
     await expect(page.locator('figure[data-renderer]')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Promote to Specialty Cafe' })).toBeDisabled();
 
@@ -69,8 +71,18 @@ test.describe('staff and investment operations', () => {
     await page.getByRole('button', { name: /Buy Point of sale level 1/ }).click();
     await page.getByRole('button', { name: 'Promote to Specialty Cafe' }).click();
 
+    await expect(page.getByRole('heading', { name: 'Day 18/40 · Specialty Cafe' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Promote to Department Store Coffee Hall' }),
+    ).toBeEnabled();
+    await expect(page.getByRole('heading', { name: 'Flagship venue complete' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Promote to Department Store Coffee Hall' }).click();
+
     await expect(page.getByRole('heading', { name: 'Flagship venue complete' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Day 18/30 · Specialty Cafe' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Day 18/40 · Department Store Coffee Hall' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /Promote to/ })).toHaveCount(0);
     await expect(page.locator('figure[data-renderer]')).toHaveCount(0);
   });
 });

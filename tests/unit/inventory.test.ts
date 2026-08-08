@@ -5,6 +5,7 @@ import {
   addPlannedPurchases,
   batchExpiryDay,
   consumeIngredientsLifo,
+  consumeIngredientsAtServiceStart,
   expireInventoryAfterRush,
   extendInventoryRefrigeration,
   hasIngredients,
@@ -49,6 +50,19 @@ describe('dated perishable inventory', () => {
     expect(ingredientQuantity(consumed, 'dairyMilk')).toBe(250);
   });
 
+  it('makes service-start consumption an explicit irrevocable exact-once transition', () => {
+    const inventory = inventoryWithDairy([{ quantity: 200, acquiredDay: 1, expiresAfterDay: 3 }]);
+    const consumed = consumeIngredientsAtServiceStart(inventory, [
+      { ingredientId: 'dairyMilk', amount: 75 },
+    ]);
+
+    expect(ingredientQuantity(inventory, 'dairyMilk')).toBe(200);
+    expect(ingredientQuantity(consumed, 'dairyMilk')).toBe(125);
+    expect(() =>
+      consumeIngredientsAtServiceStart(consumed, [{ ingredientId: 'dairyMilk', amount: 150 }]),
+    ).toThrow('not available in full');
+  });
+
   it('never silently consumes unavailable or expired quantities', () => {
     const inventory = inventoryWithDairy([{ quantity: 100, acquiredDay: 1, expiresAfterDay: 3 }]);
     const afterExpiry = expireInventoryAfterRush(inventory, 3).inventory;
@@ -67,13 +81,25 @@ describe('dated perishable inventory', () => {
 
     const tierOne = extendInventoryRefrigeration(inventory, 2, 0, 1);
     const tierTwo = extendInventoryRefrigeration(tierOne, 2, 1, 2);
+    const tierThree = extendInventoryRefrigeration(tierTwo, 2, 2, 3);
 
     expect(tierOne.dairyMilk[0]?.expiresAfterDay).toBe(5);
     expect(tierTwo.dairyMilk[0]?.expiresAfterDay).toBe(6);
+    expect(tierThree.dairyMilk[0]?.expiresAfterDay).toBe(8);
+    expect(tierThree.coldBrewConcentrate[0]?.expiresAfterDay).toBe(8);
     expect(tierTwo.coldBrewConcentrate[0]?.expiresAfterDay).toBe(6);
-    expect(tierTwo.houseBeans[0]?.expiresAfterDay).toBe(4);
-    expect(batchExpiryDay('oatMilk', 7, 2)).toBe(11);
-    expect(batchExpiryDay('chocolate', 7, 2)).toBe(9);
+    expect(tierThree.houseBeans[0]?.expiresAfterDay).toBe(4);
+    expect(batchExpiryDay('oatMilk', 7, 3)).toBe(13);
+    expect(batchExpiryDay('chocolate', 7, 3)).toBe(9);
+
+    const lifecycle = expireInventoryAfterRush(tierThree, 7);
+    expect(lifecycle.expired.dairyMilk).toBe(0);
+    expect(lifecycle.expired.houseBeans).toBe(500);
+    expect(inventoryTotals(lifecycle.inventory)).toMatchObject({
+      dairyMilk: 400,
+      coldBrewConcentrate: 600,
+      houseBeans: 0,
+    });
   });
 
   it('projects purchase totals without mutating carried stock', () => {

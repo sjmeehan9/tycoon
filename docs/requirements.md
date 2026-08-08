@@ -12,8 +12,9 @@ debug, review, document, and validate the game.
 
 Create a fully playable, free, open-source, browser-based old-school tycoon game
 inspired by the approachable plan-and-resolve rhythm of classic lemonade-stand
-games. The player grows a coffee cart into a specialty cafe in a fictional,
-unmistakably Melbourne setting.
+games. The player grows a coffee cart through a kiosk and specialty cafe into a
+large department-store coffee hall in a fictional, unmistakably Melbourne
+setting.
 
 ## Audience and distribution
 
@@ -24,18 +25,20 @@ unmistakably Melbourne setting.
 
 ## Required game loop
 
-1. Start or continue a seeded 30-day campaign. The approved Phase 8 expansion
-   will replace this boundary with a new 40-day campaign after its explicit v4
-   reset; it is not part of the current Phase 7 runtime.
+1. Start or continue a seeded 40-day Standard or Hard campaign after the single
+   schema-v4 preferences-only legacy reset.
 2. In morning planning, choose the active menu, prices, ingredient purchases,
-   daily espresso dial-in, scheduled staff, and affordable upgrades.
+   daily espresso dial-in, scheduled staff, station assignments, zero to three
+   eligible express drinks, and affordable upgrades. No scene preview appears
+   during planning.
 3. Run a 60–90 second animated service rush with pause and 1x/2x/4x speeds.
-4. Staff automatically serve customers while the player inspects queues and
-   answers zero to two meaningful event choices.
+4. Staff automatically serve customers across the venue's configured stations
+   while the player inspects normal/express queues and answers zero to two
+   meaningful event choices.
 5. Read a compact day-complete summary. Open the full profit-and-loss,
    customer-satisfaction, inventory/waste, bottleneck, and reputation report
    only when wanted; settled reports remain reopenable from the Game menu.
-6. Reinvest and continue until victory on Day 30 or bankruptcy.
+6. Reinvest and continue until victory on Day 40 or bankruptcy.
 
 ## Coffee and cafe simulation
 
@@ -51,32 +54,37 @@ unmistakably Melbourne setting.
 - At least four readable segments: commuters, students, coffee enthusiasts,
   and local regulars.
 - Seeded randomness makes identical states and decisions reproducible.
-- The current Phase 7 economy retains its existing single balanced mode. Phase
-  8 will add a preselected Standard mode with moderately stronger price
-  sensitivity and a Hard mode that symmetrically amplifies every existing
-  demand factor; neither mode is implemented early in Phase 7.
+- Standard is visibly preselected and raises both price-response paths by the
+  configured 1.225 multiplier while retaining baseline non-price behavior.
+  Hard applies the configured 1.70 multiplier directly to every registered,
+  domain-supported demand deviation from neutral without compounding Standard.
+  Difficulty is immutable for the campaign and independent of scenario.
 
 ## Progression and economy
 
-- One business progresses from cart to kiosk to cafe.
+- One business progresses from cart to kiosk to cafe to the Merriweather
+  Department Store Coffee Hall.
 - Venue tiers unlock menu capacity, staff capacity, equipment, demand, and
   distinct visuals.
-- Staff use barista or front-of-house roles and have speed, skill, wage, and
-  one readable trait; the player hires from a rotating pool and schedules a
-  daily team without full weekly rostering.
+- Staff use Barista, Front of house, Manager, or Runner roles and have speed,
+  skill, wage, and one readable trait; the player hires from a rotating pool
+  and schedules a daily team without full weekly rostering. The department
+  roster holds twelve and the daily schedule accepts up to ten.
 - Equipment includes grinders, espresso machines, batch brewers,
   refrigeration, POS, and service-counter upgrades affecting quality,
-  throughput, reliability, or waste.
-- Day 30 victory requires the cafe tier plus configured cash and reputation
-  targets. Crossing the configured overdraft floor at day close causes
-  bankruptcy. Numeric tuning lives in typed content configuration and is
-  validated with seeded campaign simulations.
+  throughput, reliability, or waste. Every category has three validated tiers.
+- Department service uses three authoritative stations, normal and express
+  queues, and up to three simultaneous service jobs against one shared
+  inventory. Express selection accepts zero to three unique eligible drinks.
+- Day 40 victory requires the department-store tier plus configured cash and
+  reputation targets. Crossing the configured overdraft floor at day close
+  causes bankruptcy. Numeric tuning lives in typed content configuration and
+  is validated with seeded campaign simulations.
 - First victory unlocks endless mode. Achievements unlock cosmetics, records,
   and alternate scenarios only; no permanent economic bonuses carry over.
-- Phase 8 will extend the same business to a fourth, massive department-store
-  coffee operation with higher staff capacity and additional unlocks, and will
-  extend the campaign to 40 days. Existing progress may be invalidated only at
-  that planned schema-v4 boundary.
+- Shared achievements and cosmetics remain economically neutral across
+  difficulty records. No later schema boundary may resurrect the v1/v2/v3
+  progress discarded by the verified v4 reset.
 
 ## Presentation and interaction
 
@@ -85,8 +93,9 @@ unmistakably Melbourne setting.
   procedural low-poly 3D with pixel-compatible materials.
 - Service uses a fixed-isometric WebGL2 scene paired with crisp semantic React
   management panels. Morning planning is full-width and has no scene preview.
-- Original worlds for cart, kiosk, cafe, staff, customers, weather, equipment,
-  and interface accents; the existing title art remains unchanged.
+- Original worlds for cart, kiosk, cafe, department-store hall, staff,
+  customers, weather, equipment, physical upgrades, and interface accents; the
+  existing title art remains unchanged.
 - Optional locally bundled ambience and interface cues; sound starts disabled
   until enabled by user interaction.
 - Service information is ordered scene → complete rush dashboard → live
@@ -100,7 +109,10 @@ unmistakably Melbourne setting.
 
 - Auto-save the active run, preferences, records, and unlocks locally at phase
   transitions and safely during service.
-- Version the save schema and migrate supported older saves.
+- Current saves use schema v4. Every supported v1/v2/v3 primary, backup,
+  recovery, or imported envelope traverses the same one-time allowlist reset:
+  only sound, ambience, and reduced-motion survive; all legacy progress, meta,
+  records, history, and onboarding state are discarded.
 - Export and import validated JSON save files.
 - Corrupt or incompatible saves produce recovery choices instead of crashes.
 - PWA manifest and service worker cache the complete runtime for offline play.
@@ -132,23 +144,23 @@ unmistakably Melbourne setting.
 - React Testing Library proves key controls, reports, event choices,
   accessibility, and import recovery behavior.
 - Playwright proves complete desktop and touch-mobile journeys through a day,
-  progression, save/reload, export/import, campaign win, bankruptcy, endless
-  unlock, all three fixed-isometric worlds, capability/context-loss behavior,
-  exact 360×780 service geometry, report history, offline reload, and GitHub
+  four-venue progression, department workforce and parallel service,
+  save/reload, export/import, Day-40 victory, bankruptcy, endless unlock, all
+  four fixed-isometric worlds, capability/context-loss behavior, exact 360×780
+  service geometry, report history, offline reload, safe update, and GitHub
   Pages subpath behavior.
-- Phase 7 automated acceptance proves desktop and exact 360×780 touch-browser
+- Phase 8 automated acceptance proves desktop and exact 360×780 touch-browser
   behavior. Real Safari/mobile GPU capability, orientation, dense-world
   responsiveness, reduced motion, and the 30fps disposition remain a separate
   owner-led check against the exact approved build at the public game URL after
   automated PASS and merge/publication approval; no physical result is claimed
   before the owner performs it.
-- A user can finish or lose a complete 30-day campaign on desktop and mobile,
+- A user can finish or lose a complete 40-day campaign on desktop and mobile,
   continue in endless mode after winning, transfer a save, and play offline.
 
 ## Explicit non-goals
 
-Food, manual drink-making, detailed weekly rosters, multiple simultaneous
-locations, cloud accounts, multiplayer, localization, paid content, analytics,
-and external live-service dependencies are not part of version 1. The approved
-Phase 8 department-store tier, 40-day campaign, and Standard/Hard modes are
-planned expansion rather than current Phase 7 behavior and are not non-goals.
+Food, an eleventh drink, new ingredients, manual drink-making, detailed weekly
+rosters, multiple simultaneous locations, cloud accounts, multiplayer,
+localization, paid content, analytics, and external live-service dependencies
+are not part of this release.

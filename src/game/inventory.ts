@@ -6,6 +6,7 @@ import {
   PURCHASE_PACKAGES,
   emptyIngredientTotals,
   emptyInventory,
+  equipmentTierAtLevel,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
 import type {
@@ -28,9 +29,9 @@ export function refrigerationExtensionDays(
   refrigerationTier: number,
 ): number {
   if (!INGREDIENT_DETAILS[ingredientId].chilled) return 0;
-  if (refrigerationTier >= 2) return 2;
-  if (refrigerationTier === 1) return 1;
-  return 0;
+  return (
+    equipmentTierAtLevel('refrigeration', refrigerationTier)?.effects.chilledShelfLifeDays ?? 0
+  );
 }
 
 /** Return the inclusive last usable day for a newly acquired ingredient batch. */
@@ -172,6 +173,19 @@ export function consumeIngredientsLifo(
   return updated;
 }
 
+/**
+ * Consume one job's complete ingredient requirement at its deterministic service start.
+ *
+ * This is the parallel-service ownership boundary: stock is removed once and is not released if
+ * the rush ends after preparation has begun. Completion must never call this function again.
+ */
+export function consumeIngredientsAtServiceStart(
+  inventory: IngredientInventory,
+  ingredients: IngredientAmount[],
+): IngredientInventory {
+  return consumeIngredientsLifo(inventory, ingredients);
+}
+
 /** Remove all batches whose last usable rush just completed and total the waste. */
 export function expireInventoryAfterRush(
   inventory: IngredientInventory,
@@ -195,7 +209,11 @@ export function extendInventoryRefrigeration(
   previousTier: number,
   nextTier: number,
 ): IngredientInventory {
-  const delta = Math.max(0, Math.min(2, nextTier) - Math.min(2, previousTier));
+  const delta = Math.max(
+    0,
+    refrigerationExtensionDays('dairyMilk', nextTier) -
+      refrigerationExtensionDays('dairyMilk', previousTier),
+  );
   if (delta === 0) return inventory;
   const updated = cloneInventory(inventory);
   for (const ingredientId of INGREDIENT_IDS) {

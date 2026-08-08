@@ -4,18 +4,28 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { VENUE_IDS } from '../../src/content/gameContent';
 import {
   advanceTick,
   createCampaign,
+  defaultStationAssignments,
   describeRushActivity,
+  emptyServiceJobs,
+  LANE_IDS,
   setRushSpeed,
   startRush,
+  STATION_IDS,
   type Customer,
   type RushActivityEvent,
   type VenueId,
 } from '../../src/game';
 import {
   LOGICAL_SCENE_SIZE,
+  MAX_SCENE_ACTIVE_CUSTOMERS,
+  MAX_SCENE_CUSTOMERS,
+  MAX_SCENE_EFFECTS,
+  MAX_SCENE_QUEUED_CUSTOMERS,
+  MAX_SCENE_STAFF,
   createSceneSnapshot,
   describeScene,
   shouldAnimateScene,
@@ -31,10 +41,28 @@ import {
   walkawayVisualLabel,
 } from '../../src/scene/scenePlayback';
 import {
+  DEPARTMENT_COMPACT_VERTICAL_HALF_EXTENT,
+  DEPARTMENT_FULL_VERTICAL_HALF_EXTENT,
   ORTHOGRAPHIC_VERTICAL_HALF_EXTENT,
   orthographicProjection,
+  orthographicProjectionForExtent,
 } from '../../src/scene/three/camera';
-import { MAX_DEVICE_PIXEL_RATIO, boundedDevicePixelRatio } from '../../src/scene/three/materials';
+import {
+  COMPACT_DEVICE_PIXEL_RATIO,
+  COMPACT_SHADOW_MAP_SIZE,
+  MAX_DEVICE_PIXEL_RATIO,
+  SHADOW_MAP_SIZE,
+  boundedDepartmentDevicePixelRatio,
+  boundedDevicePixelRatio,
+} from '../../src/scene/three/materials';
+import {
+  DEPARTMENT_EQUIPMENT_REGISTRY,
+  DEPARTMENT_HERITAGE_MOTIFS,
+  DEPARTMENT_LAYOUT,
+  DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY,
+  departmentCustomerPoint,
+  departmentPerformanceBudget,
+} from '../../src/scene/three/venues/departmentLayout';
 import {
   MAX_RENDER_ACTIVITY_EVENTS,
   MAX_RENDER_QUEUE_CUSTOMERS,
@@ -48,7 +76,7 @@ import {
   VENUE_LAYOUTS,
   venueLayoutFor,
 } from '../../src/scene/three/venues/venueLayout';
-import { livingRushEnvelope } from '../fixtures/campaignFixtures';
+import { denseDepartmentRushEnvelope, livingRushEnvelope } from '../fixtures/campaignFixtures';
 
 describe('snapshot-driven pixel scene', () => {
   it('uses one fixed logical resolution and exposes weather/venue textual parity', () => {
@@ -95,12 +123,16 @@ describe('snapshot-driven pixel scene', () => {
     const state = startRush({
       ...base,
       staff: hired,
-      plan: { ...base.plan, scheduledStaffIds: hired.map(({ id }) => id) },
+      plan: {
+        ...base.plan,
+        scheduledStaffIds: hired.map(({ id }) => id),
+        stationAssignments: defaultStationAssignments(base.venueId, hired),
+      },
     });
     const snapshot = createSceneSnapshot(state, false, ['neonCup']);
     expect(snapshot.scheduledRoles).toEqual(hired.map(({ role }) => role));
     expect(snapshot.awning).toBe('neonCup');
-    expect(snapshot.queueSegments).not.toBe(state.rush?.queue);
+    expect(snapshot.queueSegments).not.toBe(state.rush?.normalQueue);
   });
 
   it('preserves exact queue truth, active order identity, and immutable activity beyond the sprite cap', () => {
@@ -114,8 +146,19 @@ describe('snapshot-driven pixel scene', () => {
       ...base,
       rush: {
         ...base.rush,
-        queue,
-        activeService: { customer, remainingTicks: 10, totalTicks: 20 },
+        normalQueue: queue,
+        serviceJobsByStation: {
+          ...emptyServiceJobs(),
+          espressoBar: {
+            id: 'd1-j0',
+            stationId: 'espressoBar' as const,
+            laneId: 'normal' as const,
+            customer,
+            remainingTicks: 10,
+            totalTicks: 20,
+          },
+        },
+        nextServiceJobSequence: 1,
         nextActivitySequence: 1,
         recentActivity: [
           {
@@ -124,6 +167,9 @@ describe('snapshot-driven pixel scene', () => {
             tick: 0,
             customerId: customer.id,
             segment: customer.segment,
+            stationId: 'espressoBar' as const,
+            laneId: 'normal' as const,
+            jobId: null,
             type: 'arrival' as const,
           },
         ],
@@ -143,7 +189,114 @@ describe('snapshot-driven pixel scene', () => {
     expect(Object.isFrozen(snapshot.activeCustomer?.order)).toBe(true);
     expect(Object.isFrozen(snapshot.recentActivity[0])).toBe(true);
     expect(describeScene(snapshot)).toContain('12 customers waiting');
-    expect(describeScene(snapshot)).toContain('Commuter customer active-customer arrived.');
+    expect(describeScene(snapshot)).toContain(
+      'Commuter customer active-customer arrived for the Normal lane at the espresso bar.',
+    );
+  });
+
+  it('reconciles the dense hall to exact canonical jobs, fair queues, staff, and terminal poses', () => {
+    const game = denseDepartmentRushEnvelope().activeRun;
+    if (!game?.rush) throw new Error('Expected dense department rush.');
+    const snapshot = createSceneSnapshot(game, false, ['classicAwning']);
+    const active = snapshot.customerEntities.filter(({ status }) => status === 'service');
+    const queued = snapshot.customerEntities.filter(
+      ({ status }) => status === 'approach' || status === 'queued',
+    );
+    const terminal = snapshot.customerEntities.filter(
+      ({ status }) => status !== 'service' && status !== 'approach' && status !== 'queued',
+    );
+
+    expect(snapshot.queueSummary).toMatchObject({
+      total: 30,
+      normal: 12,
+      express: 18,
+      omitted: 18,
+    });
+    expect(active).toHaveLength(MAX_SCENE_ACTIVE_CUSTOMERS);
+    expect(queued).toHaveLength(MAX_SCENE_QUEUED_CUSTOMERS);
+    expect(terminal).toHaveLength(3);
+    expect(snapshot.customerEntities).toHaveLength(MAX_SCENE_CUSTOMERS);
+    expect(snapshot.staffEntities).toHaveLength(MAX_SCENE_STAFF);
+    expect(new Set(snapshot.customerEntities.map(({ entityId }) => entityId)).size).toBe(
+      MAX_SCENE_CUSTOMERS,
+    );
+    expect(active.map(({ stationId }) => stationId)).toEqual(STATION_IDS);
+    expect(active.map(({ jobId }) => jobId)).toEqual(['d3-j0', 'd3-j1', 'd3-j2']);
+    const exactBucketCounts = {
+      espressoBar: { normal: 6, express: 6 },
+      brewBar: { normal: 0, express: 6 },
+      coldBar: { normal: 6, express: 6 },
+    } as const;
+    const sampledBucketCounts = {
+      espressoBar: { normal: 3, express: 3 },
+      brewBar: { normal: 0, express: 2 },
+      coldBar: { normal: 2, express: 2 },
+    } as const;
+    for (const stationId of STATION_IDS) {
+      for (const laneId of LANE_IDS) {
+        expect(
+          queued.filter(
+            (customer) => customer.stationId === stationId && customer.laneId === laneId,
+          ),
+        ).toHaveLength(sampledBucketCounts[stationId][laneId]);
+        expect(snapshot.queueSummary.byStationLane[stationId][laneId]).toBe(
+          exactBucketCounts[stationId][laneId],
+        );
+      }
+    }
+    expect(terminal.map(({ status }) => status)).toEqual(['handoff', 'payment', 'stockout']);
+    expect(
+      snapshot.customerEntities.every(({ entityId, id }) => entityId === `customer:${id}`),
+    ).toBe(true);
+    expect(snapshot.staffEntities.every(({ entityId, id }) => entityId === `staff:${id}`)).toBe(
+      true,
+    );
+    expect(deeplyFrozen(snapshot)).toBe(true);
+    expect(describeScene(snapshot)).toContain('3 active service jobs');
+    expect(describeScene(snapshot)).toContain('12 normal, 18 express');
+    expect(describeScene(snapshot)).toContain('18 represented by overflow text');
+
+    const render = createRenderSnapshot(game, false, ['classicAwning']);
+    expect(render.snapshotId).toBe(snapshot.snapshotId);
+    expect(render.service.queueSummary).toEqual(snapshot.queueSummary);
+    expect(render.service.customers).toEqual(snapshot.customerEntities);
+    expect(render.service.staff).toEqual(snapshot.staffEntities);
+    expect(render.service.activeJobs.map(({ jobId }) => jobId)).toEqual([
+      'd3-j0',
+      'd3-j1',
+      'd3-j2',
+    ]);
+    expect(deeplyFrozen(render)).toBe(true);
+  });
+
+  it('derives lifecycle poses only from canonical ticks across pause and speed changes', () => {
+    const game = denseDepartmentRushEnvelope().activeRun;
+    if (!game?.rush) throw new Error('Expected dense department rush.');
+    const atTick = (tick: number, speed: 1 | 2 | 4, isPaused: boolean) =>
+      createSceneSnapshot({ ...game, rush: { ...game.rush!, tick, speed, isPaused } }, false, [
+        'classicAwning',
+      ]);
+    const tick64 = atTick(64, 4, true);
+    const tick64OtherControls = atTick(64, 1, false);
+    expect(
+      tick64.customerEntities.map(({ entityId, pose, status }) => ({ entityId, pose, status })),
+    ).toEqual(
+      tick64OtherControls.customerEntities.map(({ entityId, pose, status }) => ({
+        entityId,
+        pose,
+        status,
+      })),
+    );
+    const tick65 = atTick(65, 2, true);
+    const tick66 = atTick(66, 2, true);
+    expect(entityStatus(tick64, 'customer:d3-c40')).toBe('handoff');
+    expect(entityStatus(tick65, 'customer:d3-c40')).toBe('payment');
+    expect(entityStatus(tick66, 'customer:d3-c40')).toBe('exit');
+    expect(entityStatus(tick64, 'customer:d3-c42')).toBe('stockout');
+    expect(entityStatus(tick65, 'customer:d3-c42')).toBe('stockout');
+    expect(entityStatus(tick66, 'customer:d3-c42')).toBe('exit');
+    expect(shouldAnimateScene(tick64)).toBe(false);
+    expect(shouldAnimateScene(tick64OtherControls)).toBe(true);
   });
 
   it('describes every activity and walkaway reason without visual-only meaning', () => {
@@ -153,12 +306,16 @@ describe('snapshot-driven pixel scene', () => {
       tick: 12,
       customerId: 'd1-c1',
       segment: 'student' as const,
+      stationId: 'espressoBar' as const,
+      laneId: 'normal' as const,
+      jobId: null,
     };
     const events: RushActivityEvent[] = [
       { ...base, type: 'arrival' },
       {
         ...base,
         type: 'serviceStarted',
+        jobId: 'd1-j0',
         drinkId: 'flatWhite',
         size: 'large',
         milk: 'oat',
@@ -166,6 +323,7 @@ describe('snapshot-driven pixel scene', () => {
       {
         ...base,
         type: 'sale',
+        jobId: 'd1-j0',
         drinkId: 'flatWhite',
         size: 'large',
         milk: 'oat',
@@ -178,13 +336,13 @@ describe('snapshot-driven pixel scene', () => {
       })),
     ];
     expect(events.map(describeRushActivity)).toEqual([
-      'Student customer d1-c1 arrived.',
-      'Student customer d1-c1 started large oat Flat White service.',
-      'Student customer d1-c1 received Large oat Flat White and paid $7.25.',
-      'Student customer d1-c1 left after waiting too long.',
-      'Student customer d1-c1 left because the queue was full.',
-      'Student customer d1-c1 left because their order was out of stock.',
-      'Student customer d1-c1 left when the rush ended.',
+      'Student customer d1-c1 arrived for the Normal lane at the espresso bar.',
+      'Student customer d1-c1 started large oat Flat White as job d1-j0 in the Normal lane at the espresso bar.',
+      'Student customer d1-c1 completed job d1-j0 in the Normal lane at the espresso bar, received Large oat Flat White, and paid $7.25.',
+      'Student customer d1-c1 left after waiting too long from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left because the queue was full from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left because their order was out of stock from the Normal lane at the espresso bar.',
+      'Student customer d1-c1 left when the rush ended from the Normal lane at the espresso bar.',
     ]);
     expect(
       (['patience', 'queueFull', 'stockout', 'rushEnded'] as const).map(walkawayVisualLabel),
@@ -216,6 +374,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 49,
         customerId: 'd1-c29',
         segment: 'regular',
+        stationId: 'espressoBar',
+        laneId: 'normal',
+        jobId: null,
         type: 'arrival',
       },
       {
@@ -224,6 +385,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 49,
         customerId: 'd1-c29',
         segment: 'regular',
+        stationId: 'espressoBar',
+        laneId: 'normal',
+        jobId: null,
         type: 'walkaway',
         reason: 'queueFull',
       },
@@ -233,6 +397,9 @@ describe('snapshot-driven pixel scene', () => {
         tick: 50,
         customerId: `d1-c${index + 30}`,
         segment: 'student' as const,
+        stationId: 'espressoBar' as const,
+        laneId: 'normal' as const,
+        jobId: `d1-j${index + 2}`,
         type: 'sale' as const,
         drinkId: 'flatWhite' as const,
         size: 'large' as const,
@@ -301,7 +468,10 @@ describe('snapshot-driven pixel scene', () => {
     if (!game?.rush) throw new Error('Expected living-rush fixture.');
     const initial = createSceneSnapshot(game, false, ['classicAwning']);
     const playback = createScenePlayback(initial);
-    const shiftedGame = { ...game, rush: { ...game.rush, queue: game.rush.queue.slice(1) } };
+    const shiftedGame = {
+      ...game,
+      rush: { ...game.rush, normalQueue: game.rush.normalQueue.slice(1) },
+    };
     const shifted = createSceneSnapshot(shiftedGame, false, ['classicAwning']);
     const moving = syncScenePlayback(playback, shifted);
     const front = moving.queueMotions[0];
@@ -373,9 +543,9 @@ describe('snapshot-only WebGL contract', () => {
   });
 
   it('provides immutable bounded and venue-distinct layouts for every service VenueId', () => {
-    const venueIds: readonly VenueId[] = ['cart', 'kiosk', 'cafe'];
+    const venueIds: readonly VenueId[] = VENUE_IDS;
     expect(Object.keys(VENUE_LAYOUTS)).toEqual(venueIds);
-    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(3);
+    expect(new Set(venueIds.map((venueId) => venueLayoutFor(venueId).worldName)).size).toBe(4);
     for (const venueId of venueIds) {
       const layout = venueLayoutFor(venueId);
       expect(layout.venueId).toBe(venueId);
@@ -388,7 +558,7 @@ describe('snapshot-only WebGL contract', () => {
         shadowLightCount: MAX_WORLD_SHADOW_LIGHTS,
       });
       expect(layout.performance.maxRepeatedFurnishings).toBeGreaterThan(0);
-      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(32);
+      expect(layout.performance.maxRepeatedFurnishings).toBeLessThanOrEqual(36);
       expect(layout.queueAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
       expect(layout.staffAnchors.every(([x, , z]) => withinFloor(x, z, layout.floor))).toBe(true);
       expect(deeplyFrozen(layout)).toBe(true);
@@ -399,15 +569,16 @@ describe('snapshot-only WebGL contract', () => {
     { venueId: 'cart' as const, staffCount: 2, weather: 'sunny' as const },
     { venueId: 'kiosk' as const, staffCount: 3, weather: 'rainy' as const },
     { venueId: 'cafe' as const, staffCount: 5, weather: 'coldSnap' as const },
+    { venueId: 'departmentStore' as const, staffCount: 8, weather: 'mild' as const },
   ])('keeps exact $venueId operation truth in the shared renderer snapshot', (fixture) => {
     const game = livingRushEnvelope({
       equipment: {
-        grinder: 2,
-        espressoMachine: 2,
-        batchBrewer: 2,
-        refrigeration: 2,
-        pos: 2,
-        serviceCounter: 2,
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
       },
       queueCount: 16,
       scheduledStaffCount: fixture.staffCount,
@@ -422,6 +593,9 @@ describe('snapshot-only WebGL contract', () => {
       phase: 'rush',
     });
     expect(snapshot.service.queueCount).toBe(16);
+    expect(snapshot.service.queueCapacity).toBe(
+      ({ cart: 16, kiosk: 19, cafe: 23, departmentStore: 32 } as const)[fixture.venueId],
+    );
     expect(snapshot.service.queue).toHaveLength(MAX_RENDER_QUEUE_CUSTOMERS);
     expect(snapshot.operation.scheduledRoles).toHaveLength(fixture.staffCount);
     expect(snapshot.operation.equipment).toEqual(game.equipment);
@@ -443,7 +617,7 @@ describe('snapshot-only WebGL contract', () => {
     expect(deeplyFrozen(snapshot)).toBe(true);
 
     const capturedCustomer = snapshot.service.queue[0]?.id;
-    game.rush.queue[0]!.id = 'mutated-after-snapshot';
+    game.rush.normalQueue[0]!.id = 'mutated-after-snapshot';
     expect(snapshot.service.queue[0]?.id).toBe(capturedCustomer);
     expect(() => {
       (snapshot.operation.stock[0] as { quantity: number }).quantity = 999_999;
@@ -451,9 +625,7 @@ describe('snapshot-only WebGL contract', () => {
   });
 
   it.each(
-    (['cart', 'kiosk', 'cafe'] as const).flatMap((venueId) =>
-      ([1, 2, 4] as const).map((speed) => ({ speed, venueId })),
-    ),
+    VENUE_IDS.flatMap((venueId) => ([1, 2, 4] as const).map((speed) => ({ speed, venueId }))),
   )(
     'cannot alter $venueId engine truth while mounted at $speed× or reduced motion',
     ({ speed, venueId }) => {
@@ -499,6 +671,87 @@ describe('snapshot-only WebGL contract', () => {
     expect(boundedDevicePixelRatio(3)).toBe(MAX_DEVICE_PIXEL_RATIO);
     expect(boundedDevicePixelRatio(0)).toBe(1);
     expect(boundedDevicePixelRatio(Number.NaN)).toBe(1);
+    expect(
+      orthographicProjectionForExtent(360, 170, DEPARTMENT_COMPACT_VERTICAL_HALF_EXTENT).top,
+    ).toBe(DEPARTMENT_COMPACT_VERTICAL_HALF_EXTENT);
+    expect(
+      orthographicProjectionForExtent(1_280, 720, DEPARTMENT_FULL_VERTICAL_HALF_EXTENT).top,
+    ).toBe(DEPARTMENT_FULL_VERTICAL_HALF_EXTENT);
+    expect(boundedDepartmentDevicePixelRatio(3, false)).toBe(MAX_DEVICE_PIXEL_RATIO);
+    expect(boundedDepartmentDevicePixelRatio(3, true)).toBe(COMPACT_DEVICE_PIXEL_RATIO);
+  });
+
+  it('publishes the complete immutable hall registry and its responsive hard budgets', () => {
+    expect(MAX_SCENE_EFFECTS).toBe(6);
+    expect(DEPARTMENT_HERITAGE_MOTIFS).toEqual([
+      'patterned-heritage-tiles',
+      'timber-panelling-counters',
+      'brass-rails-details',
+      'visible-escalators',
+      'three-distinct-service-bays',
+    ]);
+    expect(DEPARTMENT_EQUIPMENT_REGISTRY).toEqual([
+      'grinder',
+      'espressoMachine',
+      'batchBrewer',
+      'refrigeration',
+      'pos',
+      'serviceCounter',
+    ]);
+    expect(DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY).toEqual([
+      'hallEntry',
+      'espressoBay',
+      'brewBay',
+      'coldBay',
+    ]);
+    expect(Object.keys(DEPARTMENT_LAYOUT.physicalUpgradeAnchors)).toEqual(
+      DEPARTMENT_PHYSICAL_UPGRADE_REGISTRY,
+    );
+    for (const [x, , z] of Object.values(DEPARTMENT_LAYOUT.physicalUpgradeAnchors)) {
+      expect(withinFloor(x, z, DEPARTMENT_LAYOUT.floor)).toBe(true);
+    }
+    expect(Object.keys(DEPARTMENT_LAYOUT.stations)).toEqual(STATION_IDS);
+    for (const station of Object.values(DEPARTMENT_LAYOUT.stations)) {
+      expect(station.normalQueue).toHaveLength(MAX_SCENE_QUEUED_CUSTOMERS);
+      expect(station.expressQueue).toHaveLength(MAX_SCENE_QUEUED_CUSTOMERS);
+      expect(new Set(station.normalQueue.map(([x, , z]) => `${x}:${z}`)).size).toBe(
+        MAX_SCENE_QUEUED_CUSTOMERS,
+      );
+      expect(new Set(station.expressQueue.map(([x, , z]) => `${x}:${z}`)).size).toBe(
+        MAX_SCENE_QUEUED_CUSTOMERS,
+      );
+    }
+    expect(departmentPerformanceBudget('full')).toEqual({
+      drawCalls: 72,
+      triangles: 60_000,
+      devicePixelRatio: MAX_DEVICE_PIXEL_RATIO,
+      shadowMapSize: SHADOW_MAP_SIZE,
+      repeatedFurnishings: 64,
+      lights: 2,
+      shadowLights: 1,
+    });
+    expect(departmentPerformanceBudget('compact')).toEqual({
+      drawCalls: 52,
+      triangles: 30_000,
+      devicePixelRatio: COMPACT_DEVICE_PIXEL_RATIO,
+      shadowMapSize: COMPACT_SHADOW_MAP_SIZE,
+      repeatedFurnishings: 40,
+      lights: 2,
+      shadowLights: 1,
+    });
+    expect(deeplyFrozen(DEPARTMENT_LAYOUT)).toBe(true);
+    const scene = createSceneSnapshot(denseDepartmentRushEnvelope().activeRun!, false, [
+      'classicAwning',
+    ]);
+    expect(
+      scene.customerEntities.every((customer) =>
+        withinFloor(
+          departmentCustomerPoint(customer)[0],
+          departmentCustomerPoint(customer)[2],
+          DEPARTMENT_LAYOUT.floor,
+        ),
+      ),
+    ).toBe(true);
   });
 
   it('keeps the approved title art byte-identical', () => {
@@ -511,14 +764,32 @@ describe('snapshot-only WebGL contract', () => {
   it('keeps Canvas lazy and unreachable from every service venue branch', () => {
     const appSource = readFileSync('src/App.tsx', 'utf8');
     const serviceSource = readFileSync('src/scene/three/ServiceWorld.tsx', 'utf8');
+    const departmentSource = readFileSync(
+      'src/scene/three/venues/DepartmentStoreWorld.tsx',
+      'utf8',
+    );
     expect(appSource).not.toContain('temporary-kiosk-cafe');
     expect(appSource).not.toContain('import { CanvasScene }');
     expect(serviceSource).not.toContain('CanvasScene');
-    for (const venueId of ['cart', 'kiosk', 'cafe'] as const) {
+    for (const venueId of VENUE_IDS) {
       expect(serviceSource).toContain(`case '${venueId}'`);
     }
+    for (const motif of DEPARTMENT_HERITAGE_MOTIFS) {
+      expect(departmentSource).toContain(`motif-${motif}`);
+    }
+    expect(departmentSource).toContain('tier-three-commercial-equipment');
+    expect(departmentSource).toContain('physical-upgrade-anchor-registry');
+    expect(departmentSource).toContain('snapshot.service.activeJobs');
+    expect(departmentSource).not.toMatch(/(?:advanceTick|consumeIngredients|dispatch|command\()/);
   });
 });
+
+function entityStatus(
+  snapshot: ReturnType<typeof createSceneSnapshot>,
+  entityId: string,
+): string | undefined {
+  return snapshot.customerEntities.find((customer) => customer.entityId === entityId)?.status;
+}
 
 function deeplyFrozen(value: unknown): boolean {
   if (value === null || typeof value !== 'object') return true;
@@ -556,6 +827,8 @@ function sceneCustomer(id: string): Customer {
   return {
     id,
     segment: 'commuter',
+    stationId: 'espressoBar',
+    laneId: 'normal',
     order: {
       drinkId: 'espresso',
       size: 'regular',

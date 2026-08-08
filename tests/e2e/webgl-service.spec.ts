@@ -177,7 +177,7 @@ test.describe('snapshot-only WebGL service worlds', () => {
       },
     ];
     for (const fixture of fixtures) {
-      await importLivingRush(page, touch, fixture.venueId, {
+      const importedDay = await importLivingRush(page, touch, fixture.venueId, {
         equipment: {
           grinder: 2,
           espressoMachine: 2,
@@ -210,7 +210,9 @@ test.describe('snapshot-only WebGL service worlds', () => {
       await expect(scene).toHaveAttribute('data-webgl-status', 'ready');
       await expect(scene).toHaveAccessibleName(/16 customers waiting/);
       await expect(scene).toHaveAccessibleName(new RegExp(`${fixture.staffCount} staff scheduled`));
-      await expect(scene).toHaveAccessibleName(/Latest walkaway: Commuter customer d1-c21/);
+      await expect(scene).toHaveAccessibleName(
+        new RegExp(`Latest walkaway: Commuter customer d${importedDay}-c21`),
+      );
       await expect(frame.locator('figcaption')).toContainText('Stock warning:');
       await expect(page.getByText('+4 beyond view')).toBeVisible();
       await expect(page.locator('[data-renderer-bridge]')).toHaveCount(0);
@@ -305,25 +307,25 @@ async function importLivingRush(
   touch: boolean,
   venueId: VenueId = 'cart',
   options: Omit<LivingRushOptions, 'paused' | 'reducedMotion' | 'venueId'> = {},
-): Promise<void> {
+): Promise<number> {
+  const envelope = livingRushEnvelope({
+    ...options,
+    paused: true,
+    reducedMotion: false,
+    venueId,
+  });
+  const importedDay = envelope.activeRun?.day;
+  if (!importedDay) throw new Error('Living-rush import requires an active day.');
   await activate(page.getByRole('button', { name: 'Game menu', exact: true }), touch);
   await activate(page.getByRole('tab', { name: 'Save transfer' }), touch);
   await page.getByLabel('Import save JSON file').setInputFiles({
     name: 'webgl-living-rush.json',
     mimeType: 'application/json',
-    buffer: Buffer.from(
-      serializeEnvelope(
-        livingRushEnvelope({
-          ...options,
-          paused: true,
-          reducedMotion: false,
-          venueId,
-        }),
-      ),
-    ),
+    buffer: Buffer.from(serializeEnvelope(envelope)),
   });
-  await expect(page.getByText('Imported Day 1 safely.')).toBeVisible();
+  await expect(page.getByText(`Imported Day ${importedDay} safely.`)).toBeVisible();
   await closeGameMenu(page, touch);
+  return importedDay;
 }
 
 async function openSettings(page: Page, touch: boolean): Promise<void> {
@@ -385,9 +387,10 @@ async function persistedEconomicTruth(page: Page): Promise<unknown> {
         phase: string;
         reputation: number;
         rush: {
-          activeService: unknown;
-          queue: unknown;
+          expressQueue: unknown[];
+          normalQueue: unknown[];
           recentActivity: unknown;
+          serviceJobsByStation: Record<string, unknown>;
           stats: unknown;
           tick: number;
         } | null;
@@ -395,14 +398,19 @@ async function persistedEconomicTruth(page: Page): Promise<unknown> {
     } | null;
     const run = envelope?.activeRun;
     if (!run) return null;
+    const firstActiveJob = run.rush
+      ? (run.rush.serviceJobsByStation.espressoBar ??
+        run.rush.serviceJobsByStation.brewBar ??
+        run.rush.serviceJobsByStation.coldBar)
+      : undefined;
     return {
-      activeService: run.rush?.activeService,
+      firstActiveJob,
       cashCents: run.cashCents,
       day: run.day,
       equipment: run.equipment,
       inventory: run.inventory,
       phase: run.phase,
-      queue: run.rush?.queue,
+      waitingCustomers: run.rush ? [...run.rush.normalQueue, ...run.rush.expressQueue] : undefined,
       recentActivity: run.rush?.recentActivity,
       reputation: run.reputation,
       stats: run.rush?.stats,

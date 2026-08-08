@@ -9,14 +9,19 @@ import {
   VENUES,
   VENUE_MENU_CAPACITY,
   WEATHER_DETAILS,
+  workforceCapacityFor,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
 import {
   canOpen,
+  expressDrinkEligible,
   formatIngredientQuantity,
   formatMoney,
   ingredientCapacities,
+  MAX_EXPRESS_DRINKS,
   selectedSupplyCost,
+  STATION_DETAILS,
+  stationForDrink,
   type DialIn,
   type DrinkId,
 } from '../game';
@@ -47,7 +52,17 @@ export function Planner(): React.JSX.Element {
     const activeMenu = active
       ? game.plan.activeMenu.filter((id) => id !== drinkId)
       : [...game.plan.activeMenu, drinkId];
-    command({ type: 'prepareDay', patch: { activeMenu } });
+    const expressDrinkIds = active
+      ? game.plan.expressDrinkIds.filter((id) => id !== drinkId)
+      : game.plan.expressDrinkIds;
+    command({ type: 'prepareDay', patch: { activeMenu, expressDrinkIds } });
+  };
+
+  const toggleExpressDrink = (drinkId: DrinkId): void => {
+    const expressDrinkIds = game.plan.expressDrinkIds.includes(drinkId)
+      ? game.plan.expressDrinkIds.filter((id) => id !== drinkId)
+      : [...game.plan.expressDrinkIds, drinkId];
+    command({ type: 'prepareDay', patch: { expressDrinkIds } });
   };
 
   return (
@@ -56,7 +71,7 @@ export function Planner(): React.JSX.Element {
         <div>
           <p className="eyebrow">Morning planning</p>
           <h2 id="planner-title" tabIndex={-1}>
-            Set up the {game.venueId}
+            Set up the {VENUES[game.venueId].actionName}
           </h2>
         </div>
         <p className="forecast-badge">
@@ -102,6 +117,11 @@ export function Planner(): React.JSX.Element {
         <div className="menu-grid">
           {DRINKS.map((drink) => {
             const checked = game.plan.activeMenu.includes(drink.id);
+            const expressSelected = game.plan.expressDrinkIds.includes(drink.id);
+            const expressEligible = expressDrinkEligible(game.venueId, game.equipment, drink.id);
+            const expressFull =
+              game.plan.expressDrinkIds.length >= MAX_EXPRESS_DRINKS && !expressSelected;
+            const expressReasonId = `express-reason-${drink.id}`;
             return (
               <div className={`menu-card ${checked ? 'is-selected' : ''}`} key={drink.id}>
                 <label className="check-row">
@@ -138,6 +158,29 @@ export function Planner(): React.JSX.Element {
                     value={formatMoney(game.plan.pricesCents[drink.id])}
                   />
                 </div>
+                {game.venueId === 'departmentStore' ? (
+                  <label className={`express-option ${expressSelected ? 'is-selected' : ''}`}>
+                    <input
+                      aria-describedby={expressReasonId}
+                      checked={expressSelected}
+                      disabled={!checked || !expressEligible || expressFull}
+                      onChange={() => toggleExpressDrink(drink.id)}
+                      type="checkbox"
+                    />
+                    <span>
+                      <strong>Express lane</strong>
+                      <small id={expressReasonId}>
+                        {!checked
+                          ? 'Add this drink to today’s menu first.'
+                          : !expressEligible
+                            ? 'Recipe speed or installed station equipment does not qualify.'
+                            : expressFull
+                              ? `Maximum ${MAX_EXPRESS_DRINKS} express drinks selected.`
+                              : `${STATION_DETAILS[stationForDrink(game.venueId, drink.id)].label} · eligible for faster routing.`}
+                      </small>
+                    </span>
+                  </label>
+                ) : null}
               </div>
             );
           })}
@@ -279,9 +322,17 @@ export function Planner(): React.JSX.Element {
           <li>Reputation {game.reputation}/100 currently supports passing demand.</li>
           <li>{BEAN_DETAILS[game.plan.beanId].description}</li>
           <li>
-            {VENUES[game.venueId].shortName} supports {VENUES[game.venueId].staffCapacity} scheduled
-            staff and {VENUES[game.venueId].menuCapacity} menu items.
+            {VENUES[game.venueId].shortName} supports{' '}
+            {workforceCapacityFor(game.venueId).scheduleCapacity} scheduled staff from a{' '}
+            {workforceCapacityFor(game.venueId).rosterCapacity}-person roster and{' '}
+            {VENUES[game.venueId].menuCapacity} menu items.
           </li>
+          {game.venueId === 'departmentStore' ? (
+            <li>
+              Managers reduce coordination and reliability delay; Runners reduce replenishment and
+              handoff delay without creating stock.
+            </li>
+          ) : null}
           <li>Visible queues and unavailable recipes turn customers away.</li>
         </ul>
       </aside>
@@ -298,7 +349,7 @@ export function Planner(): React.JSX.Element {
           onClick={() => command({ type: 'startRush' })}
           type="button"
         >
-          Open the {game.venueId}
+          Open the {VENUES[game.venueId].actionName}
         </button>
       </div>
     </section>

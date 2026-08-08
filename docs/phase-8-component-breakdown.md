@@ -58,7 +58,9 @@ the cumulative gate passes.
 - Re-verify official Three.js/R3F/Vite/Workbox/browser guidance before final
   dependency/configuration locks. Keep the WebGL route lazy, each precached file
   under 1 MB, the dense mobile target responsive at 30 FPS, and desktop target
-  60 FPS.
+  60 FPS. Agent evidence is limited to automated browser measurements; any
+  physical Safari/mobile-GPU/FPS result is optional, owner-only, hosted, and
+  remains pending/unclaimed until the repository owner supplies it.
 
 ## Component 8.1 — Human Setup and Final Release Gates
 
@@ -73,8 +75,11 @@ GitHub Pages publication explicitly reserved for later human approval.
 
 - Record the validated Phase 7 base/head and create `phase-8` without committing
   directly to `main`.
-- Confirm access to the existing repository, Actions/Pages controls, and the
-  representative mid-tier WebGL2 touch device.
+- Confirm read-only access to the existing repository and Actions/Pages
+  controls.
+- Record the optional physical Safari/mobile-GPU/orientation/FPS path as
+  owner-only against the exact final hosted candidate after separate approval.
+  Agents never access, reserve, identify, or claim availability of a device.
 - Record that no new account, credential, secret, paid asset, backend, or
   runtime service is required.
 - Reserve two later human decisions after local Component 8.9 PASS: approve the
@@ -96,14 +101,16 @@ channel.
 ### Technical Validation
 
 This is documentary setup only. Validate exact branch ancestry, the Phase 7
-PASS fingerprint, repository/release-channel availability, device reservation,
-and the separation between local PASS, merge approval, publication approval,
-and hosted PASS. Do not infer any future human action.
+PASS fingerprint, repository/release-channel availability, the pending and
+unclaimed owner-only physical path, and the separation between local PASS,
+merge approval, publication approval, automated deployment identity, and
+owner-supplied hosted evidence. Do not infer any future human action.
 
 ### Acceptance mapping
 
-- Exact base/head, device path, ownership, validation, merge, and publication
-  gates are recorded.
+- Exact base/head, owner-only optional physical path, ownership, validation,
+  merge, and publication gates are recorded without a device identifier or
+  availability claim.
 - No runtime, package, deployment, merge, publication, or visibility change is
   made in this component.
 
@@ -135,6 +142,9 @@ transparent demand rules.
   bounded and honest.
 - Make a v4 round trip idempotent. Repeated startup, autosave, recovery, and
   export/import must not reset a verified v4 campaign or repeat the notice.
+- Fail imported data closed when no concrete browser store exists or its v4
+  write fails. Do not consume the notice marker or mutate refs/React state until
+  persistence succeeds; surface an actionable storage error.
 - Put Standard first and visibly preselect it on new-campaign creation. Changing
   scenario does not change difficulty, and changing difficulty does not change
   scenario. Difficulty cannot change after creation.
@@ -172,7 +182,10 @@ transparent demand rules.
 - `tests/components/game-loop.test.tsx`, `tests/components/accessibility.test.tsx`
 - `tests/e2e/difficulty-reset.spec.ts`
 - `tests/e2e/persistence.spec.ts`, `tests/e2e/save-transfer.spec.ts`
+- `tests/e2e/report-history.spec.ts`, `tests/e2e/staff-names.spec.ts`
 - `tests/fixtures/campaignFixtures.ts`
+- `README.md`, `docs/agent-runbook.md`
+- `docs/phase-8-component-breakdown.md`
 - `docs/components/phase-8-component-8-2-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`
 
@@ -194,6 +207,11 @@ progression.
   Positive/negative-only entries test neutral, every supported sign, clamps,
   boundaries, and absence of an invented opposite direction.
 - Demand equality remains seeded and independent of render frames/speed.
+- Force unavailable browser storage in a component test and prove a legacy
+  import changes no run, preferences, meta progress, marker, or success notice.
+- Reconcile only the superseded schema-v3 and legacy-progress-repair expectations
+  in cumulative report-history/staff-name browser specs. Preserve their report,
+  naming, reload, and accessibility outcomes.
 
 ### Acceptance mapping
 
@@ -201,6 +219,8 @@ progression.
   three allowed preferences and discard every progress/meta/history field.
 - Onboarding and the evolution notice replay once; verified v4 never resets or
   resurrects legacy state.
+- An unavailable or failed store leaves the current in-memory/save state
+  unchanged and never claims a successful import or reset.
 - Standard is the accessible preselected default; difficulty/scenario are
   orthogonal and difficulty is immutable after campaign creation.
 - Records are separate by difficulty; shared unlocks give no economic bonus.
@@ -247,7 +267,9 @@ a playable Day-40 victory requiring the department store.
 
 ### File ownership
 
-- `src/game/types.ts`, `src/game/engine.ts`, `src/game/selectors.ts`
+- `src/game/types.ts`, `src/game/engine.ts`, `src/game/inventory.ts`
+- `src/game/selectors.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/index.ts`, `src/game/capacity.ts`, `src/game/meta.ts`
 - `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
@@ -258,11 +280,17 @@ a playable Day-40 victory requiring the department store.
 - `src/scene/three/ServiceWorld.tsx`
 - `src/scene/three/renderSnapshot.ts`
 - `src/scene/three/venues/DepartmentStoreWorld.tsx`
+- `src/scene/three/venues/venueLayout.ts`
 - `src/styles.css`
 - `tests/unit/coffee-content.test.ts`, `tests/unit/operations.test.ts`
+- `tests/unit/demand.test.ts`
+- `tests/unit/inventory.test.ts`
+- `tests/unit/scene.test.ts`
 - `tests/unit/campaign.test.ts`, `tests/unit/persistence.test.ts`
-- `tests/components/game-loop.test.tsx`
+- `tests/components/game-loop.test.tsx`, `tests/components/presentation.test.tsx`
 - `tests/e2e/department-store.spec.ts`, `tests/e2e/campaign-outcomes.spec.ts`
+- `tests/e2e/operations.spec.ts`, `tests/e2e/save-transfer.spec.ts`
+- `tests/e2e/service-layout.spec.ts`
 - `tests/fixtures/campaignFixtures.ts`
 - `docs/components/phase-8-component-8-3-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`
@@ -278,11 +306,21 @@ dispatcher.
 - Validate every equipment tier for increasing level, positive cost, valid venue,
   bounded effect, and a complete category; engine reads tier data rather than
   `level === 2` conditionals.
+- Refrigeration tier three extends only surviving chilled batches through the
+  shared inventory authority, never revives expiry, and has focused conservation
+  and waste-boundary proof.
 - Keep 40-day rules typed and difficulty-aware. Boundary fixtures cover Day 39,
   Day 40, equality, missing department venue, bankruptcy, victory, target miss,
   and endless continuation.
+- Department venue and tier-three equipment values change the registered venue
+  and scheduled-team/equipment demand ranges. Update their registry baselines,
+  clamps, boundaries, and engine sources; keep engine/registry identities
+  exhaustive and retain exact Standard/Hard deviation proofs.
 - The department scene reads existing engine truth only; it does not prebuild
   station outcomes.
+- Retained current-v4 operations, save-transfer, and all-venue service-layout
+  journeys must follow the same 40-day/fourth-venue contract. Legacy-schema
+  fixture literals remain historical evidence and are not rewritten.
 
 ### Acceptance mapping
 
@@ -330,6 +368,7 @@ and hire Manager and Runner roles with visible, deterministic operational value.
 ### File ownership
 
 - `src/game/types.ts`, `src/game/engine.ts`, `src/game/selectors.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/staffNames.ts`, `src/game/index.ts`
 - `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
@@ -338,9 +377,15 @@ and hire Manager and Runner roles with visible, deterministic operational value.
 - `src/scene/three/renderSnapshot.ts`, `src/scene/three/entities/People.tsx`
 - `src/styles.css`
 - `tests/unit/operations.test.ts`, `tests/unit/staff-names.test.ts`
+- `tests/unit/demand.test.ts`
 - `tests/unit/persistence.test.ts`, `tests/unit/campaign.test.ts`
 - `tests/components/game-loop.test.tsx`
 - `tests/e2e/department-workforce.spec.ts`
+- `tests/e2e/operations.spec.ts` (bounded title-only correction: the existing
+  journey hires both cart-eligible roles, not every expanded role)
+- `tests/e2e/webgl-service.spec.ts` (bounded fixture-derived import-day
+  assertion required by canonical staff time binding; all WebGL/save/reload
+  assertions remain unchanged)
 - `tests/fixtures/campaignFixtures.ts`
 - `docs/components/phase-8-component-8-4-overview.md`
 - `docs/implementation-context-phase-8.md`, `docs/phase-progress.json`
@@ -354,6 +399,10 @@ Component 8.3 venue/equipment capacity and existing staff/name/payroll systems.
 - Capacity values have one typed authority shared by engine validation and UI.
 - Manager/Runner effects are bounded pure modifiers with one application point;
   animation never applies them.
+- Ten-person scheduling and new operational roles expand the registered
+  scheduled-team/traits/equipment demand range. Update its baseline/clamp/
+  boundary metadata and prove Standard remains baseline while Hard applies one
+  direct domain-aware deviation through the sole registry authority.
 - Payroll/report totals reconcile for zero, one, duplicate-role, and ten-person
   schedules across reload/import.
 - Candidate/name uniqueness remains deterministic through 40-day/endless runs.
@@ -409,12 +458,14 @@ and serves normal/express customers concurrently with exact-once economic truth.
 
 - `src/game/types.ts`, `src/game/engine.ts`, `src/game/inventory.ts`
 - `src/game/serviceStations.ts`, `src/game/selectors.ts`, `src/game/index.ts`
+- `src/game/demandInfluences.ts`
 - `src/game/capacity.ts`, `src/content/gameContent.ts`
 - `src/persistence/saveStore.ts`
 - `src/components/Planner.tsx`, `src/components/TeamPlanner.tsx`
 - `src/components/RushPanel.tsx`, `src/components/ReportPanel.tsx`
 - `src/accessibility/GameAnnouncer.tsx`, `src/styles.css`
 - `tests/unit/engine.test.ts`, `tests/unit/operations.test.ts`
+- `tests/unit/demand.test.ts`
 - `tests/unit/inventory.test.ts`, `tests/unit/persistence.test.ts`
 - `tests/components/game-loop.test.tsx`, `tests/components/accessibility.test.tsx`
 - `tests/e2e/parallel-service.spec.ts`
@@ -436,6 +487,10 @@ v4 persistence.
 - Stock reservations have explicit ownership/release rules and conservation
   invariants. Completion and reload cannot consume or settle twice.
 - Queue fairness is typed/bounded and tested so express does not starve normal.
+- Normal/express queues, station jobs, and shared-stock availability must still
+  feed the registered queue/wait and availability influences exactly once.
+  Update their engine sources/bounds as needed and keep the registry
+  exhaustiveness and Standard/Hard domain proofs green.
 - Legacy venues use generalized structures but retain established seeded
   outcomes unless an explicitly required contract changes.
 
@@ -513,8 +568,9 @@ venue/equipment presentation.
 - Snapshot creation is pure, frozen, bounded, and independent of frame count.
 - Stable IDs reconcile every visible entity to queue/job/activity truth.
 - Draw-call/entity/light/DPR/LOD budgets are explicit and browser-inspectable.
-- Real Playwright/device evidence—not jsdom—proves WebGL, context, layout, and
-  performance behavior.
+- Real Playwright evidence—not jsdom—proves automated WebGL, context, layout,
+  and performance behavior. It is not physical-device proof; optional physical
+  evidence remains owner-only, hosted, and pending/unclaimed until supplied.
 
 ### Acceptance mapping
 
@@ -529,8 +585,9 @@ venue/equipment presentation.
 ### Validation gate
 
 Assurance lane `fast (lean override)`, Tier 2. Run snapshot/entity/component,
-dense WebGL, exact-layout, reduced-motion, and device performance checks, then
-the profile sequence for the final scoped fingerprint.
+dense WebGL, exact-layout, reduced-motion, and automated browser-performance
+checks, then the profile sequence for the final scoped fingerprint. No agent
+device access is permitted.
 
 ## Component 8.7 — Complete Forty-Day Content, Balance, and History
 
@@ -644,8 +701,9 @@ service meets the release bundle/cache/responsiveness targets locally.
 - Keep update prompting consent-based. Never activate/reload over active service;
   persist v4 safely and resume after accepted activation.
 - Tune bounded crowds, instancing, LOD, capped DPR, lights/shadows, and reduced-
-  motion work for responsive 30 FPS dense mobile evidence and target 60 FPS
-  desktop evidence.
+  motion work for automated dense-mobile responsiveness evidence and the 60 FPS
+  desktop target. The physical 30 FPS mobile disposition remains optional,
+  owner-only, hosted, and pending/unclaimed.
 - Run Lighthouse mobile against production preview and target at least 90 in
   every profile-named category it exposes.
 - Re-verify dependency licenses/security, no runtime network/API/telemetry, and
@@ -673,9 +731,10 @@ Components 8.2–8.7 final runtime/content graph and the Phase 7 PWA/WebGL base.
 ### Technical Validation
 
 - Manifest/cache tests inspect actual production outputs and offline requests.
-- FPS evidence records device/browser, viewport, DPR, scene state, sampling
-  method, and observed range; synthetic desktop throttling is not called a
-  physical-device result.
+- Automated FPS evidence records browser, viewport, emulated DPR, scene state,
+  sampling method, and observed range; it is never called a physical-device
+  result. Any physical model/OS/Safari/GPU/DPR/orientation/FPS evidence may be
+  supplied only by the repository owner against the exact final hosted build.
 - Service-worker tests prove update deferral during active service and valid v4
   continuation after acceptance.
 - Dependency/network audit confirms no remote runtime asset or hidden service.
@@ -685,15 +744,18 @@ Components 8.2–8.7 final runtime/content graph and the Phase 7 PWA/WebGL base.
 - The complete app installs and reloads offline at `/tycoon/` after first load.
 - Active v4 service survives deferred and accepted updates without reset or
   duplicate settlement.
-- Every precached file is under 1 MB; dense scene meets the mobile/desktop frame
-  targets; Lighthouse meets exposed profile targets.
+- Every precached file is under 1 MB; dense scene meets the automated
+  mobile/desktop responsiveness targets; Lighthouse meets exposed profile
+  targets. The optional physical-mobile result stays pending/unclaimed unless
+  the owner supplies it.
 - No publication occurs before the human gate.
 
 ### Validation gate
 
 Assurance lane `fast (lean override)`, Tier 2. Run focused PWA, persistence,
-bundle, offline/update, Lighthouse, and device performance checks, then the
-profile sequence for the final scoped fingerprint.
+bundle, offline/update, Lighthouse, and automated browser-performance checks,
+then the profile sequence for the final scoped fingerprint. No agent device
+access is permitted.
 
 ## Component 8.9 — Cumulative Phase Gate, Publication, and Release Evidence
 
@@ -701,16 +763,18 @@ Status: **Spec-Validated**
 
 ### Runtime outcome
 
-The final Phase 8 head passes every cumulative local requirement. After explicit
-human merge/publication approval, the exact build is deployed and independently
-verified on GitHub Pages for desktop, touch-mobile, WebGL2, persistence, offline,
-update, and a complete service day.
+The final Phase 8 head passes every cumulative local requirement. After separate
+explicit human merge and publication approvals, the exact build is deployed.
+GitHub workflow/API evidence identifies that deployment; the repository owner
+performs and supplies any public-game browser validation. Optional physical
+validation remains a separate pending/unclaimed owner-only path.
 
 ### Deliverables
 
 - Complete all Phase 8 unit, component, deterministic simulation, Playwright,
-  PWA, bundle, performance, accessibility, migration, and hosted checks while
-  retaining all Phase 1–7 journeys.
+  PWA, bundle, automated performance, accessibility, and migration checks while
+  retaining all Phase 1–7 journeys. Owner-supplied hosted checks occur only
+  after the separate approvals.
 - Run Tier 3 once against the final global fingerprint after all focused
   failures are resolved. Record `docs/phase-8-test-report.md` local PASS only
   when every named Phase 8 Validation Target passes.
@@ -724,10 +788,11 @@ update, and a complete service day.
 - Complete phase context, release notes, component overview, team state, and
   exact local evidence. Push the validated branch, then stop for explicit human
   merge/publication approval.
-- After approval, merge/publish through the profiled workflow and capture the
-  public URL, commit/build identity, Actions/Pages result, desktop/touch WebGL2,
-  save/reload, offline, update, and rollback evidence. Report local and hosted
-  PASS separately.
+- After both approvals, merge/publish through the profiled workflow and capture
+  the public URL, commit/build identity, and Actions/Pages result. The
+  repository owner supplies desktop/touch WebGL2, save/reload, offline, update,
+  complete-day, and optional physical findings. Report local automated,
+  deployment-identity, owner-hosted, and optional physical results separately.
 
 ### File ownership
 
@@ -753,6 +818,9 @@ Components 8.1–8.8 complete and committed with reusable unchanged evidence.
   Validation Target.
 - Local PASS and hosted PASS use exact fingerprints/build identities and cannot
   be inferred from one another.
+- Automated browser/deployment evidence is never physical-device evidence. No
+  agent may access a device; an optional physical result remains pending and
+  unclaimed unless the owner supplies it against the exact final hosted build.
 - No final PASS if a legacy path resurrects progress, a demand factor is
   unregistered, concurrent service can double-settle, WebGL/mobile/PWA budgets
   fail, or documentation contradicts delivered behavior.
@@ -762,13 +830,17 @@ Components 8.1–8.8 complete and committed with reusable unchanged evidence.
 
 - Every Phase 8 and cumulative Phase 1–7 criterion has named passing evidence.
 - `docs/phase-8-test-report.md` records local Tier 3 PASS for the final head.
-- After approval, hosted evidence identifies the exact deployed commit/build and
-  proves the public desktop/touch/WebGL2/offline/update/service flows.
-- Final release is declared complete only after both local and hosted PASS.
+- After approval, GitHub evidence identifies the exact deployed commit/build;
+  owner-supplied hosted evidence covers the public
+  desktop/touch/WebGL2/offline/update/service flows.
+- Final release is declared complete only after local automated PASS, successful
+  exact deployment, and the owner-hosted verdict. Optional physical evidence is
+  reported separately and never inferred.
 
 ### Validation gate
 
 Assurance lane `phase-gate (lean override)`, Tier 3 cumulative phase gate plus
-separately approved hosted verification. The same Implement engagement owns
-fixes, reruns, self-review, reports, commit, approved release execution, and
-hosted evidence.
+separately approved publication and owner-hosted verification. The same
+Implement engagement owns local fixes, reruns, self-review, reports, and the
+commit candidate. Merge/publication requires the reserved human decisions;
+public-game and optional physical findings come only from the repository owner.

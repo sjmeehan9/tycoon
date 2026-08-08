@@ -4,23 +4,23 @@ import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { nearBankruptcyEnvelope, nearVictoryEnvelope } from '../fixtures/campaignFixtures';
 
 test.describe('campaign outcomes through production import', () => {
-  test('finishes Day 30, records victory, unlocks meta, and enters endless mode', async ({
+  test('finishes Day 40, records victory, unlocks meta, and enters endless mode', async ({
     page,
   }) => {
     await page.goto('./');
     await importSave(page, serializeEnvelope(nearVictoryEnvelope()), 'near-victory.json');
     await expect(page.getByRole('heading', { name: 'How the cart traded' })).toBeVisible();
     await page.getByRole('button', { name: 'Settle & reinvest' }).click();
-    await expect(page.getByRole('heading', { name: /local institution/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /coffee institution/ })).toBeVisible();
     await expect(page.getByText(/Unlocked: endless mode/)).toBeVisible();
     await page.getByRole('button', { name: 'Continue in endless mode' }).click();
     await expect(
-      page.getByRole('heading', { name: /Day 31 · Endless · Specialty Cafe/ }),
+      page.getByRole('heading', { name: /Day 41 · Endless · Department Store Coffee Hall/ }),
     ).toBeVisible();
 
     await page.getByRole('button', { name: 'Game menu' }).click();
     await page.getByRole('tab', { name: 'Records' }).click();
-    await expect(page.getByText('Cafe Founder')).toBeVisible();
+    await expect(page.getByText('Coffee Hall Founder')).toBeVisible();
     await expect(page.getByText(/victory/i).first()).toBeVisible();
   });
 

@@ -1,14 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { ALL_DRINK_IDS, EQUIPMENT, EQUIPMENT_IDS } from '../../src/content/gameContent';
+import {
+  ALL_DRINK_IDS,
+  BEAN_DETAILS,
+  DRINK_MAP,
+  DEPARTMENT_EVENT_TEMPLATE_IDS,
+  EQUIPMENT,
+  EQUIPMENT_IDS,
+  STAFF_ROLES,
+  VENUE_WORKFORCE_CAPACITY,
+} from '../../src/content/gameContent';
 import {
   advanceTick,
+  activeServiceJobs,
   buyEquipment,
+  buyImprovement,
   batchExpiryDay,
   candidatePoolForDay,
   closeDay,
   createCampaign,
   demandRate,
+  defaultStationAssignments,
   equipmentPreparationMultiplier,
   hireStaff,
   operationalEffects,
@@ -16,6 +28,7 @@ import {
   promoteVenue,
   resolveEvent,
   serviceQueueCapacity,
+  setRushSpeed,
   startNextDay,
   startRush,
   type EquipmentId,
@@ -24,6 +37,7 @@ import {
   type StaffRole,
   type StaffTrait,
 } from '../../src/game';
+import { createRenderSnapshot } from '../../src/scene/three/renderSnapshot';
 
 function runToReport(initial: GameState): GameState {
   let state = initial;
@@ -56,7 +70,11 @@ function withScheduledStaff(state: GameState, members: StaffMember[]): GameState
   return {
     ...state,
     staff: members,
-    plan: { ...state.plan, scheduledStaffIds: members.map((member) => member.id) },
+    plan: {
+      ...state.plan,
+      scheduledStaffIds: members.map((member) => member.id),
+      stationAssignments: defaultStationAssignments(state.venueId, members),
+    },
   };
 }
 
@@ -64,13 +82,31 @@ function withEquipment(state: GameState, equipmentId: EquipmentId, level = 1): G
   return { ...state, equipment: { ...state.equipment, [equipmentId]: level } };
 }
 
+function advanceToFirstService(initial: GameState): GameState {
+  let state = startRush(initial);
+  let safety = 0;
+  while ((!state.rush || activeServiceJobs(state.rush).length === 0) && safety < 500) {
+    if (state.phase === 'event') {
+      const choice = state.rush?.pendingEvent?.choices[0]?.id;
+      if (!choice) throw new Error('Event had no choice.');
+      state = resolveEvent(state, choice);
+    } else {
+      state = advanceTick(state);
+    }
+    safety += 1;
+  }
+  if (!state.rush || activeServiceJobs(state.rush).length === 0) {
+    throw new Error('No service began.');
+  }
+  return state;
+}
+
 describe('staff operations', () => {
   it('rotates a deterministic balanced candidate pool each day', () => {
     const first = candidatePoolForDay(2_607, 1);
     expect(first).toEqual(candidatePoolForDay(2_607, 1));
     expect(first).not.toEqual(candidatePoolForDay(2_607, 2));
-    expect(first.filter((candidate) => candidate.role === 'barista')).toHaveLength(2);
-    expect(first.filter((candidate) => candidate.role === 'frontOfHouse')).toHaveLength(2);
+    expect(first.map((candidate) => candidate.role)).toEqual(STAFF_ROLES);
     expect(new Set(first.map((candidate) => candidate.id)).size).toBe(4);
     expect(new Set(first.map((candidate) => candidate.name)).size).toBe(4);
     expect(
@@ -86,28 +122,28 @@ describe('staff operations', () => {
         role: 'barista',
         speed: 58,
         skill: 51,
-        wageCents: 2_150,
+        wageCents: 2_550,
         trait: 'perfectionist',
       },
       {
         role: 'frontOfHouse',
         speed: 55,
         skill: 51,
-        wageCents: 2_150,
+        wageCents: 3_350,
         trait: 'quickHands',
       },
       {
-        role: 'barista',
+        role: 'manager',
         speed: 62,
         skill: 81,
-        wageCents: 2_500,
+        wageCents: 3_700,
         trait: 'quickHands',
       },
       {
-        role: 'frontOfHouse',
+        role: 'runner',
         speed: 54,
         skill: 69,
-        wageCents: 2_300,
+        wageCents: 3_500,
         trait: 'perfectionist',
       },
     ]);
@@ -127,20 +163,119 @@ describe('staff operations', () => {
     expect(state.candidateStaff.map((member) => member.name)).not.toContain(rejected.name);
   });
 
-  it('hires, schedules, and enforces venue staff capacity', () => {
+  it('uses independent venue roster and schedule limits with department rotation', () => {
     let state = createCampaign({ seed: 83 });
-    const candidateIds = state.candidateStaff.slice(0, 3).map((candidate) => candidate.id);
-    for (const candidateId of candidateIds) state = hireStaff(state, candidateId);
-    expect(state.staff).toHaveLength(3);
-    state = prepareDay(state, { scheduledStaffIds: candidateIds.slice(0, 2) });
-    expect(state.plan.scheduledStaffIds).toHaveLength(2);
-    expect(() => prepareDay(state, { scheduledStaffIds: candidateIds })).toThrow(
-      'can schedule 2 staff',
+    expect(() => hireStaff(state, state.candidateStaff[2]?.id ?? '')).toThrow(
+      'require the Department Store Coffee Hall',
     );
+    expect(() => hireStaff(state, state.candidateStaff[3]?.id ?? '')).toThrow(
+      'require the Department Store Coffee Hall',
+    );
+    for (const candidate of state.candidateStaff.slice(0, 2))
+      state = hireStaff(state, candidate.id);
+    state = { ...state, day: 2, candidateStaff: candidatePoolForDay(state.seed, 2) };
+    state = hireStaff(state, state.candidateStaff[0]?.id ?? '');
+    expect(state.staff).toHaveLength(3);
+    const candidateIds = state.staff.map((candidate) => candidate.id);
+    const selectedStaff = state.staff.slice(0, 2);
+    state = prepareDay(state, {
+      scheduledStaffIds: candidateIds.slice(0, 2),
+      stationAssignments: defaultStationAssignments(state.venueId, selectedStaff),
+    });
+    expect(state.plan.scheduledStaffIds).toHaveLength(2);
+    expect(() =>
+      prepareDay(state, {
+        scheduledStaffIds: candidateIds,
+        stationAssignments: defaultStationAssignments(state.venueId, state.staff),
+      }),
+    ).toThrow('can schedule 2 staff');
     expect(() => hireStaff(state, candidateIds[0] ?? '')).toThrow('no longer available');
+
+    let department: GameState = {
+      ...createCampaign({ seed: 84 }),
+      venueId: 'departmentStore',
+    };
+    for (let day = 1; day <= 3; day += 1) {
+      department = {
+        ...department,
+        day,
+        candidateStaff: candidatePoolForDay(department.seed, day),
+      };
+      for (const candidate of [...department.candidateStaff]) {
+        department = hireStaff(department, candidate.id);
+      }
+    }
+    expect(department.staff).toHaveLength(12);
+    expect(VENUE_WORKFORCE_CAPACITY.departmentStore).toEqual({
+      rosterCapacity: 12,
+      scheduleCapacity: 10,
+    });
+    expect(
+      prepareDay(department, {
+        scheduledStaffIds: [],
+        stationAssignments: defaultStationAssignments(department.venueId, []),
+      }).plan.scheduledStaffIds,
+    ).toEqual([]);
+    const scheduledTen = department.staff.slice(0, 10).map(({ id }) => id);
+    expect(
+      prepareDay(department, {
+        scheduledStaffIds: scheduledTen,
+        stationAssignments: defaultStationAssignments(
+          department.venueId,
+          department.staff.slice(0, 10),
+        ),
+      }).plan.scheduledStaffIds,
+    ).toEqual(scheduledTen);
+    expect(() =>
+      prepareDay(department, {
+        scheduledStaffIds: department.staff.slice(0, 11).map(({ id }) => id),
+        stationAssignments: defaultStationAssignments(
+          department.venueId,
+          department.staff.slice(0, 11),
+        ),
+      }),
+    ).toThrow('can schedule 10 staff');
+    department = {
+      ...department,
+      day: 4,
+      candidateStaff: candidatePoolForDay(department.seed, 4),
+    };
+    expect(() => hireStaff(department, department.candidateStaff[0]?.id ?? '')).toThrow(
+      'employ at most 12 people',
+    );
   });
 
-  it('applies both roles and every readable trait to the real operational model', () => {
+  it.each([
+    ['cart', 2],
+    ['kiosk', 3],
+    ['cafe', 5],
+  ] as const)('keeps the %s daily schedule limit at %i', (venueId, capacity) => {
+    const base = { ...createCampaign({ seed: 90 }), venueId };
+    const staff = Array.from({ length: capacity + 1 }, (_, index) =>
+      teamMember(`${venueId}-${index}`, 'barista', 'steady'),
+    );
+    const scheduled = staff.slice(0, capacity).map(({ id }) => id);
+    expect(
+      prepareDay(
+        { ...base, staff },
+        {
+          scheduledStaffIds: scheduled,
+          stationAssignments: defaultStationAssignments(venueId, staff.slice(0, capacity)),
+        },
+      ).plan.scheduledStaffIds,
+    ).toEqual(scheduled);
+    expect(() =>
+      prepareDay(
+        { ...base, staff },
+        {
+          scheduledStaffIds: staff.map(({ id }) => id),
+          stationAssignments: defaultStationAssignments(venueId, staff),
+        },
+      ),
+    ).toThrow(`can schedule ${capacity} staff`);
+  });
+
+  it('applies legacy roles, new department roles, and every readable trait', () => {
     const base = createCampaign({ seed: 41 });
     const baseline = operationalEffects(base);
     const barista = operationalEffects(
@@ -155,6 +290,11 @@ describe('staff operations', () => {
     const steady = operationalEffects(
       withScheduledStaff(base, [teamMember('steady', 'barista', 'steady')]),
     );
+    const department = { ...base, venueId: 'departmentStore' as const };
+    const departmentBaseline = operationalEffects(department);
+    const manager = teamMember('manager', 'manager', 'steady', 82, 84);
+    const runner = teamMember('runner', 'runner', 'steady', 82, 84);
+    const departmentCovered = operationalEffects(withScheduledStaff(department, [manager, runner]));
     expect(barista.preparationMultiplier).toBeLessThan(baseline.preparationMultiplier);
     expect(barista.qualityBonus).toBeGreaterThan(baseline.qualityBonus);
     expect(frontOfHouse.patienceMultiplier).toBeGreaterThan(baseline.patienceMultiplier);
@@ -162,24 +302,312 @@ describe('staff operations', () => {
     expect(frontOfHouse.satisfactionBonus).toBeGreaterThan(baseline.satisfactionBonus);
     expect(perfectionist.qualityBonus).toBeGreaterThan(barista.qualityBonus);
     expect(steady.preparationMultiplier).toBeLessThan(baseline.preparationMultiplier);
+    expect(departmentBaseline).toMatchObject({
+      coordinationReliabilityDelayTicks: 3,
+      handoffWorkloadDelayTicks: 4,
+      managerReductionTicks: 0,
+      runnerReductionTicks: 0,
+    });
+    expect(departmentCovered).toMatchObject({
+      coordinationReliabilityDelayTicks: 1,
+      handoffWorkloadDelayTicks: 1,
+      managerReductionTicks: 2,
+      runnerReductionTicks: 3,
+    });
+    expect(departmentCovered.coordinationReliabilityDelayTicks).toBeGreaterThan(0);
+    expect(departmentCovered.handoffWorkloadDelayTicks).toBeGreaterThan(0);
+    const stackedCoverage = operationalEffects(
+      withScheduledStaff(department, [
+        manager,
+        { ...manager, id: 'manager-two' },
+        runner,
+        { ...runner, id: 'runner-two' },
+      ]),
+    );
+    expect(stackedCoverage.coordinationReliabilityDelayTicks).toBe(1);
+    expect(stackedCoverage.handoffWorkloadDelayTicks).toBe(1);
+    expect(stackedCoverage.managerReductionTicks).toBe(2);
+    expect(stackedCoverage.runnerReductionTicks).toBe(3);
   });
 
-  it('charges scheduled payroll and exposes its causal service contribution', () => {
-    const member = teamMember('daily-barista', 'barista', 'quickHands', 90, 90);
-    const reportState = runToReport(
-      startRush(withScheduledStaff(createCampaign({ seed: 2 }), [member])),
+  it('applies department work delays once and Runner effects never create stock', () => {
+    const base = withEquipment(
+      { ...createCampaign({ seed: 112 }), venueId: 'departmentStore' as const },
+      'espressoMachine',
     );
+    const team = [
+      teamMember('manager', 'manager', 'peoplePerson', 82, 84),
+      teamMember('runner', 'runner', 'peoplePerson', 82, 84),
+    ];
+    const planned = withScheduledStaff(base, team);
+    const inventoryBefore = structuredClone(planned.inventory);
+    const effects = operationalEffects(planned, 'espressoBar');
+    expect(planned.inventory).toEqual(inventoryBefore);
+    const serving = advanceToFirstService(planned);
+    const order = serving.rush ? activeServiceJobs(serving.rush)[0]?.customer.order : undefined;
+    if (!order) throw new Error('Expected a prepared order.');
+    const drink = DRINK_MAP.get(order.drinkId);
+    const variant = drink?.variants.find(({ size }) => size === order.size);
+    if (!variant) throw new Error('Expected configured order recipe.');
+    const expectedBaseTicks = Math.max(
+      5,
+      Math.round(
+        variant.preparationTicks *
+          BEAN_DETAILS[planned.plan.beanId].speed *
+          effects.preparationMultiplier *
+          equipmentPreparationMultiplier(planned, order.drinkId),
+      ),
+    );
+    expect(order.preparationTicks).toBe(
+      expectedBaseTicks +
+        effects.coordinationReliabilityDelayTicks +
+        effects.handoffWorkloadDelayTicks,
+    );
+  });
+
+  it('applies a reassigned team member only to the intended department station', () => {
+    const base: GameState = {
+      ...createCampaign({ seed: 119 }),
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    const team = ['espresso-staff', 'brew-staff', 'cold-staff'].map((id) =>
+      teamMember(id, 'barista', 'steady', 82, 84),
+    );
+    const initial = prepareDay(
+      { ...base, staff: team },
+      {
+        scheduledStaffIds: team.map(({ id }) => id),
+        stationAssignments: {
+          espressoBar: ['espresso-staff'],
+          brewBar: ['brew-staff'],
+          coldBar: ['cold-staff'],
+        },
+      },
+    );
+    const before = {
+      espresso: operationalEffects(initial, 'espressoBar'),
+      brew: operationalEffects(initial, 'brewBar'),
+      cold: operationalEffects(initial, 'coldBar'),
+    };
+    const reassigned = prepareDay(initial, {
+      stationAssignments: {
+        espressoBar: [],
+        brewBar: ['brew-staff'],
+        coldBar: ['cold-staff', 'espresso-staff'],
+      },
+    });
+
+    expect(operationalEffects(reassigned, 'brewBar')).toEqual(before.brew);
+    expect(operationalEffects(reassigned, 'espressoBar').preparationMultiplier).toBeGreaterThan(
+      before.espresso.preparationMultiplier,
+    );
+    expect(operationalEffects(reassigned, 'coldBar').preparationMultiplier).toBeLessThan(
+      before.cold.preparationMultiplier,
+    );
+  });
+
+  it('reconciles zero, one, duplicate-role, and ten-person payroll exactly once', () => {
+    const base = { ...createCampaign({ seed: 2 }), venueId: 'departmentStore' as const };
+    expect(startRush(base).rush?.wageCostCents).toBe(0);
+    const one = [teamMember('daily-manager', 'manager', 'steady', 90, 90)];
+    expect(startRush(withScheduledStaff(base, one)).rush?.wageCostCents).toBe(2_850);
+    const duplicateRole = [
+      teamMember('manager-a', 'manager', 'steady'),
+      { ...teamMember('manager-b', 'manager', 'steady'), wageCents: 3_150 },
+    ];
+    expect(startRush(withScheduledStaff(base, duplicateRole)).rush?.wageCostCents).toBe(6_000);
+    const team = Array.from({ length: 10 }, (_, index) => ({
+      ...teamMember(
+        `department-${index}`,
+        STAFF_ROLES[index % STAFF_ROLES.length] ?? 'barista',
+        'steady',
+      ),
+      wageCents: 2_000 + index * 125,
+    }));
+    const payroll = team.reduce((total, member) => total + member.wageCents, 0);
+    const reportState = runToReport(startRush(withScheduledStaff(base, team)));
     const report = reportState.report;
     expect(report).not.toBeNull();
     if (!report) return;
-    expect(report.wageCostCents).toBe(member.wageCents);
+    expect(report.wageCostCents).toBe(payroll);
     expect(report.closingCashCents).toBe(report.openingCashCents + report.netCashFlowCents);
-    expect(report.explanations.join(' ')).toContain('scheduled team member');
+    expect(report.explanations.join(' ')).toContain('10 scheduled team members');
+    expect(report.explanations.join(' ')).toContain('Espresso bar:');
+    expect(report.explanations.join(' ')).toContain('Manager reduction');
+    expect(report.explanations.join(' ')).toContain('Runner reduction');
+  });
+
+  it('keeps department outcomes equal at 1×, 2×, and 4× presentation speeds', () => {
+    const base = { ...createCampaign({ seed: 401 }), venueId: 'departmentStore' as const };
+    const team = [
+      teamMember('speed-manager', 'manager', 'steady'),
+      teamMember('speed-runner', 'runner', 'steady'),
+    ];
+    const reports = ([1, 2, 4] as const).map((speed) => {
+      const started = setRushSpeed(startRush(withScheduledStaff(base, team)), speed);
+      return runToReport(started).report;
+    });
+    expect(reports[1]).toEqual(reports[0]);
+    expect(reports[2]).toEqual(reports[0]);
+  });
+
+  it('copies all ten scheduled roles into the bounded presentation snapshot', () => {
+    const base = { ...createCampaign({ seed: 402 }), venueId: 'departmentStore' as const };
+    const team = Array.from({ length: 10 }, (_, index) =>
+      teamMember(
+        `snapshot-${index}`,
+        STAFF_ROLES[index % STAFF_ROLES.length] ?? 'barista',
+        'steady',
+      ),
+    );
+    const snapshot = createRenderSnapshot(withScheduledStaff(base, team), false, []);
+    expect(snapshot.operation.scheduledRoles).toHaveLength(10);
+    expect(snapshot.operation.scheduledRoles).toContain('manager');
+    expect(snapshot.operation.scheduledRoles).toContain('runner');
+  });
+});
+
+describe('bounded department events', () => {
+  it('selects every department template by weight while keeping cart events to the base pair', () => {
+    const departmentIds = new Set<string>();
+    const cartIds = new Set<string>();
+    for (let seed = 1; seed <= 600; seed += 1) {
+      const department = firstEvent({
+        ...createCampaign({ seed }),
+        day: 30,
+        venueId: 'departmentStore',
+      });
+      if (department) departmentIds.add(department);
+      const cart = firstEvent({ ...createCampaign({ seed }), day: 30 });
+      if (cart) cartIds.add(cart);
+    }
+    expect(DEPARTMENT_EVENT_TEMPLATE_IDS.every((id) => departmentIds.has(id))).toBe(true);
+    expect(cartIds).toEqual(new Set(['office-coffee-run', 'sudden-downpour']));
+  });
+
+  it('offers zero to two deterministic decisions without repeating one template in a day', () => {
+    const state = { ...createCampaign({ seed: 2 }), day: 30, venueId: 'departmentStore' as const };
+    let running = startRush(state);
+    const ids: string[] = [];
+    while (running.phase !== 'report') {
+      if (running.phase === 'event') {
+        const event = running.rush?.pendingEvent;
+        if (!event) throw new Error('Expected pending department event.');
+        ids.push(event.id);
+        running = resolveEvent(running, event.choices[0]!.id);
+      } else {
+        running = advanceTick(running);
+      }
+    }
+    expect(ids).toHaveLength((state.seed + state.day) % 3);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(
+      runToReport(startRush(state)).rush?.resolvedEvents.map(({ eventId }) => eventId),
+    ).toEqual(ids);
   });
 });
 
 describe('equipment and venue growth', () => {
-  it('applies all six equipment families to service calculations', () => {
+  it('purchases four visible department upgrades with exact prerequisites and bounded effects', () => {
+    const settled = closeDay(runToReport(startRush(createCampaign({ seed: 2 }))));
+    const department: GameState = {
+      ...settled,
+      cashCents: 200_000,
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    expect(() =>
+      buyImprovement(
+        { ...department, equipment: { ...department.equipment, pos: 2 } },
+        'heritage-welcome-marquee',
+      ),
+    ).toThrow('Point of sale level 3');
+
+    const openingInventory = structuredClone(department.inventory);
+    const baseline = {
+      queue: serviceQueueCapacity(department),
+      espresso: operationalEffects(department, 'espressoBar'),
+      brew: operationalEffects(department, 'brewBar'),
+      cold: operationalEffects(department, 'coldBar'),
+    };
+    let improved = buyImprovement(department, 'heritage-welcome-marquee');
+    expect(serviceQueueCapacity(improved)).toBe(baseline.queue + 2);
+    expect(operationalEffects(improved, 'espressoBar').patienceMultiplier).toBeCloseTo(1.05);
+    improved = buyImprovement(improved, 'espresso-order-pass');
+    expect(operationalEffects(improved, 'espressoBar').preparationMultiplier).toBeCloseTo(
+      baseline.espresso.preparationMultiplier * 0.94,
+    );
+    improved = buyImprovement(improved, 'brew-gallery');
+    expect(operationalEffects(improved, 'brewBar').preparationMultiplier).toBeCloseTo(
+      baseline.brew.preparationMultiplier * 0.9,
+    );
+    improved = buyImprovement(improved, 'cold-collection-rail');
+    expect(operationalEffects(improved, 'coldBar')).toMatchObject({ satisfactionBonus: 2 });
+    expect(operationalEffects(improved, 'coldBar').preparationMultiplier).toBeCloseTo(
+      baseline.cold.preparationMultiplier * 0.92,
+    );
+    expect(operationalEffects(improved, 'coldBar').patienceMultiplier).toBeCloseTo(1.05 * 1.08);
+    expect(improved.inventory).toEqual(openingInventory);
+    expect(improved.improvements).toEqual([
+      'heritage-welcome-marquee',
+      'espresso-order-pass',
+      'brew-gallery',
+      'cold-collection-rail',
+    ]);
+    const snapshot = createRenderSnapshot(improved, false, [
+      'mosaicFloor',
+      'brassBayPlaques',
+      'afterHoursGlow',
+    ]);
+    expect(snapshot.operation.improvements).toEqual(improved.improvements);
+    expect(snapshot.operation.cosmetics).toEqual([
+      'mosaicFloor',
+      'brassBayPlaques',
+      'afterHoursGlow',
+    ]);
+    expect(buyImprovement(improved, 'cold-collection-rail')).toBe(improved);
+  });
+
+  it('applies every commercial tier through data-driven service calculations', () => {
+    expect(
+      (['batchBrewer', 'refrigeration', 'serviceCounter'] as const).map((equipmentId) =>
+        EQUIPMENT[equipmentId].tiers.map(({ costCents, operatingCostCents }) => [
+          costCents,
+          operatingCostCents,
+        ]),
+      ),
+    ).toEqual([
+      [
+        [5_500, 300],
+        [8_000, 400],
+        [11_500, 460],
+      ],
+      [
+        [2_500, 110],
+        [8_000, 400],
+        [11_500, 460],
+      ],
+      [
+        [4_000, 250],
+        [7_000, 350],
+        [11_500, 460],
+      ],
+    ]);
     const base = createCampaign({ seed: 71 });
     expect(operationalEffects(withEquipment(base, 'grinder')).qualityBonus).toBeGreaterThan(0);
     expect(
@@ -195,6 +623,32 @@ describe('equipment and venue growth', () => {
     expect(serviceQueueCapacity(withEquipment(base, 'serviceCounter'))).toBe(
       serviceQueueCapacity(base) + 2,
     );
+
+    const commercial: GameState = {
+      ...base,
+      venueId: 'departmentStore',
+      equipment: {
+        grinder: 3,
+        espressoMachine: 3,
+        batchBrewer: 3,
+        refrigeration: 3,
+        pos: 3,
+        serviceCounter: 3,
+      },
+    };
+    const commercialEffects = operationalEffects(commercial);
+    expect(commercialEffects).toMatchObject({
+      qualityBonus: 8,
+      demandMultiplier: 1.07,
+      queueBonus: 8,
+    });
+    expect(commercialEffects.equipmentReliabilityDelayTicks).toBeGreaterThan(0);
+    expect(commercialEffects.preparationMultiplier).toBeCloseTo(0.84 * 0.86, 8);
+    expect(equipmentPreparationMultiplier(commercial, 'flatWhite')).toBe(0.7);
+    expect(equipmentPreparationMultiplier(commercial, 'batchBrew')).toBe(0.4);
+    expect(batchExpiryDay('dairyMilk', 1, 3)).toBe(7);
+    expect(serviceQueueCapacity(commercial)).toBe(32);
+    expect(commercialEffects.operatingCostCents).toBe(4_180);
   });
 
   it.each(EQUIPMENT_IDS)('%s is wired into a complete day and settlement', (equipmentId) => {
@@ -214,9 +668,9 @@ describe('equipment and venue growth', () => {
     expect(batchExpiryDay('houseBeans', 1, 2)).toBe(batchExpiryDay('houseBeans', 1, 0));
   });
 
-  it('enforces tier availability, affordability, and both promotion gates', () => {
+  it('enforces tier availability, affordability, and all three promotion gates', () => {
     const reinvest = closeDay(runToReport(startRush(createCampaign({ seed: 2 }))));
-    const funded = { ...reinvest, cashCents: 100_000, reputation: 60 };
+    const funded = { ...reinvest, cashCents: 200_000, reputation: 80 };
     const grinderOne = buyEquipment(funded, 'grinder');
     expect(grinderOne.equipment.grinder).toBe(1);
     expect(() => buyEquipment(grinderOne, 'grinder')).toThrow('requires a Coffee Kiosk');
@@ -246,5 +700,20 @@ describe('equipment and venue growth', () => {
     expect(
       prepareDay({ ...cafe, phase: 'planning' }, { activeMenu: ALL_DRINK_IDS }).plan.activeMenu,
     ).toHaveLength(10);
+
+    expect(() => buyEquipment(cafe, 'grinder')).toThrow('requires a Department Store Coffee Hall');
+    const department = promoteVenue(cafe);
+    expect(department.venueId).toBe('departmentStore');
+    expect(department.cashCents).toBe(cafe.cashCents - 20_000);
+    const commercialGrinder = buyEquipment(department, 'grinder');
+    expect(commercialGrinder.equipment.grinder).toBe(3);
+    expect(() => buyEquipment(commercialGrinder, 'grinder')).toThrow('fully upgraded');
+    expect(serviceQueueCapacity(department)).toBe(24);
   });
 });
+
+function firstEvent(state: GameState): string | null {
+  let running = startRush(state);
+  while (running.phase === 'rush') running = advanceTick(running);
+  return running.phase === 'event' ? (running.rush?.pendingEvent?.id ?? null) : null;
+}

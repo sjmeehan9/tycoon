@@ -1,8 +1,11 @@
 import {
+  ARRIVAL_BASE_RATE,
+  BALANCE_RANGES,
   BEAN_DETAILS,
+  EVENT_TEMPLATES,
   CAMPAIGN_RULES,
-  CART_IMPROVEMENT_COST_CENTS,
   DAY_PLAN_LIMITS,
+  DEPARTMENT_WORKLOAD_DELAYS,
   DRINK_MAP,
   EQUIPMENT,
   EQUIPMENT_IDS,
@@ -10,31 +13,39 @@ import {
   INGREDIENT_UNIT_COST_CENTS,
   INITIAL_CASH_CENTS,
   INITIAL_REPUTATION,
+  IMPROVEMENTS,
+  IMPROVEMENT_IDS,
   MILK_SURCHARGE_CENTS,
   PURCHASE_PACKAGES,
   RUSH_ACTIVITY_LIMIT,
   RUSH_DURATION_TICKS,
   SCENARIO_DETAILS,
   SIZE_SURCHARGE_CENTS,
+  STAFF_ROLES,
+  STAFF_ROLE_DETAILS,
   TICKS_PER_SECOND,
   VENUE_DEMAND_FACTOR,
   VENUE_MENU_CAPACITY,
   VENUE_PROMOTIONS,
-  VENUE_STAFF_CAPACITY,
   VENUES,
   WEATHER_DETAILS,
   createDefaultPlan,
   emptyInventory,
   emptyPurchases,
+  equipmentTierAtLevel,
   milkIngredient,
+  venueMeetsRequirement,
+  workforceCapacityFor,
+  staffRoleAvailableAtVenue,
   weatherForDay,
 } from '../content/gameContent';
 import { GameRuleError } from './errors';
 import { baseDrinkChoiceWeight, milkForDraw, segmentForDraw, sizeForDraw } from './demandModel';
+import { applyDemandInfluence, type ArrivalDemandInfluenceId } from './demandInfluences';
 import {
   addPlannedPurchases,
   completeIngredientTotals,
-  consumeIngredientsLifo,
+  consumeIngredientsAtServiceStart,
   expireInventoryAfterRush,
   extendInventoryRefrigeration,
   hasIngredients,
@@ -43,9 +54,32 @@ import {
 } from './inventory';
 import { nextRandom, randomInt } from './prng';
 import {
+  LANE_IDS,
+  MAX_CONSECUTIVE_EXPRESS_STARTS,
+  MAX_EXPRESS_DRINKS,
+  MAX_SERVICE_JOBS_PER_RUSH,
+  STATION_DETAILS,
+  STATION_EQUIPMENT_IDS,
+  STATION_IDS,
+  activeServiceJobs,
+  defaultStationAssignments,
+  emptyExpressStartCounters,
+  emptyServiceJobs,
+  expressDrinkEligible,
+  laneForDrink,
+  serviceConfigFor,
+  serviceAggregatesForPlan,
+  serviceJobId,
+  staffStationCompatible,
+  stationReadyForService,
+  stationForDrink,
+  waitingCustomers,
+} from './serviceStations';
+import {
   CANDIDATES_PER_DAY,
   LEGACY_STAFF_NAMES,
   MAX_STAFF_NAME_DAY,
+  candidateStaffId,
   candidateStaffName,
 } from './staffNames';
 import type {
@@ -54,6 +88,7 @@ import type {
   CustomerSegment,
   DayPlan,
   DayReport,
+  DayReportCauseSnapshot,
   DrinkConfig,
   DrinkId,
   DrinkSize,
@@ -63,6 +98,8 @@ import type {
   GameState,
   IngredientAmount,
   IngredientId,
+  ImprovementId,
+  LaneId,
   MilkChoice,
   Order,
   PlanPatch,
@@ -72,16 +109,33 @@ import type {
   RushState,
   RushStats,
   RushWalkawayReason,
+  ServiceAggregate,
+  ServiceJob,
   SimulationEvent,
   StaffMember,
+  StaffRoleOperationalEffect,
   StaffTrait,
+  StationId,
   StepDirection,
-  VenueId,
 } from './types';
 
-const MAX_HIRED_STAFF = 8;
 const STAFF_TRAITS: StaffTrait[] = ['quickHands', 'peoplePerson', 'perfectionist', 'steady'];
-const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
+
+/** Registry identities consumed by the arrival-rate engine path. */
+export const ARRIVAL_DEMAND_ENGINE_INFLUENCES = [
+  'arrivalAggregatePrice',
+  'arrivalReputation',
+  'arrivalImprovements',
+  'arrivalDialIn',
+  'arrivalBean',
+  'arrivalWeather',
+  'arrivalVenue',
+  'arrivalScenario',
+  'arrivalTeamEquipment',
+  'arrivalQueueWait',
+  'arrivalAvailability',
+  'arrivalRushEvent',
+] as const satisfies readonly ArrivalDemandInfluenceId[];
 
 /** Maximum distinct drink/size/milk variants a single configured rush can charge. */
 export const MAX_REPORT_CHARGE_GROUPS = [...DRINK_MAP.values()].reduce(
@@ -98,59 +152,22 @@ export const MAX_REPORT_CHARGE_PRICE_CENTS =
 /** Lowest canonical order charge reachable from the bounded morning plan. */
 export const MIN_REPORT_CHARGE_PRICE_CENTS = DAY_PLAN_LIMITS.priceCents.minimum;
 
-const LANEWAY_EVENT: SimulationEvent = {
-  id: 'office-coffee-run',
-  title: 'The office coffee run arrives',
-  description: 'A nearby studio wants a tray immediately. The queue is already eyeing the clock.',
-  choices: [
-    {
-      id: 'take-order',
-      label: 'Take the order',
-      description: 'Add three impatient customers and gain a little afternoon buzz.',
-      effect: { addCustomers: 3, demandMultiplier: 1.08, qualityBonus: -3 },
-    },
-    {
-      id: 'protect-queue',
-      label: 'Protect the queue',
-      description: 'Politely decline. The regulars appreciate the calm service.',
-      effect: { reputation: 1, qualityBonus: 2 },
-    },
-  ],
-};
-
-const WEATHER_EVENT: SimulationEvent = {
-  id: 'sudden-downpour',
-  title: 'The heavens open',
-  description: 'A sharp Melbourne downpour sends pedestrians under every nearby awning.',
-  choices: [
-    {
-      id: 'shelter-crowd',
-      label: 'Shelter the crowd',
-      description: 'Welcome them in. Demand rises, but the queue gets lively.',
-      effect: { addCustomers: 2, demandMultiplier: 1.12, reputation: 1 },
-    },
-    {
-      id: 'close-awning',
-      label: 'Protect the machine',
-      description: 'Keep the awning tight and service controlled.',
-      effect: { demandMultiplier: 0.94, qualityBonus: 3 },
-    },
-  ],
-};
-
-const RUSH_EVENTS = [LANEWAY_EVENT, WEATHER_EVENT];
-
 /** Create a deterministic, serializable campaign at the first morning plan. */
 export function createCampaign(options: CampaignOptions): GameState {
   if (!Number.isFinite(options.seed)) throw new GameRuleError('Campaign seed must be a number.');
   const seed = Math.trunc(options.seed) >>> 0;
   const rngState = seed === 0 ? 0x6d2b79f5 : seed;
+  const difficulty = options.difficulty ?? 'standard';
+  if (difficulty !== 'standard' && difficulty !== 'hard') {
+    throw new GameRuleError('Difficulty must be Standard or Hard.');
+  }
   return {
-    stateVersion: 3,
-    campaignId: `laneway-${seed.toString(16).padStart(8, '0')}`,
+    stateVersion: 4,
+    campaignId: `laneway-${difficulty}-${seed.toString(16).padStart(8, '0')}`,
     seed,
     rngState,
     scenarioId: options.scenarioId ?? 'lanewayClassic',
+    difficulty,
     mode: 'campaign',
     phase: 'planning',
     day: 1,
@@ -189,7 +206,23 @@ export function prepareDay(state: GameState, patch: PlanPatch): GameState {
     purchases: { ...state.plan.purchases, ...patch.purchases },
     dialIn: patch.dialIn ?? state.plan.dialIn,
     beanId: patch.beanId ?? state.plan.beanId,
-    scheduledStaffIds: patch.scheduledStaffIds ?? state.plan.scheduledStaffIds,
+    scheduledStaffIds: patch.scheduledStaffIds
+      ? [...patch.scheduledStaffIds]
+      : state.plan.scheduledStaffIds,
+    stationAssignments: patch.stationAssignments
+      ? {
+          ...state.plan.stationAssignments,
+          ...Object.fromEntries(
+            Object.entries(patch.stationAssignments).map(([stationId, staffIds]) => [
+              stationId,
+              staffIds ? [...staffIds] : [],
+            ]),
+          ),
+        }
+      : state.plan.stationAssignments,
+    expressDrinkIds: patch.expressDrinkIds
+      ? [...patch.expressDrinkIds]
+      : state.plan.expressDrinkIds,
   };
   validatePlan(state, plan);
   if (purchaseCost(plan) > state.cashCents - CAMPAIGN_RULES.overdraftFloorCents) {
@@ -254,8 +287,11 @@ export function startRush(state: GameState): GameState {
     durationTicks: RUSH_DURATION_TICKS,
     isPaused: false,
     speed: 1,
-    queue: [],
-    activeService: null,
+    normalQueue: [],
+    expressQueue: [],
+    serviceJobsByStation: emptyServiceJobs(),
+    consecutiveExpressStartsByStation: emptyExpressStartCounters(),
+    nextServiceJobSequence: 0,
     pendingEvent: null,
     resolvedEvents: [],
     eventTriggerTicks: createEventTriggerTicks(state),
@@ -273,7 +309,7 @@ export function startRush(state: GameState): GameState {
     nextActivitySequence: 0,
     recentActivity: [],
     chargeGroups: [],
-    stats: emptyRushStats(),
+    stats: emptyRushStats(state),
   };
   return {
     ...state,
@@ -342,7 +378,12 @@ export function resolveEvent(state: GameState, choiceId: string): GameState {
         ...activeRush.resolvedEvents,
         {
           eventId: event.id,
-          choiceId,
+          title: event.title,
+          description: event.description,
+          choiceId: choice.id,
+          choiceLabel: choice.label,
+          choiceDescription: choice.description,
+          effect: { ...choice.effect },
           summary: `${event.title}: ${choice.label}`,
         },
       ],
@@ -356,7 +397,15 @@ export function closeDay(state: GameState): GameState {
   requirePhase(state, 'report');
   if (!state.report) throw new GameRuleError('There is no day report to settle.');
   const settledReport: DayReport = { ...state.report, settled: true };
-  const closingReputation = clamp(state.reputation + settledReport.reputationChange, 0, 100);
+  const positiveReputationCeiling = Math.max(
+    state.reputation,
+    CAMPAIGN_RULES.reputationSoftCeiling,
+  );
+  const closingReputation = clamp(
+    state.reputation + settledReport.reputationChange,
+    0,
+    settledReport.reputationChange > 0 ? positiveReputationCeiling : 100,
+  );
   const settled: GameState = {
     ...state,
     phase: 'reinvest',
@@ -379,7 +428,7 @@ export function closeDay(state: GameState): GameState {
   }
   if (settled.mode === 'campaign' && settled.day >= CAMPAIGN_RULES.durationDays) {
     const won =
-      settled.venueId === 'cafe' &&
+      settled.venueId === 'departmentStore' &&
       settled.cashCents >= CAMPAIGN_RULES.victoryCashCents &&
       settled.reputation >= CAMPAIGN_RULES.victoryReputation;
     return won
@@ -388,8 +437,8 @@ export function closeDay(state: GameState): GameState {
           phase: 'victory',
           outcome: {
             type: 'victory',
-            title: 'The laneway has its local institution',
-            message: `Day ${CAMPAIGN_RULES.durationDays} closes with a thriving specialty cafe, ${formatCents(settled.cashCents)} in the till, and ${settled.reputation} reputation.`,
+            title: 'The city has its coffee institution',
+            message: `Day ${CAMPAIGN_RULES.durationDays} closes with a thriving department-store coffee hall, ${formatCents(settled.cashCents)} in the till, and ${settled.reputation} reputation.`,
           },
         }
       : {
@@ -398,24 +447,41 @@ export function closeDay(state: GameState): GameState {
           outcome: {
             type: 'targetMissed',
             title: 'A good run, short of the final brief',
-            message: `Day ${CAMPAIGN_RULES.durationDays} needs a cafe, ${formatCents(CAMPAIGN_RULES.victoryCashCents)}, and ${CAMPAIGN_RULES.victoryReputation} reputation. Your next seed is waiting.`,
+            message: `Day ${CAMPAIGN_RULES.durationDays} needs the department-store coffee hall, ${formatCents(CAMPAIGN_RULES.victoryCashCents)}, and ${CAMPAIGN_RULES.victoryReputation} reputation. Your next seed is waiting.`,
           },
         };
   }
   return settled;
 }
 
-/** Buy the representative Phase 1 cart improvement during reinvestment. */
-export function buyImprovement(state: GameState, improvementId: string): GameState {
+/** Buy one configured physical improvement during reinvestment. */
+export function buyImprovement(state: GameState, improvementId: ImprovementId): GameState {
   requirePhase(state, 'reinvest');
-  if (improvementId !== 'street-sign') throw new GameRuleError('That improvement is unavailable.');
+  if (!IMPROVEMENT_IDS.includes(improvementId)) {
+    throw new GameRuleError('That improvement is unavailable.');
+  }
   if (state.improvements.includes(improvementId)) return state;
-  if (state.cashCents < CART_IMPROVEMENT_COST_CENTS) {
-    throw new GameRuleError('The hand-painted street sign costs $25.00.');
+  const improvement = IMPROVEMENTS[improvementId];
+  if (!venueMeetsRequirement(state.venueId, improvement.requiresVenue)) {
+    throw new GameRuleError(
+      `${improvement.name} requires the ${VENUES[improvement.requiresVenue].shortName}.`,
+    );
+  }
+  const missingEquipment = Object.entries(improvement.requiredEquipment).find(
+    ([equipmentId, level]) => state.equipment[equipmentId as EquipmentId] < level,
+  );
+  if (missingEquipment) {
+    const [equipmentId, level] = missingEquipment;
+    throw new GameRuleError(
+      `${improvement.name} requires ${EQUIPMENT[equipmentId as EquipmentId].name} level ${level}.`,
+    );
+  }
+  if (state.cashCents < improvement.costCents) {
+    throw new GameRuleError(`${improvement.name} costs ${formatCents(improvement.costCents)}.`);
   }
   return {
     ...state,
-    cashCents: state.cashCents - CART_IMPROVEMENT_COST_CENTS,
+    cashCents: state.cashCents - improvement.costCents,
     improvements: [...state.improvements, improvementId],
   };
 }
@@ -423,13 +489,21 @@ export function buyImprovement(state: GameState, improvementId: string): GameSta
 /** Hire one candidate from the current deterministic daily pool. */
 export function hireStaff(state: GameState, candidateId: string): GameState {
   requireManagementPhase(state);
-  if (state.staff.length >= MAX_HIRED_STAFF) {
-    throw new GameRuleError(`The business can employ at most ${MAX_HIRED_STAFF} people.`);
-  }
   const candidate = state.candidateStaff.find((member) => member.id === candidateId);
   if (!candidate) throw new GameRuleError('That candidate is no longer available today.');
   if (state.staff.some((member) => member.id === candidate.id)) {
     throw new GameRuleError('That candidate already works here.');
+  }
+  if (!staffRoleAvailableAtVenue(candidate.role, state.venueId)) {
+    throw new GameRuleError(
+      `${STAFF_ROLE_DETAILS[candidate.role].label} candidates require the Department Store Coffee Hall.`,
+    );
+  }
+  const rosterCapacity = workforceCapacityFor(state.venueId).rosterCapacity;
+  if (state.staff.length >= rosterCapacity) {
+    throw new GameRuleError(
+      `${VENUES[state.venueId].shortName} can employ at most ${rosterCapacity} people.`,
+    );
   }
   return {
     ...state,
@@ -444,7 +518,9 @@ export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameSt
   if (!EQUIPMENT_IDS.includes(equipmentId))
     throw new GameRuleError('That equipment is unavailable.');
   const currentLevel = state.equipment[equipmentId];
-  const nextTier = EQUIPMENT[equipmentId].tiers[currentLevel];
+  const nextTier = EQUIPMENT[equipmentId].tiers.find(
+    (candidate) => candidate.level === currentLevel + 1,
+  );
   if (!nextTier)
     throw new GameRuleError(`${EQUIPMENT[equipmentId].name} is already fully upgraded.`);
   if (!venueMeetsRequirement(state.venueId, nextTier.requiresVenue)) {
@@ -470,7 +546,9 @@ export function buyEquipment(state: GameState, equipmentId: EquipmentId): GameSt
 /** Promote the current business when its cash, reputation, and equipment are ready. */
 export function promoteVenue(state: GameState): GameState {
   requirePhase(state, 'reinvest');
-  if (state.venueId === 'cafe') throw new GameRuleError('The specialty cafe is the final venue.');
+  if (state.venueId === 'departmentStore') {
+    throw new GameRuleError('The department-store coffee hall is the final venue.');
+  }
   const promotion = VENUE_PROMOTIONS[state.venueId];
   if (state.reputation < promotion.reputationRequired) {
     throw new GameRuleError(
@@ -493,6 +571,11 @@ export function promoteVenue(state: GameState): GameState {
     ...state,
     cashCents: state.cashCents - promotion.costCents,
     venueId: promotion.to,
+    plan: {
+      ...state.plan,
+      stationAssignments: defaultStationAssignments(promotion.to, scheduledStaff(state)),
+      expressDrinkIds: [],
+    },
   };
 }
 
@@ -586,36 +669,87 @@ export interface OperationalEffects {
   patienceMultiplier: number;
   queueBonus: number;
   operatingCostCents: number;
+  equipmentReliabilityDelayTicks: number;
+  managerReductionTicks: number;
+  runnerReductionTicks: number;
+  coordinationReliabilityDelayTicks: number;
+  handoffWorkloadDelayTicks: number;
 }
 
-/** Aggregate the exact staff, trait, equipment, and venue effects used by service. */
-export function operationalEffects(state: GameState): OperationalEffects {
+/** Calculate one role's bounded workload reduction without reading or mutating game state. */
+export function staffRoleOperationalEffect(member: StaffMember): StaffRoleOperationalEffect {
+  const config = STAFF_ROLE_DETAILS[member.role];
+  const reduction = config.workloadReduction;
+  if (!reduction) return { operation: config.operation, reductionTicks: 0 };
+  const attribute = member[reduction.attribute];
+  const extraTicks = Math.floor(
+    Math.max(0, attribute - reduction.threshold) / reduction.pointsPerExtraTick,
+  );
+  return {
+    operation: config.operation,
+    reductionTicks: Math.min(reduction.maximumTicks, reduction.baseTicks + extraTicks),
+  };
+}
+
+/** Aggregate exact staff, trait, equipment, and venue effects for demand or one station. */
+export function operationalEffects(state: GameState, stationId?: StationId): OperationalEffects {
   let preparationMultiplier = 1;
   let qualityBonus = 0;
   let satisfactionBonus = 0;
   let demandMultiplier = 1;
   let patienceMultiplier = 1;
-  const queueBonus = state.equipment.serviceCounter * 2;
+  let queueBonus = 0;
+  let proposedManagerReductionTicks = 0;
+  let proposedRunnerReductionTicks = 0;
 
-  qualityBonus += state.equipment.grinder === 2 ? 5 : state.equipment.grinder === 1 ? 2 : 0;
-  if (state.equipment.pos === 1) {
-    preparationMultiplier *= 0.96;
-    demandMultiplier *= 1.02;
-  } else if (state.equipment.pos === 2) {
-    preparationMultiplier *= 0.91;
-    demandMultiplier *= 1.04;
+  for (const improvementId of state.improvements) {
+    const effects = IMPROVEMENTS[improvementId].effects;
+    if (effects.stationId !== undefined && effects.stationId !== stationId) continue;
+    preparationMultiplier *= effects.preparationMultiplier ?? 1;
+    satisfactionBonus += effects.satisfactionBonus ?? 0;
+    patienceMultiplier *= effects.patienceMultiplier ?? 1;
+    queueBonus += effects.queueCapacityBonus ?? 0;
   }
-  preparationMultiplier *= state.equipment.serviceCounter === 2 ? 0.93 : 1;
-  if (state.equipment.serviceCounter === 1) preparationMultiplier *= 0.97;
 
-  for (const member of scheduledStaff(state)) {
-    if (member.role === 'barista') {
-      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.004, 0.78, 1);
-      qualityBonus += Math.round((member.skill - 48) / 11);
-    } else {
-      preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.0015, 0.91, 1);
-      patienceMultiplier *= 1 + Math.max(0, member.skill - 45) / 500;
-      satisfactionBonus += Math.round((member.skill - 48) / 14);
+  const applicableEquipmentIds =
+    state.venueId === 'departmentStore' && stationId
+      ? STATION_EQUIPMENT_IDS[stationId]
+      : EQUIPMENT_IDS;
+  for (const equipmentId of applicableEquipmentIds) {
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    if (!tier) continue;
+    const effects = tier.effects;
+    preparationMultiplier *= effects.preparationMultiplier ?? 1;
+    qualityBonus += effects.qualityBonus ?? 0;
+    demandMultiplier *= effects.demandMultiplier ?? 1;
+    queueBonus += effects.queueCapacityBonus ?? 0;
+  }
+
+  const assignedIds =
+    state.venueId === 'departmentStore' && stationId
+      ? new Set(state.plan.stationAssignments[stationId])
+      : null;
+  const applicableStaff = scheduledStaff(state).filter(
+    (member) => assignedIds === null || assignedIds.has(member.id),
+  );
+  for (const member of applicableStaff) {
+    const roleEffect = staffRoleOperationalEffect(member);
+    switch (roleEffect.operation) {
+      case 'coffeePreparation':
+        preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.004, 0.78, 1);
+        qualityBonus += Math.round((member.skill - 48) / 11);
+        break;
+      case 'guestFlow':
+        preparationMultiplier *= clamp(1 - (member.speed - 45) * 0.0015, 0.91, 1);
+        patienceMultiplier *= 1 + Math.max(0, member.skill - 45) / 500;
+        satisfactionBonus += Math.round((member.skill - 48) / 14);
+        break;
+      case 'coordinationReliability':
+        proposedManagerReductionTicks += roleEffect.reductionTicks;
+        break;
+      case 'handoffWorkload':
+        proposedRunnerReductionTicks += roleEffect.reductionTicks;
+        break;
     }
     if (member.trait === 'quickHands') preparationMultiplier *= 0.9;
     if (member.trait === 'peoplePerson') {
@@ -632,11 +766,38 @@ export function operationalEffects(state: GameState): OperationalEffects {
   }
 
   const equipmentOperatingCost = EQUIPMENT_IDS.reduce((total, equipmentId) => {
-    const level = state.equipment[equipmentId];
-    return (
-      total + (level > 0 ? (EQUIPMENT[equipmentId].tiers[level - 1]?.operatingCostCents ?? 0) : 0)
-    );
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    return total + (tier?.operatingCostCents ?? 0);
   }, 0);
+  const equipmentReliabilityDelayTicks =
+    state.venueId === 'departmentStore'
+      ? Math.ceil(
+          applicableEquipmentIds.reduce((total, equipmentId) => {
+            const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+            return total + (tier ? 100 - tier.reliabilityPercent : 0);
+          }, 0) / DEPARTMENT_WORKLOAD_DELAYS.reliabilityDeficitPointsPerTick,
+        )
+      : 0;
+  const coordinationWorkTicks =
+    state.venueId === 'departmentStore'
+      ? DEPARTMENT_WORKLOAD_DELAYS.coordinationBaseTicks + equipmentReliabilityDelayTicks
+      : 0;
+  const handoffWorkTicks =
+    state.venueId === 'departmentStore' ? DEPARTMENT_WORKLOAD_DELAYS.handoffBaseTicks : 0;
+  const coordinationReliabilityDelayTicks =
+    coordinationWorkTicks === 0
+      ? 0
+      : Math.max(
+          DEPARTMENT_WORKLOAD_DELAYS.minimumRemainingTicks,
+          coordinationWorkTicks - proposedManagerReductionTicks,
+        );
+  const handoffWorkloadDelayTicks =
+    handoffWorkTicks === 0
+      ? 0
+      : Math.max(
+          DEPARTMENT_WORKLOAD_DELAYS.minimumRemainingTicks,
+          handoffWorkTicks - proposedRunnerReductionTicks,
+        );
   return {
     preparationMultiplier,
     qualityBonus,
@@ -645,20 +806,27 @@ export function operationalEffects(state: GameState): OperationalEffects {
     patienceMultiplier,
     queueBonus,
     operatingCostCents: VENUES[state.venueId].operatingCostCents + equipmentOperatingCost,
+    equipmentReliabilityDelayTicks,
+    managerReductionTicks: coordinationWorkTicks - coordinationReliabilityDelayTicks,
+    runnerReductionTicks: handoffWorkTicks - handoffWorkloadDelayTicks,
+    coordinationReliabilityDelayTicks,
+    handoffWorkloadDelayTicks,
   };
 }
 
 /** Return the equipment-only preparation multiplier for a configured drink. */
 export function equipmentPreparationMultiplier(state: GameState, drinkId: DrinkId): number {
   if (drinkId === 'batchBrew') {
-    return state.equipment.batchBrewer === 2 ? 0.55 : state.equipment.batchBrewer === 1 ? 0.75 : 1;
+    return (
+      equipmentTierAtLevel('batchBrewer', state.equipment.batchBrewer)?.effects
+        .batchBrewPreparationMultiplier ?? 1
+    );
   }
   if (drinkId === 'coldBrew') return 1;
-  return state.equipment.espressoMachine === 2
-    ? 0.82
-    : state.equipment.espressoMachine === 1
-      ? 0.92
-      : 1;
+  return (
+    equipmentTierAtLevel('espressoMachine', state.equipment.espressoMachine)?.effects
+      .espressoPreparationMultiplier ?? 1
+  );
 }
 
 /** Return the venue plus service-counter queue capacity used by arrivals. */
@@ -677,8 +845,8 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
   if (rngState === 0) rngState = 0x6d2b79f5;
   const candidates: StaffMember[] = [];
   for (let index = 0; index < CANDIDATES_PER_DAY; index += 1) {
-    // Retain the historical name draw so existing speed, skill, wage, and trait
-    // sequences remain byte-for-byte deterministic after names move to direct indexing.
+    // Retain the historical name draw so speed, skill, base-wage, and trait
+    // draws remain deterministic after names move to direct indexing.
     const legacyNameDraw = randomInt(rngState, 0, LEGACY_STAFF_NAMES.length - 1);
     rngState = legacyNameDraw.state;
     const speedDraw = randomInt(rngState, 52, 88);
@@ -687,10 +855,12 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
     rngState = skillDraw.state;
     const traitDraw = randomInt(rngState, 0, STAFF_TRAITS.length - 1);
     rngState = traitDraw.state;
-    const role = index % 2 === 0 ? 'barista' : 'frontOfHouse';
-    const wageCents = Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50;
+    const role = STAFF_ROLES[index] ?? 'barista';
+    const wageCents =
+      Math.round((1_600 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50 +
+      STAFF_ROLE_DETAILS[role].wagePremiumCents;
     candidates.push({
-      id: `staff-${normalizedSeed.toString(16)}-${day}-${index}`,
+      id: candidateStaffId(normalizedSeed, day, index),
       name: candidateStaffName(normalizedSeed, day, index),
       role,
       speed: speedDraw.value,
@@ -708,7 +878,7 @@ function advanceSingleTick(state: GameState): GameState {
   if (!rush) throw new GameRuleError('No service rush is active.');
   const nextTick = rush.tick + 1;
   if (rush.eventTriggerTicks.includes(nextTick)) {
-    const event = RUSH_EVENTS[rush.resolvedEvents.length % RUSH_EVENTS.length] ?? LANEWAY_EVENT;
+    const event = eventForTrigger(state, rush.resolvedEvents.length);
     return {
       ...state,
       phase: 'event',
@@ -722,47 +892,73 @@ function advanceSingleTick(state: GameState): GameState {
     };
   }
 
-  let working = ageQueue({ ...state, rush: { ...rush, tick: nextTick } });
-  working = progressService(working);
-  working = startNextService(working);
+  let working = ageQueues({ ...state, rush: { ...rush, tick: nextTick } });
+  working = progressServices(working);
+  working = startAvailableServices(working);
   working = maybeAddArrival(working);
   const updatedRush = working.rush;
   if (updatedRush && updatedRush.tick >= updatedRush.durationTicks) return finishRush(working);
   return working;
 }
 
-function ageQueue(state: GameState): GameState {
+function ageQueues(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) return state;
-  const kept: Customer[] = [];
   let abandoned = 0;
   let observedRush = rush;
-  for (const customer of rush.queue) {
-    const aged = { ...customer, waitedTicks: customer.waitedTicks + 1 };
-    if (aged.waitedTicks >= aged.patienceTicks) {
-      abandoned += 1;
-      observedRush = appendWalkawayActivity(observedRush, state.day, aged, 'patience');
-    } else kept.push(aged);
+  const queues: Record<LaneId, Customer[]> = { normal: [], express: [] };
+  for (const laneId of LANE_IDS) {
+    const queue = laneId === 'normal' ? rush.normalQueue : rush.expressQueue;
+    for (const customer of queue) {
+      const aged = { ...customer, waitedTicks: customer.waitedTicks + 1 };
+      if (aged.waitedTicks >= aged.patienceTicks) {
+        abandoned += 1;
+        observedRush = appendWalkawayActivity(observedRush, state.day, aged, 'patience');
+      } else {
+        queues[laneId].push(aged);
+      }
+    }
   }
   return {
     ...state,
     rush: {
       ...observedRush,
-      queue: kept,
+      normalQueue: queues.normal,
+      expressQueue: queues.express,
       stats: { ...observedRush.stats, abandoned: rush.stats.abandoned + abandoned },
     },
   };
 }
 
-function progressService(state: GameState): GameState {
-  const rush = state.rush;
-  const service = rush?.activeService;
-  if (!rush || !service) return state;
-  const remainingTicks = service.remainingTicks - 1;
-  if (remainingTicks > 0) {
-    return { ...state, rush: { ...rush, activeService: { ...service, remainingTicks } } };
+function progressServices(state: GameState): GameState {
+  let working = state;
+  for (const stationId of STATION_IDS) {
+    const rush = working.rush;
+    const job = rush?.serviceJobsByStation[stationId];
+    if (!rush || !job) continue;
+    const remainingTicks = job.remainingTicks - 1;
+    if (remainingTicks > 0) {
+      working = {
+        ...working,
+        rush: {
+          ...rush,
+          serviceJobsByStation: {
+            ...rush.serviceJobsByStation,
+            [stationId]: { ...job, remainingTicks },
+          },
+        },
+      };
+      continue;
+    }
+    working = completeServiceJob(working, job);
   }
-  const customer = service.customer;
+  return working;
+}
+
+function completeServiceJob(state: GameState, job: ServiceJob): GameState {
+  const rush = state.rush;
+  if (!rush) return state;
+  const customer = job.customer;
   const satisfaction = calculateSatisfaction(state, customer);
   const soldCount = rush.stats.soldByDrink[customer.order.drinkId] ?? 0;
   const stats: RushStats = {
@@ -779,33 +975,44 @@ function progressService(state: GameState): GameState {
       ...rush.stats.servedBySegment,
       [customer.segment]: (rush.stats.servedBySegment[customer.segment] ?? 0) + 1,
     },
+    serviceAggregates: recordServiceAggregate(rush.stats.serviceAggregates, job, satisfaction),
   };
   return {
     ...state,
     rush: appendSaleActivity(
       {
         ...rush,
-        activeService: null,
+        serviceJobsByStation: { ...rush.serviceJobsByStation, [job.stationId]: null },
         chargeGroups: recordCanonicalCharge(rush, customer.order),
         stats,
       },
       state.day,
-      customer,
+      job,
     ),
   };
 }
 
-function startNextService(state: GameState): GameState {
+function startAvailableServices(state: GameState): GameState {
   let working = state;
-  while (working.rush && !working.rush.activeService && working.rush.queue.length > 0) {
+  for (const stationId of serviceConfigFor(state.venueId).stationIds) {
+    working = startStationService(working, stationId);
+  }
+  return working;
+}
+
+function startStationService(state: GameState, stationId: StationId): GameState {
+  if (!stationReadyForService(state.venueId, state.equipment, state.plan, stationId)) return state;
+  let working = state;
+  while (working.rush && !working.rush.serviceJobsByStation[stationId]) {
     const rush = working.rush;
-    const customer = rush.queue[0];
-    if (!customer) break;
-    const queue = rush.queue.slice(1);
+    const selected = selectNextCustomer(rush, stationId);
+    if (!selected) break;
+    const customer = selected.customer;
+    const nextQueues = removeQueuedCustomer(rush, selected.laneId, selected.index);
     if (!hasIngredients(working.inventory, customer.order.ingredientAmounts)) {
       const nextRush: RushState = {
         ...rush,
-        queue,
+        ...nextQueues,
         stats: {
           ...rush.stats,
           stockouts: rush.stats.stockouts + 1,
@@ -818,20 +1025,42 @@ function startNextService(state: GameState): GameState {
       };
       continue;
     }
-    const consumed = consumeIngredientsLifo(working.inventory, customer.order.ingredientAmounts);
+    const consumed = consumeIngredientsAtServiceStart(
+      working.inventory,
+      customer.order.ingredientAmounts,
+    );
     const ingredientCost = recipeCost(customer.order.ingredientAmounts);
     const consumedTotals = { ...rush.stats.consumed };
     for (const item of customer.order.ingredientAmounts) {
       consumedTotals[item.ingredientId] = (consumedTotals[item.ingredientId] ?? 0) + item.amount;
     }
+    const job: ServiceJob = {
+      id: serviceJobId(state.day, rush.nextServiceJobSequence),
+      stationId,
+      laneId: selected.laneId,
+      customer,
+      remainingTicks: customer.order.preparationTicks,
+      totalTicks: customer.order.preparationTicks,
+    };
     const nextRush: RushState = {
       ...rush,
-      queue,
-      activeService: {
-        customer,
-        remainingTicks: customer.order.preparationTicks,
-        totalTicks: customer.order.preparationTicks,
+      ...nextQueues,
+      serviceJobsByStation: {
+        ...rush.serviceJobsByStation,
+        [stationId]: job,
       },
+      consecutiveExpressStartsByStation: {
+        ...rush.consecutiveExpressStartsByStation,
+        [stationId]:
+          selected.laneId === 'express' &&
+          rush.normalQueue.some((waiting) => waiting.stationId === stationId)
+            ? Math.min(
+                MAX_CONSECUTIVE_EXPRESS_STARTS,
+                rush.consecutiveExpressStartsByStation[stationId] + 1,
+              )
+            : 0,
+      },
+      nextServiceJobSequence: rush.nextServiceJobSequence + 1,
       stats: {
         ...rush.stats,
         ingredientCostCents: rush.stats.ingredientCostCents + ingredientCost,
@@ -841,10 +1070,46 @@ function startNextService(state: GameState): GameState {
     working = {
       ...working,
       inventory: consumed,
-      rush: appendServiceStartedActivity(nextRush, state.day, customer),
+      rush: appendServiceStartedActivity(nextRush, state.day, job),
     };
   }
   return working;
+}
+
+function selectNextCustomer(
+  rush: RushState,
+  stationId: StationId,
+): { customer: Customer; laneId: LaneId; index: number } | null {
+  const normalIndex = rush.normalQueue.findIndex((customer) => customer.stationId === stationId);
+  const expressIndex = rush.expressQueue.findIndex((customer) => customer.stationId === stationId);
+  const normalWaiting = normalIndex >= 0;
+  const expressWaiting = expressIndex >= 0;
+  if (!normalWaiting && !expressWaiting) return null;
+  const takeExpress =
+    expressWaiting &&
+    (!normalWaiting ||
+      rush.consecutiveExpressStartsByStation[stationId] < MAX_CONSECUTIVE_EXPRESS_STARTS);
+  const laneId: LaneId = takeExpress ? 'express' : 'normal';
+  const index = takeExpress ? expressIndex : normalIndex;
+  const customer = (takeExpress ? rush.expressQueue : rush.normalQueue)[index];
+  return customer ? { customer, laneId, index } : null;
+}
+
+function removeQueuedCustomer(
+  rush: RushState,
+  laneId: LaneId,
+  index: number,
+): Pick<RushState, 'normalQueue' | 'expressQueue'> {
+  if (laneId === 'express') {
+    return {
+      normalQueue: rush.normalQueue,
+      expressQueue: rush.expressQueue.filter((_, queueIndex) => queueIndex !== index),
+    };
+  }
+  return {
+    normalQueue: rush.normalQueue.filter((_, queueIndex) => queueIndex !== index),
+    expressQueue: rush.expressQueue,
+  };
 }
 
 function maybeAddArrival(state: GameState): GameState {
@@ -860,7 +1125,8 @@ function maybeAddArrival(state: GameState): GameState {
   const arrivals = activeRush.stats.arrivals + 1;
   const segmentArrivals = (activeRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1;
   const observedRush = appendArrivalActivity(activeRush, state.day, created.customer);
-  if (activeRush.queue.length >= serviceQueueCapacity(state)) {
+  const waitingCount = waitingCustomers(activeRush).length;
+  if (waitingCount >= serviceQueueCapacity(state)) {
     const rejectedRush: RushState = {
       ...observedRush,
       nextCustomerId: activeRush.nextCustomerId + 1,
@@ -872,7 +1138,7 @@ function maybeAddArrival(state: GameState): GameState {
           [created.customer.segment]: segmentArrivals,
         },
         abandoned: observedRush.stats.abandoned + 1,
-        peakQueue: Math.max(observedRush.stats.peakQueue, observedRush.queue.length),
+        peakQueue: Math.max(observedRush.stats.peakQueue, waitingCount),
       },
     };
     return {
@@ -880,12 +1146,21 @@ function maybeAddArrival(state: GameState): GameState {
       rush: appendWalkawayActivity(rejectedRush, state.day, created.customer, 'queueFull'),
     };
   }
-  const queue = [...activeRush.queue, created.customer];
+  const normalQueue =
+    created.customer.laneId === 'normal'
+      ? [...activeRush.normalQueue, created.customer]
+      : activeRush.normalQueue;
+  const expressQueue =
+    created.customer.laneId === 'express'
+      ? [...activeRush.expressQueue, created.customer]
+      : activeRush.expressQueue;
+  const nextWaitingCount = normalQueue.length + expressQueue.length;
   return {
     ...updated,
     rush: {
       ...observedRush,
-      queue,
+      normalQueue,
+      expressQueue,
       nextCustomerId: activeRush.nextCustomerId + 1,
       stats: {
         ...observedRush.stats,
@@ -894,7 +1169,7 @@ function maybeAddArrival(state: GameState): GameState {
           ...observedRush.stats.arrivalsBySegment,
           [created.customer.segment]: segmentArrivals,
         },
-        peakQueue: Math.max(activeRush.stats.peakQueue, queue.length),
+        peakQueue: Math.max(activeRush.stats.peakQueue, nextWaitingCount),
       },
     },
   };
@@ -923,14 +1198,20 @@ function createCustomer(
   rngState = patienceDraw.state;
   const order = makeOrder(state, drink, size, milk);
   const tick = state.rush?.tick ?? 0;
+  const stationId = stationForDrink(state.venueId, order.drinkId);
+  const laneId = laneForDrink(state.venueId, state.equipment, state.plan, order.drinkId);
   return {
     state: { ...state, rngState },
     customer: {
       id: `d${state.day}-c${sequence}`,
       segment,
       order,
+      stationId,
+      laneId,
       arrivedAtTick: tick,
-      patienceTicks: Math.round(patienceDraw.value * operationalEffects(state).patienceMultiplier),
+      patienceTicks: Math.round(
+        patienceDraw.value * operationalEffects(state, stationId).patienceMultiplier,
+      ),
       waitedTicks: 0,
     },
   };
@@ -938,25 +1219,29 @@ function createCustomer(
 
 function appendArrivalActivity(rush: RushState, day: number, customer: Customer): RushState {
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, null),
     type: 'arrival',
   });
 }
 
-function appendServiceStartedActivity(rush: RushState, day: number, customer: Customer): RushState {
+function appendServiceStartedActivity(rush: RushState, day: number, job: ServiceJob): RushState {
+  const customer = job.customer;
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job.id),
     type: 'serviceStarted',
+    jobId: job.id,
     drinkId: customer.order.drinkId,
     size: customer.order.size,
     milk: customer.order.milk,
   });
 }
 
-function appendSaleActivity(rush: RushState, day: number, customer: Customer): RushState {
+function appendSaleActivity(rush: RushState, day: number, job: ServiceJob): RushState {
+  const customer = job.customer;
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job.id),
     type: 'sale',
+    jobId: job.id,
     drinkId: customer.order.drinkId,
     size: customer.order.size,
     milk: customer.order.milk,
@@ -1002,14 +1287,44 @@ function recordCanonicalCharge(rush: RushState, order: Order): ReportChargeGroup
   ];
 }
 
+function recordServiceAggregate(
+  aggregates: ServiceAggregate[],
+  job: ServiceJob,
+  satisfaction: number,
+): ServiceAggregate[] {
+  if (aggregates.some((aggregate) => aggregate.completedJobIds.includes(job.id))) {
+    throw new GameRuleError(`Service job ${job.id} has already been settled.`);
+  }
+  const completedCount = aggregates.reduce(
+    (total, aggregate) => total + aggregate.completedJobIds.length,
+    0,
+  );
+  if (completedCount >= MAX_SERVICE_JOBS_PER_RUSH) {
+    throw new GameRuleError('Completed service jobs exceeded their configured rush bound.');
+  }
+  return aggregates.map((aggregate) =>
+    aggregate.stationId === job.stationId && aggregate.laneId === job.laneId
+      ? {
+          ...aggregate,
+          completedJobIds: [...aggregate.completedJobIds, job.id],
+          served: aggregate.served + 1,
+          revenueCents: aggregate.revenueCents + job.customer.order.priceCents,
+          totalWaitTicks: aggregate.totalWaitTicks + job.customer.waitedTicks,
+          satisfactionTotal: aggregate.satisfactionTotal + satisfaction,
+        }
+      : aggregate,
+  );
+}
+
 function appendWalkawayActivity(
   rush: RushState,
   day: number,
   customer: Customer,
   reason: RushWalkawayReason,
+  job: ServiceJob | null = null,
 ): RushState {
   return appendRushActivity(rush, {
-    ...activityIdentity(rush, day, customer),
+    ...activityIdentity(rush, day, customer, job?.id ?? null),
     type: 'walkaway',
     reason,
   });
@@ -1019,13 +1334,20 @@ function activityIdentity(
   rush: RushState,
   day: number,
   customer: Customer,
-): Pick<RushActivityEvent, 'id' | 'sequence' | 'tick' | 'customerId' | 'segment'> {
+  jobId: string | null,
+): Pick<
+  RushActivityEvent,
+  'id' | 'sequence' | 'tick' | 'customerId' | 'segment' | 'stationId' | 'laneId' | 'jobId'
+> {
   return {
     id: `d${day}-e${rush.nextActivitySequence}`,
     sequence: rush.nextActivitySequence,
     tick: rush.tick,
     customerId: customer.id,
     segment: customer.segment,
+    stationId: customer.stationId,
+    laneId: customer.laneId,
+    jobId,
   };
 }
 
@@ -1048,8 +1370,7 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
   const dialMultiplier =
     state.plan.dialIn === 'speed' ? 0.8 : state.plan.dialIn === 'quality' ? 1.2 : 1;
   const beanMultiplier = BEAN_DETAILS[state.plan.beanId].speed;
-  const signMultiplier = state.improvements.includes('street-sign') ? 0.96 : 1;
-  const effects = operationalEffects(state);
+  const effects = operationalEffects(state, stationForDrink(state.venueId, drink.id));
   const equipmentMultiplier = equipmentPreparationMultiplier(state, drink.id);
   return {
     drinkId: drink.id,
@@ -1060,17 +1381,19 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
       MILK_SURCHARGE_CENTS[milk] +
       (size === 'large' ? SIZE_SURCHARGE_CENTS : 0),
     ingredientAmounts: ingredients,
-    preparationTicks: Math.max(
-      5,
-      Math.round(
-        variant.preparationTicks *
-          dialMultiplier *
-          beanMultiplier *
-          signMultiplier *
-          effects.preparationMultiplier *
-          equipmentMultiplier,
-      ),
-    ),
+    preparationTicks:
+      Math.max(
+        5,
+        Math.round(
+          variant.preparationTicks *
+            dialMultiplier *
+            beanMultiplier *
+            effects.preparationMultiplier *
+            equipmentMultiplier,
+        ),
+      ) +
+      effects.coordinationReliabilityDelayTicks +
+      effects.handoffWorkloadDelayTicks,
   };
 }
 
@@ -1133,11 +1456,21 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
     const created = createCustomer(working, rush.nextCustomerId);
     const currentRush = created.state.rush;
     if (!currentRush) break;
-    const hasSpace = currentRush.queue.length < serviceQueueCapacity(state);
+    const waitingCount = waitingCustomers(currentRush).length;
+    const hasSpace = waitingCount < serviceQueueCapacity(state);
     const observedRush = appendArrivalActivity(currentRush, state.day, created.customer);
+    const normalQueue =
+      hasSpace && created.customer.laneId === 'normal'
+        ? [...currentRush.normalQueue, created.customer]
+        : currentRush.normalQueue;
+    const expressQueue =
+      hasSpace && created.customer.laneId === 'express'
+        ? [...currentRush.expressQueue, created.customer]
+        : currentRush.expressQueue;
     const nextRush: RushState = {
       ...observedRush,
-      queue: hasSpace ? [...currentRush.queue, created.customer] : currentRush.queue,
+      normalQueue,
+      expressQueue,
       nextCustomerId: currentRush.nextCustomerId + 1,
       stats: {
         ...observedRush.stats,
@@ -1148,10 +1481,7 @@ function addEventCustomers(state: GameState, choice: EventChoice): GameState {
             (observedRush.stats.arrivalsBySegment[created.customer.segment] ?? 0) + 1,
         },
         abandoned: observedRush.stats.abandoned + (hasSpace ? 0 : 1),
-        peakQueue: Math.max(
-          observedRush.stats.peakQueue,
-          currentRush.queue.length + (hasSpace ? 1 : 0),
-        ),
+        peakQueue: Math.max(observedRush.stats.peakQueue, waitingCount + (hasSpace ? 1 : 0)),
       },
     };
     working = {
@@ -1168,37 +1498,60 @@ function finishRush(state: GameState): GameState {
   const rush = state.rush;
   if (!rush) throw new GameRuleError('No service rush is active.');
   let observedRush = rush;
-  if (rush.activeService) {
-    observedRush = appendWalkawayActivity(
-      observedRush,
-      state.day,
-      rush.activeService.customer,
-      'rushEnded',
-    );
+  for (const job of activeServiceJobs(rush)) {
+    observedRush = appendWalkawayActivity(observedRush, state.day, job.customer, 'rushEnded', job);
   }
-  for (const customer of rush.queue) {
+  for (const customer of waitingCustomers(rush)) {
     observedRush = appendWalkawayActivity(observedRush, state.day, customer, 'rushEnded');
   }
+  const unfinishedCount = waitingCustomers(rush).length + activeServiceJobs(rush).length;
+  const completedRush: RushState = {
+    ...observedRush,
+    normalQueue: [],
+    expressQueue: [],
+    serviceJobsByStation: emptyServiceJobs(),
+    stats: { ...observedRush.stats, abandoned: observedRush.stats.abandoned + unfinishedCount },
+  };
   const expiry = expireInventoryAfterRush(state.inventory, state.day);
   const inventory = expiry.inventory;
   const waste = nonZeroIngredientTotals(expiry.expired);
   const remainingInventory = inventoryTotals(inventory);
-  const consumedInventory = completeIngredientTotals(rush.stats.consumed);
+  const consumedInventory = completeIngredientTotals(completedRush.stats.consumed);
   const satisfaction =
-    rush.stats.served > 0 ? Math.round(rush.stats.satisfactionTotal / rush.stats.served) : 35;
+    completedRush.stats.served > 0
+      ? Math.round(completedRush.stats.satisfactionTotal / completedRush.stats.served)
+      : 35;
   const averageWaitSeconds =
-    rush.stats.served > 0
-      ? Math.round((rush.stats.totalWaitTicks / rush.stats.served / TICKS_PER_SECOND) * 10) / 10
+    completedRush.stats.served > 0
+      ? Math.round(
+          (completedRush.stats.totalWaitTicks / completedRush.stats.served / TICKS_PER_SECOND) * 10,
+        ) / 10
       : 0;
-  const reputationChange =
+  const uncappedReputationChange =
     Math.round((satisfaction - 70) / 8) +
-    rush.eventReputationDelta -
-    (rush.stats.stockouts > 3 ? 1 : 0);
-  const eventCash = rush.eventCashDeltaCents;
-  const wageCost = rush.wageCostCents ?? 0;
+    completedRush.eventReputationDelta -
+    (completedRush.stats.stockouts > 3 ? 1 : 0);
+  const reputationChange =
+    uncappedReputationChange > 0
+      ? Math.min(
+          uncappedReputationChange,
+          Math.max(0, CAMPAIGN_RULES.reputationSoftCeiling - state.reputation),
+        )
+      : uncappedReputationChange;
+  const eventCash = completedRush.eventCashDeltaCents;
+  const wageCost = completedRush.wageCostCents ?? 0;
   const closingCash =
-    state.cashCents + rush.stats.revenueCents + eventCash - wageCost - rush.operatingCostCents;
-  const explanations = buildExplanations(state, rush, satisfaction);
+    state.cashCents +
+    completedRush.stats.revenueCents +
+    eventCash -
+    wageCost -
+    completedRush.operatingCostCents;
+  const explanations = buildExplanations(state, completedRush, satisfaction);
+  if (reputationChange < uncappedReputationChange) {
+    explanations.push(
+      `Positive reputation gains pause at ${CAMPAIGN_RULES.reputationSoftCeiling}; reputation losses still apply.`,
+    );
+  }
   const expiredNames = Object.entries(waste).map(
     ([ingredientId, quantity]) =>
       `${INGREDIENT_DETAILS[ingredientId as IngredientId].name} ${String(quantity)}`,
@@ -1208,47 +1561,101 @@ function finishRush(state: GameState): GameState {
       `Expiry waste after the Day ${state.day} rush: ${expiredNames.join(', ')}; older stock stayed usable through this rush before expiring.`,
     );
   }
-  const chargeGroups = finalizedChargeGroups(rush);
+  const chargeGroups = finalizedChargeGroups(completedRush);
+  const serviceAggregates = finalizedServiceAggregates(completedRush.stats);
   const report: DayReport = {
     day: state.day,
+    difficulty: state.difficulty,
     weather: state.weather,
-    openingCashCents: rush.openingCashCents,
-    purchaseCostCents: rush.purchaseCostCents,
-    revenueCents: rush.stats.revenueCents,
-    ingredientCostCents: rush.stats.ingredientCostCents,
+    openingCashCents: completedRush.openingCashCents,
+    purchaseCostCents: completedRush.purchaseCostCents,
+    revenueCents: completedRush.stats.revenueCents,
+    ingredientCostCents: completedRush.stats.ingredientCostCents,
     wageCostCents: wageCost,
-    operatingCostCents: rush.operatingCostCents,
+    operatingCostCents: completedRush.operatingCostCents,
     eventCashDeltaCents: eventCash,
     netCashFlowCents:
-      rush.stats.revenueCents +
+      completedRush.stats.revenueCents +
       eventCash -
-      rush.purchaseCostCents -
+      completedRush.purchaseCostCents -
       wageCost -
-      rush.operatingCostCents,
+      completedRush.operatingCostCents,
     closingCashCents: closingCash,
-    arrivals: rush.stats.arrivals,
-    served: rush.stats.served,
-    abandoned: rush.stats.abandoned + rush.queue.length + (rush.activeService ? 1 : 0),
-    stockouts: rush.stats.stockouts,
+    arrivals: completedRush.stats.arrivals,
+    served: completedRush.stats.served,
+    abandoned: completedRush.stats.abandoned,
+    stockouts: completedRush.stats.stockouts,
     averageWaitSeconds,
     satisfactionPercent: satisfaction,
     reputationChange,
     waste,
     remainingInventory,
     inventoryLifecycle: {
-      opening: rush.openingInventory,
-      purchased: rush.purchasedInventory,
+      opening: completedRush.openingInventory,
+      purchased: completedRush.purchasedInventory,
       consumed: consumedInventory,
       expired: expiry.expired,
       remaining: remainingInventory,
     },
-    servedBySegment: rush.stats.servedBySegment,
-    bottleneck: determineBottleneck(state, rush),
+    servedBySegment: completedRush.stats.servedBySegment,
+    serviceAggregates,
+    bottleneck: determineBottleneck(state, completedRush),
     explanations,
+    causeSnapshot: createReportCauseSnapshot(state, completedRush),
     ...(chargeGroups === undefined ? {} : { chargeGroups }),
     settled: false,
   };
-  return { ...state, phase: 'report', inventory, rush: observedRush, report };
+  return { ...state, phase: 'report', inventory, rush: completedRush, report };
+}
+
+function createReportCauseSnapshot(state: GameState, rush: RushState): DayReportCauseSnapshot {
+  const stationByStaffId = new Map<string, StationId>();
+  for (const stationId of STATION_IDS) {
+    for (const staffId of state.plan.stationAssignments[stationId]) {
+      stationByStaffId.set(staffId, stationId);
+    }
+  }
+  const equipmentOperatingCostCents = EQUIPMENT_IDS.reduce((total, equipmentId) => {
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    return total + (tier?.operatingCostCents ?? 0);
+  }, 0);
+  return {
+    venueId: state.venueId,
+    plan: {
+      menu: state.plan.activeMenu.map((drinkId) => ({
+        drinkId,
+        priceCents: state.plan.pricesCents[drinkId],
+      })),
+      dialIn: state.plan.dialIn,
+      beanId: state.plan.beanId,
+      expressDrinkIds: [...state.plan.expressDrinkIds],
+    },
+    staffing: scheduledStaff(state).map((member) => ({
+      staffId: member.id,
+      name: member.name,
+      role: member.role,
+      speed: member.speed,
+      skill: member.skill,
+      trait: member.trait,
+      wageCents: member.wageCents,
+      stationId: stationByStaffId.get(member.id) ?? null,
+    })),
+    equipment: {
+      levels: { ...state.equipment },
+      improvements: [...state.improvements],
+      venueOperatingCostCents: VENUES[state.venueId].operatingCostCents,
+      equipmentOperatingCostCents,
+    },
+    events: rush.resolvedEvents.map((event) => ({
+      ...event,
+      effect: { ...event.effect },
+    })),
+    wait: {
+      peakQueue: rush.stats.peakQueue,
+      queueCapacity: serviceQueueCapacity(state),
+      totalWaitTicks: rush.stats.totalWaitTicks,
+    },
+  };
 }
 
 function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined {
@@ -1266,6 +1673,42 @@ function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined
   return rush.chargeGroups.map((group) => ({ ...group }));
 }
 
+function finalizedServiceAggregates(stats: RushStats): ServiceAggregate[] {
+  const jobIds = new Set<string>();
+  const totals = stats.serviceAggregates.reduce(
+    (result, aggregate) => {
+      if (aggregate.completedJobIds.length !== aggregate.served) {
+        throw new GameRuleError('Service aggregate jobs do not reconcile with served customers.');
+      }
+      for (const jobId of aggregate.completedJobIds) {
+        if (jobIds.has(jobId)) throw new GameRuleError(`Service job ${jobId} settled twice.`);
+        jobIds.add(jobId);
+      }
+      return {
+        served: result.served + aggregate.served,
+        revenueCents: result.revenueCents + aggregate.revenueCents,
+        totalWaitTicks: result.totalWaitTicks + aggregate.totalWaitTicks,
+        satisfactionTotal: result.satisfactionTotal + aggregate.satisfactionTotal,
+      };
+    },
+    { served: 0, revenueCents: 0, totalWaitTicks: 0, satisfactionTotal: 0 },
+  );
+  if (
+    totals.served !== stats.served ||
+    totals.revenueCents !== stats.revenueCents ||
+    totals.totalWaitTicks !== stats.totalWaitTicks ||
+    totals.satisfactionTotal !== stats.satisfactionTotal
+  ) {
+    throw new GameRuleError(
+      'Station and lane service aggregates do not reconcile with rush stats.',
+    );
+  }
+  return stats.serviceAggregates.map((aggregate) => ({
+    ...aggregate,
+    completedJobIds: [...aggregate.completedJobIds],
+  }));
+}
+
 function nonZeroIngredientTotals(
   totals: ReturnType<typeof completeIngredientTotals>,
 ): Partial<Record<IngredientId, number>> {
@@ -1276,7 +1719,7 @@ function determineBottleneck(state: GameState, rush: RushState): string {
   if (rush.stats.stockouts > Math.max(2, rush.stats.served * 0.15)) return 'Ingredient stockouts';
   if (rush.stats.peakQueue >= serviceQueueCapacity(state) - 1) return 'Coffee preparation speed';
   if (rush.stats.abandoned > 2) return 'Customer wait time';
-  return 'No major bottleneck — the cart flowed well';
+  return `No major bottleneck — the ${VENUES[state.venueId].shortName.toLowerCase()} flowed well`;
 }
 
 function buildExplanations(state: GameState, rush: RushState, satisfaction: number): string[] {
@@ -1285,12 +1728,34 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
     `${WEATHER_DETAILS[state.weather].name} weather: ${WEATHER_DETAILS[state.weather].note}`,
     `${BEAN_DETAILS[state.plan.beanId].name} changed shot quality and preparation time.`,
     `${rush.stats.peakQueue} was the longest queue during the 75-second rush.`,
-    `${VENUES[state.venueId].shortName} supported ${VENUES[state.venueId].staffCapacity} scheduled staff and a ${serviceQueueCapacity(state)}-person queue.`,
+    `${VENUES[state.venueId].shortName} supported ${workforceCapacityFor(state.venueId).scheduleCapacity} scheduled staff and a ${serviceQueueCapacity(state)}-person queue.`,
   ];
   const scheduled = scheduledStaff(state);
   if (scheduled.length > 0) {
     explanations.push(
-      `${scheduled.length} scheduled team member${scheduled.length === 1 ? '' : 's'} cost ${formatCents(rush.wageCostCents ?? 0)} and changed service speed, quality, or patience.`,
+      `${scheduled.length} scheduled team member${scheduled.length === 1 ? '' : 's'} cost ${formatCents(rush.wageCostCents ?? 0)}; their role and trait effects were applied once to service.`,
+    );
+  }
+  if (state.venueId === 'departmentStore') {
+    const staffById = new Map(scheduled.map((member) => [member.id, member]));
+    for (const stationId of STATION_IDS) {
+      const assigned = state.plan.stationAssignments[stationId].flatMap((id) => {
+        const member = staffById.get(id);
+        return member ? [member] : [];
+      });
+      const effects = operationalEffects(state, stationId);
+      const served = rush.stats.serviceAggregates
+        .filter((aggregate) => aggregate.stationId === stationId)
+        .reduce((total, aggregate) => total + aggregate.served, 0);
+      explanations.push(
+        `${STATION_DETAILS[stationId].label}: ${assigned.length} assigned, ${served} served; Manager reduction ${effects.managerReductionTicks} with ${effects.coordinationReliabilityDelayTicks} coordination/reliability ticks remaining, Runner reduction ${effects.runnerReductionTicks} with ${effects.handoffWorkloadDelayTicks} replenishment/handoff ticks remaining.`,
+      );
+    }
+    const expressServed = rush.stats.serviceAggregates
+      .filter((aggregate) => aggregate.laneId === 'express')
+      .reduce((total, aggregate) => total + aggregate.served, 0);
+    explanations.push(
+      `Lane settlement: ${expressServed} express and ${rush.stats.served - expressServed} normal jobs completed exactly once.`,
     );
   }
   const equipped = EQUIPMENT_IDS.filter((equipmentId) => state.equipment[equipmentId] > 0);
@@ -1318,6 +1783,7 @@ function buildExplanations(state: GameState, rush: RushState, satisfaction: numb
 function calculateSatisfaction(state: GameState, customer: Customer): number {
   const rush = state.rush;
   const drink = getDrink(customer.order.drinkId);
+  const stationEffects = operationalEffects(state, customer.stationId);
   const dialQuality = state.plan.dialIn === 'quality' ? 9 : state.plan.dialIn === 'speed' ? -5 : 2;
   const segmentWaitFactor =
     customer.segment === 'commuter' ? 1.35 : customer.segment === 'student' ? 0.8 : 1;
@@ -1330,15 +1796,12 @@ function calculateSatisfaction(state: GameState, customer: Customer): number {
   const beanQuality = BEAN_DETAILS[state.plan.beanId].quality;
   const enthusiastMultiplier = customer.segment === 'enthusiast' ? 1.3 : 1;
   const qualityEffect = Math.round(
-    (dialQuality +
-      beanQuality +
-      operationalEffects(state).qualityBonus +
-      (rush?.qualityBonus ?? 0)) *
+    (dialQuality + beanQuality + stationEffects.qualityBonus + (rush?.qualityBonus ?? 0)) *
       drink.qualitySensitivity *
       enthusiastMultiplier,
   );
   return clamp(
-    78 + qualityEffect + operationalEffects(state).satisfactionBonus - waitPenalty - pricePenalty,
+    78 + qualityEffect + stationEffects.satisfactionBonus - waitPenalty - pricePenalty,
     20,
     100,
   );
@@ -1350,17 +1813,24 @@ export function demandRate(state: GameState): number {
   const averagePrice =
     state.plan.activeMenu.reduce((total, id) => total + state.plan.pricesCents[id], 0) /
     state.plan.activeMenu.length;
-  const priceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
-  const reputationFactor = 0.8 + state.reputation / 250;
-  const signFactor = state.improvements.includes('street-sign') ? 1.08 : 1;
-  const qualityFactor =
+  const baselinePriceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
+  const baselineReputationFactor = 0.8 + state.reputation / 250;
+  const baselineImprovementFactor = state.improvements.reduce(
+    (factor, improvementId) => factor * (IMPROVEMENTS[improvementId].effects.demandMultiplier ?? 1),
+    1,
+  );
+  const baselineQualityFactor =
     state.plan.dialIn === 'quality' ? 1.06 : state.plan.dialIn === 'speed' ? 0.97 : 1;
-  const beanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
-  const weatherFactor = WEATHER_DETAILS[state.weather].demand;
-  const venueFactor = VENUE_DEMAND_FACTOR[state.venueId];
-  const scenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
-  const teamFactor = operationalEffects(state).demandMultiplier;
-  const queueFactor = clamp(1 - (rush?.queue.length ?? 0) * 0.045, 0.55, 1);
+  const baselineBeanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
+  const baselineWeatherFactor = WEATHER_DETAILS[state.weather].demand;
+  const baselineVenueFactor = VENUE_DEMAND_FACTOR[state.venueId];
+  const baselineScenarioFactor = SCENARIO_DETAILS[state.scenarioId].demandMultiplier;
+  const baselineTeamFactor = operationalEffects(state).demandMultiplier;
+  const baselineQueueFactor = clamp(
+    1 - (rush ? waitingCustomers(rush).length : 0) * 0.045,
+    0.55,
+    1,
+  );
   const availableItems = state.plan.activeMenu.filter((drinkId) => {
     const recipe = getDrink(drinkId).variants[0];
     return recipe
@@ -1370,23 +1840,60 @@ export function demandRate(state: GameState): number {
         )
       : false;
   }).length;
-  const availabilityFactor = 0.35 + 0.65 * (availableItems / state.plan.activeMenu.length);
+  const baselineAvailabilityFactor = 0.35 + 0.65 * (availableItems / state.plan.activeMenu.length);
+  const factors = {
+    arrivalAggregatePrice: applyDemandInfluence(
+      state.difficulty,
+      'arrivalAggregatePrice',
+      baselinePriceFactor,
+    ),
+    arrivalReputation: applyDemandInfluence(
+      state.difficulty,
+      'arrivalReputation',
+      baselineReputationFactor,
+    ),
+    arrivalImprovements: applyDemandInfluence(
+      state.difficulty,
+      'arrivalImprovements',
+      baselineImprovementFactor,
+    ),
+    arrivalDialIn: applyDemandInfluence(state.difficulty, 'arrivalDialIn', baselineQualityFactor),
+    arrivalBean: applyDemandInfluence(state.difficulty, 'arrivalBean', baselineBeanFactor),
+    arrivalWeather: applyDemandInfluence(state.difficulty, 'arrivalWeather', baselineWeatherFactor),
+    arrivalVenue: applyDemandInfluence(state.difficulty, 'arrivalVenue', baselineVenueFactor),
+    arrivalScenario: applyDemandInfluence(
+      state.difficulty,
+      'arrivalScenario',
+      baselineScenarioFactor,
+    ),
+    arrivalTeamEquipment: applyDemandInfluence(
+      state.difficulty,
+      'arrivalTeamEquipment',
+      baselineTeamFactor,
+    ),
+    arrivalQueueWait: applyDemandInfluence(
+      state.difficulty,
+      'arrivalQueueWait',
+      baselineQueueFactor,
+    ),
+    arrivalAvailability: applyDemandInfluence(
+      state.difficulty,
+      'arrivalAvailability',
+      baselineAvailabilityFactor,
+    ),
+    arrivalRushEvent: applyDemandInfluence(
+      state.difficulty,
+      'arrivalRushEvent',
+      rush?.demandMultiplier ?? 1,
+    ),
+  } satisfies Record<ArrivalDemandInfluenceId, number>;
   return clamp(
-    0.075 *
-      priceFactor *
-      reputationFactor *
-      signFactor *
-      qualityFactor *
-      beanFactor *
-      weatherFactor *
-      venueFactor *
-      scenarioFactor *
-      teamFactor *
-      queueFactor *
-      availabilityFactor *
-      (rush?.demandMultiplier ?? 1),
-    0.005,
-    0.3,
+    ARRIVAL_DEMAND_ENGINE_INFLUENCES.reduce(
+      (rate, influenceId) => rate * factors[influenceId],
+      ARRIVAL_BASE_RATE,
+    ),
+    BALANCE_RANGES.arrivalFinalRate.minimum,
+    BALANCE_RANGES.arrivalFinalRate.maximum,
   );
 }
 
@@ -1422,13 +1929,64 @@ function validatePlan(state: GameState, plan: DayPlan): void {
   if (new Set(plan.scheduledStaffIds).size !== plan.scheduledStaffIds.length) {
     throw new GameRuleError('A team member can only be scheduled once per day.');
   }
-  if (plan.scheduledStaffIds.length > VENUE_STAFF_CAPACITY[state.venueId]) {
+  const scheduleCapacity = workforceCapacityFor(state.venueId).scheduleCapacity;
+  if (plan.scheduledStaffIds.length > scheduleCapacity) {
     throw new GameRuleError(
-      `${VENUES[state.venueId].shortName} can schedule ${VENUE_STAFF_CAPACITY[state.venueId]} staff.`,
+      `${VENUES[state.venueId].shortName} can schedule ${scheduleCapacity} staff.`,
     );
   }
   if (plan.scheduledStaffIds.some((id) => !state.staff.some((member) => member.id === id))) {
     throw new GameRuleError('Only hired staff can be scheduled.');
+  }
+  if (
+    scheduledStaff({ ...state, plan }).some(
+      (member) => !staffRoleAvailableAtVenue(member.role, state.venueId),
+    )
+  ) {
+    throw new GameRuleError('Every scheduled role must be eligible for the current venue.');
+  }
+  const activeStations = serviceConfigFor(state.venueId).stationIds;
+  const assignedIds = STATION_IDS.flatMap((stationId) => {
+    const ids = plan.stationAssignments[stationId];
+    if (!activeStations.includes(stationId) && ids.length > 0) {
+      throw new GameRuleError('Inactive stations cannot receive staff assignments.');
+    }
+    return ids;
+  });
+  if (new Set(assignedIds).size !== assignedIds.length) {
+    throw new GameRuleError('A scheduled team member can only be assigned to one station.');
+  }
+  const scheduledIdSet = new Set(plan.scheduledStaffIds);
+  if (
+    assignedIds.length !== plan.scheduledStaffIds.length ||
+    assignedIds.some((id) => !scheduledIdSet.has(id))
+  ) {
+    throw new GameRuleError(
+      'Every scheduled team member must have exactly one station assignment.',
+    );
+  }
+  const staffById = new Map(state.staff.map((member) => [member.id, member]));
+  for (const stationId of activeStations) {
+    for (const staffId of plan.stationAssignments[stationId]) {
+      const member = staffById.get(staffId);
+      if (!member || !staffStationCompatible(member.role, stationId, state.venueId)) {
+        throw new GameRuleError('Every station assignment must match the team member’s role.');
+      }
+    }
+  }
+  if (plan.expressDrinkIds.length > MAX_EXPRESS_DRINKS) {
+    throw new GameRuleError(`Choose no more than ${MAX_EXPRESS_DRINKS} express drinks.`);
+  }
+  if (new Set(plan.expressDrinkIds).size !== plan.expressDrinkIds.length) {
+    throw new GameRuleError('Express drink selections must be unique.');
+  }
+  for (const drinkId of plan.expressDrinkIds) {
+    if (!plan.activeMenu.includes(drinkId)) {
+      throw new GameRuleError('Express drinks must be selected from the active menu.');
+    }
+    if (!expressDrinkEligible(state.venueId, state.equipment, drinkId)) {
+      throw new GameRuleError('That drink is not eligible for express service at this station.');
+    }
   }
 }
 
@@ -1445,7 +2003,43 @@ function createEventTriggerTicks(state: GameState): number[] {
   return [Math.floor(RUSH_DURATION_TICKS * 0.31), Math.floor(RUSH_DURATION_TICKS * 0.68)];
 }
 
-function emptyRushStats(): RushStats {
+function eventForTrigger(state: GameState, triggerOrdinal: number): SimulationEvent {
+  const resolvedIds = new Set(state.rush?.resolvedEvents.map(({ eventId }) => eventId) ?? []);
+  const eligible = EVENT_TEMPLATES.filter(
+    (event) =>
+      event.eligibleVenues.includes(state.venueId) &&
+      state.day >= event.firstDay &&
+      state.day <= event.lastDay &&
+      !resolvedIds.has(event.id),
+  );
+  if (eligible.length === 0) {
+    throw new GameRuleError('No eligible service event is configured for this trigger.');
+  }
+  const totalWeight = eligible.reduce((total, event) => total + event.weight, 0);
+  const selector =
+    (state.seed ^
+      Math.imul(state.day, 2_654_435_761) ^
+      Math.imul(triggerOrdinal + 1, 2_246_822_519)) >>>
+    0;
+  let ticket = selector % totalWeight;
+  const selected =
+    eligible.find((event) => {
+      ticket -= event.weight;
+      return ticket < 0;
+    }) ?? eligible[eligible.length - 1];
+  if (!selected) throw new GameRuleError('No weighted service event could be selected.');
+  return {
+    id: selected.id,
+    title: selected.title,
+    description: selected.description,
+    choices: selected.choices.map((choice) => ({
+      ...choice,
+      effect: { ...choice.effect },
+    })),
+  };
+}
+
+function emptyRushStats(state: GameState): RushStats {
   return {
     arrivals: 0,
     served: 0,
@@ -1460,16 +2054,13 @@ function emptyRushStats(): RushStats {
     consumed: {},
     arrivalsBySegment: {},
     servedBySegment: {},
+    serviceAggregates: serviceAggregatesForPlan(state.venueId, state.plan, state.equipment),
   };
 }
 
 function scheduledStaff(state: GameState): StaffMember[] {
   const scheduledIds = new Set(state.plan.scheduledStaffIds);
   return state.staff.filter((member) => scheduledIds.has(member.id));
-}
-
-function venueMeetsRequirement(current: VenueId, required: VenueId): boolean {
-  return VENUE_ORDER.indexOf(current) >= VENUE_ORDER.indexOf(required);
 }
 
 function requireManagementPhase(state: GameState): void {

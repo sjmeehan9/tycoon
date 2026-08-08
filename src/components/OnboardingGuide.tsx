@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 
 import { useModalFocus } from '../accessibility/useModalFocus';
 import { useGame } from '../app/GameContext';
-import type { GamePhase } from '../game';
+import { CAMPAIGN_RULES } from '../content/gameContent';
+import { DIFFICULTY_DESCRIPTIONS, DIFFICULTY_LABELS, type GamePhase } from '../game';
 
 const STEPS: Record<GamePhase, { number: number; title: string; detail: string }> = {
   planning: {
@@ -18,7 +19,8 @@ const STEPS: Record<GamePhase, { number: number; title: string; detail: string }
   event: {
     number: 2,
     title: 'Make the rush call',
-    detail: 'Read both consequences, choose once, and service will resume from the same tick.',
+    detail:
+      'Read both exact consequences, choose once, and service will resume from the same tick; a day can contain up to two choices.',
   },
   report: {
     number: 3,
@@ -90,6 +92,12 @@ export function OnboardingGuide(): React.JSX.Element | null {
               Four real actions teach the whole loop: plan, serve, read the report, and reinvest.
               Nothing here changes the simulation.
             </p>
+            <p className="difficulty-note">
+              <strong>
+                {DIFFICULTY_LABELS[game.difficulty]} difficulty is locked for this run.
+              </strong>{' '}
+              {DIFFICULTY_DESCRIPTIONS[game.difficulty]}
+            </p>
             <ol className="onboarding-steps">
               <li>
                 <strong>Plan</strong> a small menu and stock.
@@ -101,7 +109,16 @@ export function OnboardingGuide(): React.JSX.Element | null {
                 <strong>Learn</strong> from the causal report.
               </li>
               <li>
-                <strong>Grow</strong> equipment and venues over 30 days.
+                <strong>Grow</strong> through three equipment tiers and four venues by Day{' '}
+                {CAMPAIGN_RULES.durationDays}.
+              </li>
+              <li>
+                <strong>Lead</strong> the department team with Managers for coordination and Runners
+                for stock handoffs; both roles unlock only at the final venue.
+              </li>
+              <li>
+                <strong>Finish</strong> the hall with four visible physical upgrades; cosmetic
+                rewards change its presentation, never its economy.
               </li>
             </ol>
             <div className="ending-actions">
@@ -126,6 +143,9 @@ export function OnboardingGuide(): React.JSX.Element | null {
             <p className="eyebrow">First-day guide · step {step.number}/4</p>
             <h2 id="guide-title">{step.title}</h2>
             <p>{step.detail}</p>
+            <p>
+              {DIFFICULTY_LABELS[game.difficulty]} mode · difficulty stays locked for this campaign.
+            </p>
           </div>
           <button className="text-button" onClick={finish} type="button">
             {step.number === 4 ? 'Finish guide' : 'Skip guide'}

@@ -1,5 +1,6 @@
 /** Public simulation API for application code and tests. */
 export {
+  ARRIVAL_DEMAND_ENGINE_INFLUENCES,
   advanceTick,
   adjustPlanPrice,
   adjustPlanPurchase,
@@ -23,10 +24,20 @@ export {
   resolveEvent,
   serviceQueueCapacity,
   setRushSpeed,
+  staffRoleOperationalEffect,
   startNextDay,
   startRush,
   togglePause,
 } from './engine';
+export {
+  DEPARTMENT_WORKLOAD_DELAYS,
+  STAFF_ROLES,
+  STAFF_ROLE_DETAILS,
+  STAFF_ROLE_LABELS,
+  VENUE_WORKFORCE_CAPACITY,
+  staffRoleAvailableAtVenue,
+  workforceCapacityFor,
+} from '../content/gameContent';
 export { GameRuleError } from './errors';
 export {
   CANDIDATES_PER_DAY,
@@ -36,8 +47,10 @@ export {
   STAFF_NAME_NAMESPACE_SIZE,
   STAFF_NAMES_PER_TIER,
   SUPPORTED_CANDIDATE_NAME_COUNT,
+  candidateStaffId,
   candidateStaffName,
   candidateStaffOrdinal,
+  candidateStaffSlotFromId,
   reservedStaffName,
   staffNameAtOrdinal,
 } from './staffNames';
@@ -46,17 +59,62 @@ export {
   drinkWeatherChoiceMultiplier,
   milkForDraw,
   milkProbabilities,
+  ORDER_CHOICE_DEMAND_ENGINE_INFLUENCES,
   segmentForDraw,
   sizeForDraw,
   sizeProbabilities,
 } from './demandModel';
+export {
+  applyDemandInfluence,
+  DEMAND_INFLUENCES,
+  DEMAND_INFLUENCE_IDS,
+  DIFFICULTY_DEVIATION_MULTIPLIERS,
+} from './demandInfluences';
+export type {
+  ArrivalDemandInfluenceId,
+  DemandInfluenceApplication,
+  DemandInfluenceDefinition,
+  DemandInfluenceDomain,
+  DemandInfluenceId,
+  OrderChoiceDemandInfluenceId,
+} from './demandInfluences';
 export { formatIngredientQuantity, ingredientCapacities, weightedIngredientUse } from './capacity';
 export type { IngredientCapacity } from './capacity';
+export {
+  activeServiceJobs,
+  assignedStaffIds,
+  defaultStationAssignments,
+  emptyExpressStartCounters,
+  emptyServiceAggregates,
+  emptyServiceJobs,
+  emptyStationAssignments,
+  expressDrinkEligible,
+  expressEligibleDrinkIds,
+  laneForDrink,
+  LANE_IDS,
+  MAX_CONSECUTIVE_EXPRESS_STARTS,
+  MAX_EXPRESS_DRINKS,
+  MAX_SERVICE_JOBS_PER_RUSH,
+  serviceAggregatesForPlan,
+  serviceConfigFor,
+  serviceJobId,
+  STAFF_STATION_COMPATIBILITY,
+  staffStationCompatible,
+  STATION_DETAILS,
+  STATION_EQUIPMENT_IDS,
+  STATION_IDS,
+  stationForDrink,
+  stationReadyForService,
+  VENUE_SERVICE_CONFIG,
+  waitingCustomers,
+} from './serviceStations';
+export type { StationConfig, VenueServiceConfig } from './serviceStations';
 export { ACHIEVEMENT_DETAILS, recordCampaignOutcome } from './meta';
 export {
   addPlannedPurchases,
   batchExpiryDay,
   completeIngredientTotals,
+  consumeIngredientsAtServiceStart,
   consumeIngredientsLifo,
   earliestInventoryExpiry,
   expireInventoryAfterRush,
@@ -69,12 +127,19 @@ export {
   refrigerationExtensionDays,
 } from './inventory';
 export {
+  campaignRecordsByDifficulty,
   canOpen,
   completedSaleLabel,
   describeRushActivity,
+  DIFFICULTY_DESCRIPTIONS,
+  DIFFICULTY_LABELS,
   formatMoney,
   rushClock,
   selectedSupplyCost,
+  serviceFlowSummary,
+  staffRoleValue,
   stockedInventory,
+  venueLabel,
+  workforceAppliedEffectLabels,
 } from './selectors';
 export type * from './types';

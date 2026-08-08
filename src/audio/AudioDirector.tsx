@@ -16,6 +16,14 @@ interface AudioHandle {
 
 export type AudioFactory = (source: string) => AudioHandle;
 
+/** Venue-scaled local ambience levels, exhaustive across the campaign progression. */
+export const VENUE_AMBIENCE_VOLUME: Readonly<Record<VenueId, number>> = {
+  cart: 0.13,
+  kiosk: 0.15,
+  cafe: 0.16,
+  departmentStore: 0.18,
+};
+
 /** Small local-audio adapter that treats unsupported or blocked playback as muted operation. */
 export class BrowserAudioManager {
   readonly #ambience: AudioHandle;
@@ -49,6 +57,11 @@ export class BrowserAudioManager {
     safelyPlay(this.#ambience);
   }
 
+  /** Match the local room tone level to the active venue without changing consent. */
+  public setVenue(venueId: VenueId | null): void {
+    this.#ambience.volume = venueId ? VENUE_AMBIENCE_VOLUME[venueId] : 0.16;
+  }
+
   /** Play one non-blocking local interface cue. */
   public playCue(cue: AudioCue): void {
     const audio = this.#cues[cue];
@@ -66,7 +79,8 @@ export class BrowserAudioManager {
 /** Consent-aware bridge from saved preferences and visual state transitions to local media. */
 export function AudioDirector(): null {
   const { game, preferences } = useGame();
-  const [manager] = useState(() => new BrowserAudioManager());
+  const [manager, setManager] = useState<BrowserAudioManager | null>(null);
+  const managerRef = useRef<BrowserAudioManager | null>(null);
   const previousRef = useRef<{
     phase: GamePhase | null;
     soundEnabled: boolean;
@@ -76,12 +90,17 @@ export function AudioDirector(): null {
     soundEnabled: preferences.soundEnabled,
     venueId: game?.venueId ?? null,
   });
-  const [interactionAllowed, setInteractionAllowed] = useState(false);
-
   useEffect(() => {
-    const allow = (): void => setInteractionAllowed(true);
-    window.addEventListener('pointerdown', allow, { once: true });
-    window.addEventListener('keydown', allow, { once: true });
+    const allow = (): void => {
+      window.removeEventListener('pointerdown', allow);
+      window.removeEventListener('keydown', allow);
+      if (managerRef.current) return;
+      const created = new BrowserAudioManager();
+      managerRef.current = created;
+      setManager(created);
+    };
+    window.addEventListener('pointerdown', allow);
+    window.addEventListener('keydown', allow);
     return () => {
       window.removeEventListener('pointerdown', allow);
       window.removeEventListener('keydown', allow);
@@ -89,8 +108,10 @@ export function AudioDirector(): null {
   }, []);
 
   useEffect(() => {
-    manager.setAmbienceEnabled(interactionAllowed && preferences.ambienceEnabled);
-  }, [interactionAllowed, manager, preferences.ambienceEnabled]);
+    if (!manager) return;
+    manager.setVenue(game?.venueId ?? null);
+    manager.setAmbienceEnabled(preferences.ambienceEnabled);
+  }, [game?.venueId, manager, preferences.ambienceEnabled]);
 
   useEffect(() => {
     const previous = previousRef.current;
@@ -100,7 +121,7 @@ export function AudioDirector(): null {
       venueId: game?.venueId ?? null,
     };
     previousRef.current = next;
-    if (!interactionAllowed || !preferences.soundEnabled) return;
+    if (!manager || !preferences.soundEnabled) return;
     if (!previous.soundEnabled || previous.venueId !== next.venueId) {
       manager.playCue('confirm');
       return;
@@ -111,9 +132,15 @@ export function AudioDirector(): null {
     ) {
       manager.playCue('event');
     }
-  }, [game?.phase, game?.venueId, interactionAllowed, manager, preferences.soundEnabled]);
+  }, [game?.phase, game?.venueId, manager, preferences.soundEnabled]);
 
-  useEffect(() => () => manager.dispose(), [manager]);
+  useEffect(
+    () => () => {
+      managerRef.current?.dispose();
+      managerRef.current = null;
+    },
+    [],
+  );
   return null;
 }
 

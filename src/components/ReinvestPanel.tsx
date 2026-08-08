@@ -1,21 +1,20 @@
 import {
-  CART_IMPROVEMENT_COST_CENTS,
   EQUIPMENT,
   EQUIPMENT_IDS,
+  IMPROVEMENTS,
+  IMPROVEMENT_IDS,
   VENUE_PROMOTIONS,
   VENUES,
+  venueMeetsRequirement,
 } from '../content/gameContent';
 import { useGame } from '../app/GameContext';
-import { formatMoney, type EquipmentId, type VenueId } from '../game';
-
-const VENUE_ORDER: VenueId[] = ['cart', 'kiosk', 'cafe'];
+import { formatMoney, type EquipmentId } from '../game';
 
 /** Between-day equipment, venue promotion, legacy upgrade, and continuation controls. */
 export function ReinvestPanel(): React.JSX.Element {
   const { command, game } = useGame();
   if (!game) return <></>;
-  const hasSign = game.improvements.includes('street-sign');
-  const promotion = game.venueId === 'cafe' ? null : VENUE_PROMOTIONS[game.venueId];
+  const promotion = game.venueId === 'departmentStore' ? null : VENUE_PROMOTIONS[game.venueId];
   const missingPromotionEquipment = promotion
     ? Object.entries(promotion.requiredEquipment).filter(
         ([id, level]) => game.equipment[id as EquipmentId] < level,
@@ -45,24 +44,30 @@ export function ReinvestPanel(): React.JSX.Element {
         {EQUIPMENT_IDS.map((equipmentId) => {
           const config = EQUIPMENT[equipmentId];
           const currentLevel = game.equipment[equipmentId];
-          const currentTier = currentLevel > 0 ? config.tiers[currentLevel - 1] : null;
-          const nextTier = config.tiers[currentLevel];
+          const currentTier = config.tiers.find((tier) => tier.level === currentLevel) ?? null;
+          const nextTier = config.tiers.find((tier) => tier.level === currentLevel + 1);
           const venueReady = nextTier
-            ? VENUE_ORDER.indexOf(game.venueId) >= VENUE_ORDER.indexOf(nextTier.requiresVenue)
+            ? venueMeetsRequirement(game.venueId, nextTier.requiresVenue)
             : true;
           return (
             <article className={`equipment-card ${nextTier ? '' : 'is-owned'}`} key={equipmentId}>
               <div>
-                <span className="level-badge">Level {currentLevel}/2</span>
+                <span className="level-badge">
+                  Level {currentLevel}/{config.tiers.length}
+                </span>
                 <h4>{config.name}</h4>
                 <p>{config.description}</p>
                 <small>
-                  {currentTier ? `Current: ${currentTier.effect}` : 'Current: owner setup'}
+                  {currentTier
+                    ? `Current: ${currentTier.effect} · ${currentTier.reliabilityPercent}% reliability · ${formatMoney(currentTier.operatingCostCents)}/day maintenance`
+                    : 'Current: owner setup'}
                 </small>
                 {nextTier ? (
                   <small>
-                    Next: {nextTier.name} · {nextTier.effect} ·{' '}
-                    {formatMoney(nextTier.operatingCostCents)}/day running cost
+                    Next: {nextTier.name} · {formatMoney(nextTier.costCents)} purchase · requires{' '}
+                    {VENUES[nextTier.requiresVenue].shortName} · {nextTier.effect} ·{' '}
+                    {nextTier.reliabilityPercent}% reliability ·{' '}
+                    {formatMoney(nextTier.operatingCostCents)}/day maintenance
                   </small>
                 ) : (
                   <small>Fully upgraded</small>
@@ -117,30 +122,67 @@ export function ReinvestPanel(): React.JSX.Element {
       ) : (
         <article className="promotion-card is-owned">
           <h3>Flagship venue complete</h3>
-          <p>The full specialty cafe is open; future investment is equipment and team depth.</p>
+          <p>
+            The department-store coffee hall is open; commercial equipment and team depth now shape
+            the flagship.
+          </p>
         </article>
       )}
 
-      <article className={`upgrade-card ${hasSign ? 'is-owned' : ''}`}>
-        <div aria-hidden="true" className="upgrade-icon">
-          ↗
-        </div>
-        <div>
-          <h3>Hand-painted street sign</h3>
-          <p>A little more passing trade and a slightly smoother service path.</p>
-          <strong>{hasSign ? 'Owned' : formatMoney(CART_IMPROVEMENT_COST_CENTS)}</strong>
-        </div>
-        {!hasSign ? (
-          <button
-            className="button"
-            disabled={game.cashCents < CART_IMPROVEMENT_COST_CENTS}
-            onClick={() => command({ type: 'buyImprovement', improvementId: 'street-sign' })}
-            type="button"
-          >
-            Buy sign
-          </button>
-        ) : null}
-      </article>
+      <h3>Physical improvements</h3>
+      <div className="upgrade-grid">
+        {IMPROVEMENT_IDS.map((improvementId) => {
+          const improvement = IMPROVEMENTS[improvementId];
+          const owned = game.improvements.includes(improvementId);
+          const venueReady = venueMeetsRequirement(game.venueId, improvement.requiresVenue);
+          const missingEquipment = Object.entries(improvement.requiredEquipment).filter(
+            ([equipmentId, level]) => game.equipment[equipmentId as EquipmentId] < level,
+          );
+          const canBuy =
+            venueReady && missingEquipment.length === 0 && game.cashCents >= improvement.costCents;
+          return (
+            <article
+              className={`upgrade-card ${owned ? 'is-owned' : ''}`}
+              data-improvement-id={improvementId}
+              key={improvementId}
+            >
+              <div aria-hidden="true" className="upgrade-icon">
+                ↗
+              </div>
+              <div>
+                <h4>{improvement.name}</h4>
+                <p>{improvement.description}</p>
+                <strong>{owned ? 'Owned' : formatMoney(improvement.costCents)}</strong>
+                {!owned && (!venueReady || missingEquipment.length > 0) ? (
+                  <ul className="upgrade-requirements">
+                    <Requirement met={venueReady}>
+                      {VENUES[improvement.requiresVenue].shortName}
+                    </Requirement>
+                    {Object.entries(improvement.requiredEquipment).map(([equipmentId, level]) => (
+                      <Requirement
+                        key={equipmentId}
+                        met={game.equipment[equipmentId as EquipmentId] >= level}
+                      >
+                        {EQUIPMENT[equipmentId as EquipmentId].name} level {level}
+                      </Requirement>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              {!owned ? (
+                <button
+                  className="button"
+                  disabled={!canBuy}
+                  onClick={() => command({ type: 'buyImprovement', improvementId })}
+                  type="button"
+                >
+                  Buy {improvement.name} · {formatMoney(improvement.costCents)}
+                </button>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
       <button
         className="button button-primary"
         onClick={() => command({ type: 'startNextDay' })}

@@ -7,8 +7,11 @@ import {
   STAFF_NAME_NAMESPACE_SIZE,
   STAFF_NAMES_PER_TIER,
   SUPPORTED_CANDIDATE_NAME_COUNT,
+  candidatePoolForDay,
+  candidateStaffId,
   candidateStaffName,
   candidateStaffOrdinal,
+  candidateStaffSlotFromId,
   reservedStaffName,
   staffNameAtOrdinal,
 } from '../../src/game';
@@ -53,6 +56,23 @@ describe('collision-free staff-name namespace', () => {
     expect(new Set(first).size).toBe(4);
   });
 
+  it('binds canonical candidate IDs to seed, day, slot, and all four roles', () => {
+    for (const day of [1, 40, 41, 1_000, 10_000]) {
+      const candidates = candidatePoolForDay(77, day);
+      expect(candidates.map(({ role }) => role)).toEqual([
+        'barista',
+        'frontOfHouse',
+        'manager',
+        'runner',
+      ]);
+      for (const [index, candidate] of candidates.entries()) {
+        expect(candidate.id).toBe(candidateStaffId(77, day, index));
+        expect(candidateStaffSlotFromId(candidate.id, 77)).toEqual({ day, index });
+        expect(candidateStaffSlotFromId(candidate.id, 78)).toBeNull();
+      }
+    }
+  });
+
   it('uses exact candidate ordinals and keeps repair names beyond slot 39,999', () => {
     expect(candidateStaffOrdinal(1, 0)).toBe(0);
     expect(candidateStaffOrdinal(1, 3)).toBe(3);
@@ -73,5 +93,7 @@ describe('collision-free staff-name namespace', () => {
       'repair index must be an integer',
     );
     expect(() => candidateStaffName(Number.NaN, 1, 0)).toThrow('seed must be a finite number');
+    expect(candidateStaffSlotFromId('staff-4d-10001-0', 77)).toBeNull();
+    expect(candidateStaffSlotFromId('forged-staff-id', 77)).toBeNull();
   });
 });

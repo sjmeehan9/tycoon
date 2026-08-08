@@ -36,15 +36,24 @@ export function EndingPanel(): React.JSX.Element {
       </dl>
       {won ? (
         <div className="unlock-card">
-          <strong>Unlocked: endless mode, Rainy Season, and Wattle Awning</strong>
+          <strong>
+            Unlocked: endless mode, Rainy Season, Wattle Awning, Mosaic Floor, and Brass Bay Plaques
+          </strong>
           <span>
             Achievements and scenarios change presentation and records only; every new campaign
             starts with the same economy.
           </span>
+          {meta.achievements.includes('threeBayConductor') ? (
+            <span>Every station and lane served on Day 40: After-hours Glow unlocked.</span>
+          ) : (
+            <span>
+              Serve every station and both lanes on a winning Day 40 to unlock After-hours Glow.
+            </span>
+          )}
         </div>
       ) : outcome.type === 'targetMissed' ? (
         <p>
-          Target: cafe · {formatMoney(CAMPAIGN_RULES.victoryCashCents)} ·{' '}
+          Target: department-store coffee hall · {formatMoney(CAMPAIGN_RULES.victoryCashCents)} ·{' '}
           {CAMPAIGN_RULES.victoryReputation} reputation.
         </p>
       ) : null}

@@ -1,12 +1,32 @@
-# Laneway Tycoon Release Runbook
+# Laneway Tycoon Phase 8 Release Runbook
 
-The current public baseline is the validated Phase 6 release. Phase 7 produces
-a local merge candidate only; publication is a separate human-authorized action
-and neither local PASS nor merge approval grants it.
+Phase 8 produces a local release candidate for the forty-day department-store
+campaign. A local PASS does not authorize a merge or publication. The repository
+owner makes those two decisions separately and in that order.
 
-## 1. Reproduce local PASS
+## Candidate contents
 
-Use Node.js 22.12+ and pnpm 10:
+The candidate includes:
+
+- Standard and Hard campaigns that run for forty days;
+- the cart, kiosk, cafe, and department-store venues;
+- department-store staffing, commercial equipment, three service stations, an
+  express lane, and the dense low-poly 3D heritage hall;
+- current schema-v4 saves, optional end-of-day detail, and a planner without a
+  scene preview;
+- a production-scoped `/tycoon/` installable PWA whose complete runtime graph is
+  available after one successful online load; and
+- consent-based service-worker updates that cannot activate while service is in
+  progress.
+
+No backend, account, credential, secret, analytics, telemetry, advertising, or
+runtime external service is part of the release.
+
+## 1. Reproduce the local candidate
+
+Use Node.js 22.12 or newer and pnpm 10. The final Phase 8 evidence uses Node.js
+24.18.0 and the frozen lockfile. Stabilize every fingerprint-included path,
+record the unscoped global fingerprint, and run the exact Tier 3 sequence once:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -16,75 +36,145 @@ pnpm test
 pnpm test:e2e
 ```
 
-For performance evidence, serve the production build in one terminal:
+The complete Playwright command already includes the PWA, persistence, exact
+360×780 service layout, dense department scene, reset/difficulty, workforce,
+parallel-service, 40-day campaign, report history, and all enduring Phase 1–7
+journeys. Do not replace it with a sampled subset at the cumulative gate.
+
+The production build must use the `/tycoon/` base. Inspect the generated service
+worker and the Playwright evidence to confirm that its canonical precache list
+contains every generated JavaScript, CSS, HTML, image, audio, and manifest file
+needed by the game, contains no duplicate URL, and contains no individual file
+of 1,000,000 bytes or more. The PWA journey must prove:
+
+- a valid `/tycoon/` manifest, scope, start URL, controller, and installability
+  result;
+- 200 responses for every precached resource while offline;
+- both warm and cold offline reload after one online load;
+- an offline dense department service can resume, finish, settle exactly once,
+  and continue to the next planning day; and
+- a waiting worker remains deferred throughout active service. After service,
+  activation requires a fresh explicit click, verifies a new schema-v4
+  checkpoint first, and reloads to the same persisted gameplay, preferences,
+  and meta content. The checkpoint intentionally refreshes only top-level
+  `savedAt`, monotonically.
+
+The browser performance evidence is automated emulation, not physical-device
+evidence. It records browser/version, viewport, browser or emulated DPR, actual
+canvas DPR, renderer, scene state, warm-up, sample count, and frame deltas. The
+dense department scene must meet both candidate budgets:
+
+- desktop Chromium at 1280×800: at least 55 rendered frames per second and p95
+  frame time no more than 34 ms (a practical release gate for the 60 FPS target);
+- emulated touch Chromium at 360×780 and DPR 2: at least 30 rendered frames per
+  second and p95 frame time no more than 50 ms.
+
+The optional physical-mobile 30 FPS check remains owner-only, hosted, pending,
+and unclaimed. No automated result may be presented as a physical Safari, GPU,
+orientation, or device result.
+
+## 2. Run Lighthouse and dependency checks
+
+Serve the built candidate at the fixed validation port:
 
 ```bash
-pnpm preview
+pnpm preview --host 127.0.0.1 --port 4173
 ```
 
-Then run `pnpm audit:lighthouse` in another. Confirm Performance,
-Accessibility, and Best Practices are each at least 90. Review
-`docs/public-release-checklist.md` and the candidate's current phase report.
-For Phase 7 that report is `docs/phase-7-test-report.md`; it records automated
-Tier 3 independently and labels the owner-led hosted-device check pending and
-unclaimed until it is performed against the exact published candidate.
+In another terminal, run:
 
-## 2. Human approval and protected merge
+```bash
+pnpm audit:lighthouse
+pnpm audit --prod --audit-level high
+pnpm audit --prod --json
+pnpm licenses list --prod --json
+pnpm list --prod --depth Infinity --json
+shasum -a 256 public/assets/art/laneway-title.webp
+```
 
-The repository owner must explicitly approve the validated phase merge and any
-publication. Push the phase branch, open a pull request into protected `main`,
-confirm required checks, and merge through the repository's normal
-protected-branch controls. Do not bypass protection or force-push. Do not
-publish an intermediate or unvalidated build. If publication is approved,
-deploy the exact automated-PASS candidate at the existing public game URL; only
-the owner performs the subsequent physical-device check, and no agent accesses
-the device.
+Performance, Accessibility, and Best Practices must each score at least 90 in
+the Lighthouse mobile profile. Lighthouse 13 does not expose a PWA category, so
+the production-manifest, installability, service-worker, cache, offline, and
+update Playwright assertions own that proof. The runtime dependency audit must
+remain free of high or critical advisories, all production licenses must remain
+approved, and source plus built-output inspection must find no remote runtime
+asset, API, telemetry, or analytics request.
 
-## 3. Enable the public repository and Pages
+These are supplemental named-target checks on the same frozen global
+fingerprint. Record their exact commands, durations, and outputs in
+`docs/phase-8-test-report.md`; never infer them from Component 8.8's historical
+component gate alone.
 
-Skip Sections 3–5 while Component 7.6 is producing the Phase 7 merge candidate.
-Use them only after the owner separately authorizes publication of the exact
-validated candidate.
+## 3. Human merge gate
 
-In `sjmeehan9/tycoon` on GitHub:
+After Component 8.9 records a cumulative Phase 8 PASS for one frozen global
+fingerprint, the repository owner may approve or reject the merge. On approval:
 
-1. Settings → General → Change repository visibility → **Public**; confirm the
-   consequences and repository name.
-2. Settings → Pages → Build and deployment → Source → **GitHub Actions**.
-3. Actions → **Deploy Laneway Tycoon to Pages** → run the workflow on `main` if
-   the merge-triggered run is not already active.
-4. Confirm the `github-pages` environment reports
-   `https://sjmeehan9.github.io/tycoon/`.
+1. push the validated Phase 8 branch without force;
+2. open a pull request into `main`;
+3. confirm the required checks passed for the exact candidate; and
+4. merge through the normal pull-request/check workflow.
 
-The workflow needs no custom secret. It reads source, validates the complete
-release, uploads `dist/`, and uses only standard Pages OIDC permissions.
+Do not commit directly to `main`, bypass checks, force-push, or merge an
+intermediate candidate. Merge approval still does not authorize publication.
 
-## 4. Hosted verification
+## 4. Separate publication gate
 
-Using the confirmed public URL:
+Only after the merge may the repository owner separately approve or reject
+publication. On approval, use the existing GitHub Pages workflow:
 
-1. Load `/tycoon/` directly and after refresh; verify manifest, icons, unchanged
-   title art, lazy WebGL service chunks, and all audio return successfully from
-   the subpath.
-2. On desktop, start a campaign, complete onboarding/planning, change settings,
-   run through all three current venue worlds, an event, compact report,
-   settlement, reopened report history, reload, and continue the same save.
-3. At exactly 360×780 or on the nominated real mobile browser, use touch to
-   confirm planning has no preview and service orders scene → complete dashboard
-   → activity → stock. The scene and dashboard must fit without document scroll,
-   with no clipped action, overflow, or hover dependency.
-4. After the online visit, go offline, reload, continue the autosave, and return
-   online.
-5. Confirm the browser reports an active service worker and valid installable
-   manifest, with no console registration errors.
-6. Mark the hosted checklist items and append the URL, workflow run, date,
-   browser/device, and results to the current release evidence. Never reuse a
-   prior phase's hosted verdict by ancestry.
+1. confirm Pages uses **GitHub Actions** as its source;
+2. run or observe **Deploy Laneway Tycoon to Pages** on the approved `main`
+   commit;
+3. record the workflow run, deployed commit, deployment ID, timestamp, and URL;
+4. verify direct load and refresh at `https://sjmeehan9.github.io/tycoon/`;
+5. ask the repository owner to run the hosted desktop/touch/WebGL/offline
+   checks in `docs/public-release-checklist.md`; and
+6. if the owner elects to use a physical mobile device, record its supplied
+   browser/OS/model/orientation/DPR/GPU/FPS evidence without agent device access.
 
-## 5. Recovery
+Until this gate is expressly approved, do not deploy or alter repository
+visibility, Pages settings, environments, releases, or hosted evidence. A
+successful workflow/deployment proves artifact publication and identity only;
+it does not prove the owner's hosted gameplay checks.
 
-If hosted verification fails, stop the release and leave the report as hosted
-FAIL/PENDING. Fix forward on a branch and rerun the full gate. For an urgent
-static regression, redeploy the last known-good `main` commit through the same
-workflow; do not rewrite protected history. Existing players remain on the
-active cached worker until they consent to a verified update.
+## 5. Update behavior in production
+
+A newly downloaded worker waits. During a rush or service event, the update
+action is disabled and the active worker remains in control; dismissing the
+prompt never queues later activation. After service reaches a safe phase, the
+player must explicitly select **Save and update**. The game writes and verifies
+a fresh schema-v4 checkpoint before sending `SKIP_WAITING`. It reloads only
+after the new controller takes control, then restores all persisted gameplay,
+preferences, and meta content exactly; only the verified checkpoint's top-level
+`savedAt` is intentionally refreshed monotonically.
+
+If checkpoint verification, worker activation, controller transition, or reload
+fails, keep the existing worker/save and stop the release investigation before
+retrying. Never clear browser storage as an update remedy.
+
+## 6. Failure, rollback, and superseding builds
+
+Before publication, a failed check stops the candidate: fix it on the phase
+branch and rerun the applicable gate. Do not merge or publish a known failure.
+
+After publication, prefer a superseding fix build:
+
+1. branch from the published commit and make the smallest complete fix;
+2. keep schema-v4 persistence compatibility and the consent-update contract;
+3. rerun the full local Phase 8 gate, obtain the human merge decision, merge by
+   pull request, then obtain a new and separate publication decision;
+4. publish through the same Pages workflow and record the superseding commit;
+5. verify hosted routing, cache contents, offline continuation, and a real
+   waiting-worker update from the affected release.
+
+Do not rewrite protected history, force-push, manually replace cached assets, or
+reuse a service-worker cache identifier for incompatible content. Existing
+sessions can remain on the last active worker until the player safely consents
+to the verified superseding build.
+
+An emergency redeploy of a last-known-good commit is permitted only by explicit
+owner approval and only if that build is schema-v4 compatible. Run it through
+the same workflow, record the exact commit, and repeat hosted verification. If
+compatibility is uncertain, do not roll back; ship a validated superseding build
+instead.

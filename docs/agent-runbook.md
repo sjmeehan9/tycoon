@@ -51,18 +51,48 @@ outside a restricted process sandbox.
 ## Deterministic engine
 
 - One engine tick is 250ms of simulated time; a rush is 300 ticks.
-- A saved game contains the PRNG state, queue, active service, event, and tick.
+- A saved game contains the PRNG state, normal/express queues, canonical service
+  jobs by station, event, and tick.
 - Display speed changes how often the controller dispatches a tick, not the
   calculation performed by a tick.
 - Tests and other consumers import public contracts from `src/game/index.ts`.
-- The campaign closes on Day 30. Victory requires the cafe, $300 cash, and 65
-  reputation; bankruptcy is checked after settlement only below −$100.
+- Campaign creation locks `standard` or `hard` difficulty independently from
+  scenario. `demandInfluences.ts` is the sole difficulty-policy authority:
+  Standard applies 1.225 to both price-response slopes only, while Hard applies
+  1.70 directly to every registered baseline deviation without compounding.
+- The campaign closes on Day 40. Victory requires the department-store hall,
+  $350 cash, and 65 reputation; bankruptcy is checked after settlement only
+  below −$100.
 - Balance maintenance belongs in `tests/unit/campaign.test.ts`: keep at least
   two complete viable strategies and one complete bankruptcy path using public
   commands. Never introduce seed- or test-specific production logic.
 - `tests/fixtures/campaignFixtures.ts` contains validated near-outcome and
   growth snapshots for production import UI journeys. If the schema or balance
   changes, update these fixtures and their full-campaign proof together.
+
+## Department workforce and parallel service
+
+- `VENUE_WORKFORCE_CAPACITY` is the sole roster/schedule authority: cart,
+  kiosk, and cafe retain schedules of two, three, and five; the department
+  roster holds twelve and schedules at most ten.
+- `STAFF_ROLES` is exhaustive across Barista, Front of house, Manager, and
+  Runner. Manager/Runner are department-only; their bounded workload reductions
+  are applied exactly once by the engine and never by animation.
+- `STATION_IDS` fixes service order as espresso, brew, then cold;
+  `LANE_IDS` fixes normal before express. Department plans assign every
+  scheduled person exactly once and select zero to three unique eligible
+  express drinks.
+- Ingredients are consumed irrevocably when a canonical job starts. Completion
+  must never consume them again. Fixed station order, persisted job IDs, and
+  report aggregates protect exact-once stock, cash, satisfaction, activity, and
+  settlement across pause, speed, reload, and rush end.
+- Cart, kiosk, and cafe use the same generalized contracts with one espresso
+  station and one normal lane. Do not reintroduce singular `queue` or
+  `activeService` authorities.
+- Run `tests/unit/engine.test.ts`, `tests/unit/operations.test.ts`,
+  `tests/unit/persistence.test.ts`, `tests/e2e/department-workforce.spec.ts`,
+  and `tests/e2e/parallel-service.spec.ts` after any workforce, station, lane,
+  queue, service-job, inventory, settlement, or report change.
 
 ## Planner controls and sale-price tracing
 
@@ -76,9 +106,9 @@ outside a restricted process sandbox.
   configured size and milk surcharge. Revenue consumes that recorded order
   value; UI and reports must display it rather than calculate it again.
 - `RushState.recentActivity` stores at most the latest 80 ordered arrival,
-  service-start, sale, and walkaway observations. Compatible older rushes
-  without activity import as an empty list; legacy sale-only rows normalize to
-  honest stable observations. It is player feedback, not a second revenue
+  service-start, sale, and walkaway observations. Schema-v4 imports validate
+  this bounded evidence; v1/v2/v3 activity is discarded with the old campaign
+  at the preferences-only reset. It is player feedback, not a second revenue
   ledger. Filter on `type === 'sale'` before reading sale-only fields.
 - Run `tests/e2e/planner-controls.spec.ts` in both configured projects after any
   planner, pricing, service, report, settlement, responsive, or persistence
@@ -96,13 +126,15 @@ outside a restricted process sandbox.
   with the actual engine-recorded charge. At closing, active service precedes
   queued customers in rush-ended order.
 - `createRenderSnapshot` is the sole service-render boundary. It detaches and
-  deeply freezes exact identity/statistics plus at most 12 visible customers,
-  12 activity rows, and 10 scheduled staff. It carries no command, store,
-  persistence, random-number, tick, inventory-write, or accounting authority.
+  deeply freezes exact identity/statistics plus at most 12 queued, three active,
+  and three recent terminal customers, 12 activity rows, and 10 scheduled
+  staff. It carries no command, store, persistence, random-number, tick,
+  inventory-write, or accounting authority.
 - `ServiceWorld` is dynamically imported only during `rush`/`event` and
-  exhaustively dispatches cart, kiosk, and cafe. Every production service route
-  is WebGL2-only; unsupported capability, context loss, or renderer failure
-  produces semantic save-safe recovery and never a Canvas/DOM gameplay path.
+  exhaustively dispatches cart, kiosk, cafe, and department store. Every
+  production service route is WebGL2-only; unsupported capability, context
+  loss, or renderer failure produces semantic save-safe recovery and never a
+  Canvas/DOM gameplay path.
 - The camera remains fixed-isometric and orthographic. Device pixel ratio is
   capped at 1.5; repeated crowds/furnishings/weather use bounded instancing;
   global lighting remains two lights with one shadow-caster. `useFrame` may
@@ -128,15 +160,15 @@ outside a restricted process sandbox.
 - Candidate ordinal is `(day - 1) × 4 + index` for four candidates through Day
   10,000. `staffNames.ts` directly maps it into a seed/tier-keyed 65,536-name
   namespace; do not add rejection sampling or persisted seen-name history.
-- Ordinals 0–39,999 are candidate-only. Ordinals 40,000–65,535 are reserved for
-  compatible-save repair. The first 4,096 names omit a middle initial; later
-  disjoint tiers add one only when required.
+- Ordinals 0–39,999 are candidate-only. The remaining deterministic namespace
+  is reserved and is not a current migration path. The first 4,096 names omit a
+  middle initial; later disjoint tiers add one only when required.
 - Candidate generation intentionally consumes the old unused 12-way name draw
   so role, speed, skill, wage, trait, and balance sequences stay exact.
-- Schema-v3 normalization processes hires then candidates in stable order,
-  preserves the first duplicate occurrence and every originally unique name,
-  and renames later duplicates from the reserved range. IDs, stats, economics,
-  and scheduling do not change; combined IDs and names validate unique.
+- Current schema-v4 state validates combined hire/candidate IDs and names as
+  unique and rejects a forged duplicate. Fresh campaigns generate deterministic
+  unique identities. Version 1–3 staff progress is reset with the rest of the
+  legacy campaign rather than repaired or carried into v4.
 - Run `tests/unit/staff-names.test.ts`, persistence/operations/campaign tests,
   and `tests/e2e/staff-names.spec.ts` after any staff, candidate, day progression,
   save, import, or seed change.
@@ -167,19 +199,22 @@ outside a restricted process sandbox.
 
 ## Save recovery
 
-The current browser adapter uses schema/key version 3 and retains the previous
-validated primary as a last-known-good backup. Current storage keys are
-`laneway-tycoon.save.v3` and `laneway-tycoon.save.backup.v3`. Version-1 and
-version-2 exports and legacy local keys migrate automatically; future versions
-are rejected. A legacy flat inventory becomes current-day full-life batches
-using the saved refrigeration tier. Old lifecycle history is left unavailable
-rather than invented.
+The current browser adapter uses schema/key version 4 and retains the previous
+validated v4 primary as a last-known-good backup. Current storage keys are
+`laneway-tycoon.save.v4` and `laneway-tycoon.save.backup.v4`. Readable v1, v2,
+and v3 primary/backup/import candidates cross one immutable allowlist reset:
+only sound, ambience, and reduced-motion are retained. Active campaigns, meta,
+records, history, onboarding progress, and the selected tab restart cleanly;
+future versions are rejected. After the new v4 payload is verified, every
+legacy primary/backup key is removed so fallback cannot resurrect old progress.
 
 If the primary payload is corrupt and a valid backup exists, the title screen
 shows a recovery warning. Open **Game menu → Save transfer → Restore
 last-known-good save** to make that snapshot primary again. Export before a
 manual browser-data reset whenever possible. Imported files are limited to
-750 KB and validated completely before current data changes; do not hand-edit
+750 KB and validated completely before current data changes. An import fails
+closed if browser storage is unavailable or its verified write fails; it cannot
+consume the evolution notice or replace in-memory state. Do not hand-edit
 local-storage payloads.
 
 ## Compact completion and report history
@@ -194,39 +229,45 @@ local-storage payloads.
   the sale transition. A reconciled copy enters a new `DayReport` once. Never
   derive historical charges from `rush.recentActivity`, current stock, or a
   renderer snapshot.
-- Older schema-v3 reports without charge groups remain unchanged and show
+- Read-only schema-v4 reports without charge groups remain unchanged and show
   **Charge breakdown unavailable for this older report.** Do not estimate or
-  reconstruct missing evidence. Schema version remains 3 throughout Phase 7.
+  reconstruct missing evidence.
 - Run `tests/unit/engine.test.ts`, `tests/unit/persistence.test.ts`,
   `tests/components/game-loop.test.tsx`, and
   `tests/e2e/report-history.spec.ts` after any report, settlement, history,
   persistence, transfer, or responsive disclosure change.
 
-## Released Phase 6 baseline and Phase 7 merge gate
+## Phase 8 cumulative and release gate
 
-`docs/phase-6-test-report.md` and `docs/phase-6-release-evidence.md` record the
-approved release as **HOSTED PASS**. Reviewed feature head `c14bd24` merged
-normally through PR #3 at `2ddf899`; Pages deployment `5505254011` serves the
-verified release at `https://sjmeehan9.github.io/tycoon/`.
+The last deployed baseline is the repaired Phase 7 `main` head
+`d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`, workflow run `31246227689`, and
+Pages deployment `5806728203` at
+`https://sjmeehan9.github.io/tycoon/`. That identity is dependency evidence,
+not a verdict for Phase 8.
 
-For a later release, do not inherit this verdict by branch ancestry alone.
-Repeat the exact local sequence, obtain explicit publication approval, record
-the new PR/merge/workflow/deployment identity, then verify the public direct
-load and hard refresh, assets/installability, desktop and 360px gameplay,
-staff/migration/autosave, active worker/update behavior, offline continuation,
-and runtime health. The Phase 6 evidence also records non-blocking action-runtime
-and upload-input warnings that should be rechecked when workflow pins change.
+After every fingerprint-included source, test, configuration, and contract
+document is stable, record the unscoped global fingerprint with
+`python3 scripts/worktree-fingerprint.py` and run this exact Tier 3 sequence
+once against it:
 
-Phase 7 first produces an automated local merge candidate. After all
-fingerprinted source, test, configuration, and contract-document files are
-stable, record the global fingerprint with
-`python3 scripts/worktree-fingerprint.py`, run the exact Tier 3 sequence once,
-and map every named automated target in `docs/phase-7-test-report.md`. Tier 3
-covers desktop Chromium and the exact 360×780 touch-browser project. Record the
-physical fields—model/OS, browser/WebGL identity, viewport/DPR, dense scene and
-sampling method, frame range, orientation, all venues, reduced motion, visual
-findings, and 30fps disposition—as pending/unclaimed. Agents do not access a
-device. After automated PASS, request explicit merge/publication direction; if
-approved, publish only that exact candidate at the existing public game URL so
-the owner can perform the physical check. Never publish an intermediate or
-unvalidated build.
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm lint
+pnpm test
+pnpm test:e2e
+```
+
+`docs/phase-8-test-report.md` maps every Phase 8 target and every enduring
+Phase 1–7 journey to that immutable candidate. Lighthouse, dependency/license,
+title-hash, and static/runtime-network checks are supplemental named-target
+commands on the same fingerprint; they do not replace Tier 3.
+
+A local PASS authorizes neither merge nor publication. The repository owner
+decides the exact merge first and Pages publication separately afterward.
+Automated workflow/deployment identity and owner-hosted browser findings are
+recorded as separate evidence classes. Optional physical fields—model/OS,
+browser/WebGL identity, viewport/DPR, dense scene and sampling method, frame
+range, orientation, all venues, reduced motion, visual findings, and 30fps
+disposition—remain pending/unclaimed unless the owner supplies them. Agents do
+not access a device. Never publish an intermediate or unvalidated build.

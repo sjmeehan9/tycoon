@@ -30,14 +30,59 @@ export type DialIn = 'speed' | 'balanced' | 'quality';
 export type GamePhase =
   'planning' | 'rush' | 'event' | 'report' | 'reinvest' | 'victory' | 'defeat';
 export type GameMode = 'campaign' | 'endless';
-export type VenueId = 'cart' | 'kiosk' | 'cafe';
+/** Immutable demand policy selected when a campaign is created. */
+export type Difficulty = 'standard' | 'hard';
+export type VenueId = 'cart' | 'kiosk' | 'cafe' | 'departmentStore';
+/** Stable preparation stations used by planning, service, persistence, and reports. */
+export type StationId = 'espressoBar' | 'brewBar' | 'coldBar';
+/** Stable customer lanes used by routing, fairness, activity, and reports. */
+export type LaneId = 'normal' | 'express';
 export type CustomerSegment = 'commuter' | 'student' | 'enthusiast' | 'regular';
-export type StaffRole = 'barista' | 'frontOfHouse';
+export type StaffRole = 'barista' | 'frontOfHouse' | 'manager' | 'runner';
 export type StaffTrait = 'quickHands' | 'peoplePerson' | 'perfectionist' | 'steady';
 export type WeatherId = 'mild' | 'sunny' | 'rainy' | 'coldSnap';
 export type ScenarioId = 'lanewayClassic' | 'rainySeason' | 'festivalWeek';
-export type CosmeticId = 'classicAwning' | 'wattleAwning' | 'neonCup';
-export type AchievementId = 'cafeFounder' | 'goldenCup' | 'hardLessons';
+export type CosmeticId =
+  | 'classicAwning'
+  | 'wattleAwning'
+  | 'neonCup'
+  | 'mosaicFloor'
+  | 'brassBayPlaques'
+  | 'afterHoursGlow';
+export type AchievementId =
+  'cafeFounder' | 'goldenCup' | 'hardLessons' | 'departmentInstitution' | 'threeBayConductor';
+export type BaseEventTemplateId = 'office-coffee-run' | 'sudden-downpour';
+export type DepartmentEventTemplateId =
+  | 'department-lunch-wave'
+  | 'tram-service-disruption'
+  | 'escalator-service-pause'
+  | 'window-display-launch'
+  | 'heritage-gala-interval'
+  | 'late-trading-coach-load';
+export type EventTemplateId = BaseEventTemplateId | DepartmentEventTemplateId;
+export type EventChoiceId =
+  | 'take-order'
+  | 'protect-queue'
+  | 'shelter-crowd'
+  | 'close-awning'
+  | 'open-concourse-pickup'
+  | 'stagger-department-orders'
+  | 'open-commuter-relief'
+  | 'hold-the-express-line'
+  | 'deploy-wayfinding'
+  | 'protect-three-bays'
+  | 'run-tasting-bench'
+  | 'keep-curated-service'
+  | 'serve-the-interval'
+  | 'reservation-pickup-only'
+  | 'open-all-bays'
+  | 'focused-last-orders';
+export type ImprovementId =
+  | 'street-sign'
+  | 'heritage-welcome-marquee'
+  | 'espresso-order-pass'
+  | 'brew-gallery'
+  | 'cold-collection-rail';
 export type RushSpeed = 1 | 2 | 4;
 export type StepDirection = -1 | 1;
 
@@ -91,6 +136,8 @@ export interface DayPlan {
   dialIn: DialIn;
   beanId: BeanId;
   scheduledStaffIds: string[];
+  stationAssignments: Record<StationId, string[]>;
+  expressDrinkIds: DrinkId[];
 }
 
 export interface Order {
@@ -106,12 +153,17 @@ export interface Customer {
   id: string;
   segment: CustomerSegment;
   order: Order;
+  stationId: StationId;
+  laneId: LaneId;
   arrivedAtTick: number;
   patienceTicks: number;
   waitedTicks: number;
 }
 
 export interface ServiceJob {
+  id: string;
+  stationId: StationId;
+  laneId: LaneId;
   customer: Customer;
   remainingTicks: number;
   totalTicks: number;
@@ -126,6 +178,10 @@ export interface RushActivityBase {
   sequence: number;
   tick: number;
   customerId: string;
+  stationId: StationId;
+  laneId: LaneId;
+  /** `null` until preparation starts; started/completed observations require a job ID. */
+  jobId: string | null;
   /** `null` is reserved for honestly migrated observations that predate customer identity. */
   segment: CustomerSegment | null;
 }
@@ -135,9 +191,10 @@ export interface ArrivalActivityEvent extends RushActivityBase {
   type: 'arrival';
 }
 
-/** A queued order whose ingredients were reserved and preparation began. */
+/** A queued order whose ingredients were consumed exactly once and preparation began. */
 export interface ServiceStartedActivityEvent extends RushActivityBase {
   type: 'serviceStarted';
+  jobId: string;
   drinkId: DrinkId;
   size: DrinkSize;
   milk: MilkChoice;
@@ -146,6 +203,7 @@ export interface ServiceStartedActivityEvent extends RushActivityBase {
 /** A completed order charged at the engine-recorded actual price. */
 export interface SaleActivityEvent extends RushActivityBase {
   type: 'sale';
+  jobId: string;
   drinkId: DrinkId;
   size: DrinkSize;
   milk: MilkChoice;
@@ -184,22 +242,27 @@ export interface EventChoiceEffect {
 }
 
 export interface EventChoice {
-  id: string;
+  id: EventChoiceId;
   label: string;
   description: string;
   effect: EventChoiceEffect;
 }
 
 export interface SimulationEvent {
-  id: string;
+  id: EventTemplateId;
   title: string;
   description: string;
   choices: EventChoice[];
 }
 
 export interface ResolvedEvent {
-  eventId: string;
-  choiceId: string;
+  eventId: EventTemplateId;
+  title: string;
+  description: string;
+  choiceId: EventChoiceId;
+  choiceLabel: string;
+  choiceDescription: string;
+  effect: EventChoiceEffect;
   summary: string;
 }
 
@@ -217,6 +280,20 @@ export interface RushStats {
   consumed: Partial<Record<IngredientId, number>>;
   arrivalsBySegment: Partial<Record<CustomerSegment, number>>;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
+  serviceAggregates: ServiceAggregate[];
+}
+
+/** Bounded exact-once service evidence for one station/lane combination. */
+export interface ServiceAggregate {
+  stationId: StationId;
+  laneId: LaneId;
+  assignedStaffIds: string[];
+  equipmentIds: EquipmentId[];
+  completedJobIds: string[];
+  served: number;
+  revenueCents: number;
+  totalWaitTicks: number;
+  satisfactionTotal: number;
 }
 
 export interface RushState {
@@ -224,8 +301,11 @@ export interface RushState {
   durationTicks: number;
   isPaused: boolean;
   speed: RushSpeed;
-  queue: Customer[];
-  activeService: ServiceJob | null;
+  normalQueue: Customer[];
+  expressQueue: Customer[];
+  serviceJobsByStation: Record<StationId, ServiceJob | null>;
+  consecutiveExpressStartsByStation: Record<StationId, number>;
+  nextServiceJobSequence: number;
   pendingEvent: SimulationEvent | null;
   resolvedEvents: ResolvedEvent[];
   eventTriggerTicks: number[];
@@ -258,6 +338,42 @@ export interface StaffMember {
   hiredOnDay: number;
 }
 
+/** The two independent workforce limits configured for one venue. */
+export interface WorkforceCapacity {
+  rosterCapacity: number;
+  scheduleCapacity: number;
+}
+
+/** Engine operation owned by a role; every role has exactly one primary value path. */
+export type StaffRoleOperation =
+  'coffeePreparation' | 'guestFlow' | 'coordinationReliability' | 'handoffWorkload';
+
+/** Data-driven bounded reduction contributed by one scheduled operational role. */
+export interface StaffWorkloadReduction {
+  attribute: 'speed' | 'skill';
+  baseTicks: number;
+  pointsPerExtraTick: number;
+  threshold: number;
+  maximumTicks: number;
+}
+
+/** Canonical role contract shared by generation, eligibility, engine, and UI. */
+export interface StaffRoleConfig {
+  id: StaffRole;
+  label: string;
+  description: string;
+  operation: StaffRoleOperation;
+  requiresVenue: VenueId;
+  wagePremiumCents: number;
+  workloadReduction: StaffWorkloadReduction | null;
+}
+
+/** Pure bounded operational value calculated for one scheduled team member. */
+export interface StaffRoleOperationalEffect {
+  operation: StaffRoleOperation;
+  reductionTicks: number;
+}
+
 export interface EquipmentState {
   grinder: number;
   espressoMachine: number;
@@ -269,28 +385,43 @@ export interface EquipmentState {
 
 export type EquipmentId = keyof EquipmentState;
 
+/** Numeric service effects applied by an installed equipment tier. */
+export interface EquipmentTierEffects {
+  preparationMultiplier?: number;
+  qualityBonus?: number;
+  demandMultiplier?: number;
+  queueCapacityBonus?: number;
+  espressoPreparationMultiplier?: number;
+  batchBrewPreparationMultiplier?: number;
+  chilledShelfLifeDays?: number;
+}
+
 export interface EquipmentTierConfig {
-  level: 1 | 2;
+  level: 1 | 2 | 3;
   name: string;
   costCents: number;
   operatingCostCents: number;
+  reliabilityPercent: number;
   requiresVenue: VenueId;
   effect: string;
+  effects: Readonly<EquipmentTierEffects>;
 }
 
 export interface EquipmentConfig {
   id: EquipmentId;
   name: string;
   description: string;
-  tiers: [EquipmentTierConfig, EquipmentTierConfig];
+  tiers: readonly [EquipmentTierConfig, EquipmentTierConfig, EquipmentTierConfig];
 }
 
 export interface VenueConfig {
   id: VenueId;
   name: string;
   shortName: string;
+  actionName: string;
   description: string;
   menuCapacity: number;
+  /** Derived daily schedule projection retained for existing presentation consumers. */
   staffCapacity: number;
   queueCapacity: number;
   demandFactor: number;
@@ -298,15 +429,49 @@ export interface VenueConfig {
 }
 
 export interface VenuePromotion {
-  from: Exclude<VenueId, 'cafe'>;
+  from: Exclude<VenueId, 'departmentStore'>;
   to: Exclude<VenueId, 'cart'>;
   costCents: number;
   reputationRequired: number;
   requiredEquipment: Partial<Record<EquipmentId, number>>;
 }
 
+/** Immutable service inputs copied into a report when its rush settles. */
+export interface DayReportCauseSnapshot {
+  venueId: VenueId;
+  plan: {
+    menu: Array<{ drinkId: DrinkId; priceCents: number }>;
+    dialIn: DialIn;
+    beanId: BeanId;
+    expressDrinkIds: DrinkId[];
+  };
+  staffing: Array<{
+    staffId: string;
+    name: string;
+    role: StaffRole;
+    speed: number;
+    skill: number;
+    trait: StaffTrait;
+    wageCents: number;
+    stationId: StationId | null;
+  }>;
+  equipment: {
+    levels: EquipmentState;
+    improvements: ImprovementId[];
+    venueOperatingCostCents: number;
+    equipmentOperatingCostCents: number;
+  };
+  events: ResolvedEvent[];
+  wait: {
+    peakQueue: number;
+    queueCapacity: number;
+    totalWaitTicks: number;
+  };
+}
+
 export interface DayReport {
   day: number;
+  difficulty: Difficulty;
   weather: WeatherId;
   openingCashCents: number;
   purchaseCostCents: number;
@@ -328,8 +493,11 @@ export interface DayReport {
   remainingInventory: IngredientTotals;
   inventoryLifecycle: InventoryLifecycleReport | null;
   servedBySegment: Partial<Record<CustomerSegment, number>>;
+  serviceAggregates: ServiceAggregate[];
   bottleneck: string;
   explanations: string[];
+  /** `null` means an earlier current-v4 report predates immutable cause capture. */
+  causeSnapshot: DayReportCauseSnapshot | null;
   /** Absent means the historical report predates complete charge capture. */
   chargeGroups?: ReportChargeGroup[];
   settled: boolean;
@@ -351,11 +519,12 @@ export interface CampaignOutcome {
 }
 
 export interface GameState {
-  stateVersion: 3;
+  stateVersion: 4;
   campaignId: string;
   seed: number;
   rngState: number;
   scenarioId: ScenarioId;
+  difficulty: Difficulty;
   mode: GameMode;
   phase: GamePhase;
   day: number;
@@ -371,7 +540,7 @@ export interface GameState {
   staff: StaffMember[];
   candidateStaff: StaffMember[];
   equipment: EquipmentState;
-  improvements: string[];
+  improvements: ImprovementId[];
   history: DayReport[];
   outcome: CampaignOutcome | null;
 }
@@ -382,10 +551,13 @@ export interface Preferences {
   reducedMotion: boolean;
   onboardingComplete: boolean;
   activeTab: string;
+  /** Prevents the preferences-only v4 evolution notice from replaying. */
+  evolutionNoticeSeen: boolean;
 }
 
 export interface CampaignRecord {
   campaignId: string;
+  difficulty: Difficulty;
   result: CampaignOutcome['type'];
   day: number;
   cashCents: number;
@@ -402,7 +574,7 @@ export interface MetaProgress {
 }
 
 export interface SaveEnvelope {
-  schemaVersion: 3;
+  schemaVersion: 4;
   savedAt: string;
   activeRun: GameState | null;
   preferences: Preferences;
@@ -412,6 +584,7 @@ export interface SaveEnvelope {
 export interface CampaignOptions {
   seed: number;
   scenarioId?: ScenarioId;
+  difficulty?: Difficulty;
 }
 
 export interface PlanPatch {
@@ -421,6 +594,8 @@ export interface PlanPatch {
   dialIn?: DialIn;
   beanId?: BeanId;
   scheduledStaffIds?: string[];
+  stationAssignments?: Partial<Record<StationId, string[]>>;
+  expressDrinkIds?: DrinkId[];
 }
 
 export type GameCommand =
@@ -433,7 +608,7 @@ export type GameCommand =
   | { type: 'setSpeed'; speed: RushSpeed }
   | { type: 'resolveEvent'; choiceId: string }
   | { type: 'closeDay' }
-  | { type: 'buyImprovement'; improvementId: string }
+  | { type: 'buyImprovement'; improvementId: ImprovementId }
   | { type: 'hireStaff'; candidateId: string }
   | { type: 'buyEquipment'; equipmentId: EquipmentId }
   | { type: 'promoteVenue' }

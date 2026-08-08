@@ -5,25 +5,35 @@ import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { duplicateStaffNamesEnvelope, endlessDay9_999Envelope } from '../fixtures/campaignFixtures';
 
 test.describe('campaign-unique staff names', () => {
-  test('repairs a compatible import, hires once, and reloads exact unique identities', async ({
+  test('resets legacy duplicate-name progress, then hires and reloads unique identities', async ({
     page,
   }) => {
     await page.goto('./');
     await importSave(page, JSON.stringify(duplicateStaffNamesEnvelope()), 'duplicate-staff.json');
-    await expect(page.getByText('Imported Day 10000 safely.')).toBeVisible();
+    await expect(page.getByText(/game has evolved/i)).toBeVisible();
+    await expect(page.getByText(/campaign progress was reset/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue autosave' })).toHaveCount(0);
+    await dismissOptionalPwaPrompt(page);
+    await page.getByRole('button', { name: 'Close game menu' }).click();
+    await page.getByRole('button', { name: 'Start new campaign' }).click();
+    await page.getByRole('button', { name: 'Skip onboarding' }).click();
     await openTeam(page);
 
-    const importedNames = await visibleTeamNames(page);
-    expect(importedNames).toHaveLength(6);
-    expect(new Set(importedNames).size).toBe(6);
-    expect(importedNames[0]).toBe(LEGACY_STAFF_NAMES[0]);
+    const freshCandidateNames = await visibleTeamNames(page);
+    expect(freshCandidateNames).toHaveLength(4);
+    expect(new Set(freshCandidateNames).size).toBe(4);
+    expect(
+      freshCandidateNames.every(
+        (name) => !LEGACY_STAFF_NAMES.some((legacyName) => legacyName === name),
+      ),
+    ).toBe(true);
     await page
       .getByRole('button', { name: /^Hire / })
       .first()
       .click();
     await expect(page.getByRole('button', { name: /^Hire / })).toHaveCount(3);
     const hiredNames = await visibleTeamNames(page);
-    expect(new Set(hiredNames).size).toBe(6);
+    expect(new Set(hiredNames).size).toBe(4);
 
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
@@ -74,4 +84,13 @@ async function visibleTeamNames(page: Page): Promise<string[]> {
 async function openTeam(page: Page): Promise<void> {
   const teamTab = page.getByRole('tab', { name: 'Team' });
   if (await teamTab.isVisible()) await teamTab.click();
+}
+
+async function dismissOptionalPwaPrompt(page: Page): Promise<void> {
+  const prompt = page.getByRole('button', { name: 'Got it' });
+  const appeared = await prompt
+    .waitFor({ state: 'visible', timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (appeared) await prompt.click();
 }

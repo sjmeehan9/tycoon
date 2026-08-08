@@ -1,26 +1,33 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
+import { DRINK_MAP, TICKS_PER_SECOND } from '../../src/content/gameContent';
 import {
   advanceTick,
   closeDay,
   createCampaign,
+  formatMoney,
+  prepareDay,
   resolveEvent,
+  startNextDay,
   startRush,
   type GameState,
 } from '../../src/game';
 import {
   SAVE_KEY,
   BrowserSaveStore,
+  EVOLUTION_NOTICE,
+  createDefaultMeta,
+  createDefaultPreferences,
   createSaveEnvelope,
   parseEnvelope,
   serializeEnvelope,
 } from '../../src/persistence/saveStore';
 import {
-  duplicateStaffNamesEnvelope,
+  departmentWorkforceEnvelope,
   nearBankruptcyEnvelope,
   nearVictoryEnvelope,
   livingRushEnvelope,
@@ -40,6 +47,15 @@ function stateAtEvent(): GameState {
   let state = startRush(createCampaign({ seed: 222 }));
   while (state.phase === 'rush') state = advanceTick(state);
   return state;
+}
+
+function signedMoney(cents: number): string {
+  return `${cents >= 0 ? '+' : '−'}${formatMoney(Math.abs(cents))}`;
+}
+
+function signedNumber(value: number): string {
+  if (value === 0) return '0';
+  return `${value > 0 ? '+' : '−'}${Math.abs(value)}`;
 }
 
 function stateAtReport(): GameState {
@@ -123,6 +139,19 @@ describe('playable cart UI', () => {
     expect(restoredScene).toHaveAttribute('data-animation', 'still');
     expect(screen.getByText('SALE +$7.25')).toBeVisible();
     expect(screen.getByText('OUT OF STOCK')).toBeVisible();
+    expect(document.querySelector('[data-dashboard-field="queue"]')).toHaveTextContent('Waiting12');
+    expect(document.querySelector('[data-dashboard-field="normalQueue"]')).toHaveTextContent(
+      'Normal12',
+    );
+    expect(document.querySelector('[data-dashboard-field="expressQueue"]')).toHaveTextContent(
+      'Express0',
+    );
+    expect(document.querySelector('[data-dashboard-field="activeJobs"]')).toHaveTextContent(
+      'Making1',
+    );
+    expect(screen.getByRole('list', { name: 'Live station service' })).toHaveTextContent(
+      'Normal job d1-j1',
+    );
   });
 
   it('shows every exact live stock item with active ingredients first', async () => {
@@ -198,11 +227,13 @@ describe('playable cart UI', () => {
   });
 
   it('shows report semantics and allows settlement and reinvestment', async () => {
-    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(stateAtReport()));
+    const reportState = stateAtReport();
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(reportState));
     const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
+    expect(screen.getByText('Day 1 report · Standard')).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Day 1 result summary')).toBeVisible();
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).not.toBeVisible();
@@ -211,6 +242,23 @@ describe('playable cart UI', () => {
     await user.click(screen.getByText('View full Day 1 report'));
     expect(screen.getByRole('table', { name: 'Cash reconciliation' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Actual charges' })).toBeVisible();
+    const serviceTable = screen.getByRole('table', {
+      name: 'Canonical service settlement by station and lane',
+    });
+    expect(serviceTable).toBeVisible();
+    const servedAggregate = reportState.report?.serviceAggregates.find(
+      (aggregate) => aggregate.served > 0,
+    );
+    if (!servedAggregate) throw new Error('Expected a served report aggregate.');
+    const aggregateRow = serviceTable.querySelector(
+      `[data-station-id="${servedAggregate.stationId}"][data-lane-id="${servedAggregate.laneId}"]`,
+    );
+    const expectedWait =
+      Math.round(
+        (servedAggregate.totalWaitTicks / servedAggregate.served / TICKS_PER_SECOND) * 10,
+      ) / 10;
+    expect(aggregateRow).toHaveTextContent(`${expectedWait}s`);
+    expect(aggregateRow).toHaveTextContent(String(servedAggregate.completedJobIds.length));
     expect(screen.getByRole('list', { name: 'Canonical sale charges' })).toBeVisible();
     expect(screen.getByText(/matching sales revenue/i)).toBeVisible();
     expect(screen.getByRole('table', { name: 'Inventory lifecycle reconciliation' })).toBeVisible();
@@ -273,11 +321,100 @@ describe('playable cart UI', () => {
     ).toBeVisible();
   });
 
-  it('hires both roles and schedules a daily team with visible payroll', async () => {
+  it('renders immutable historical menu prices and resolved effects instead of the next-day plan', async () => {
+    const reportState = stateAtReport();
+    const historicalReport = reportState.report;
+    const causes = historicalReport?.causeSnapshot;
+    if (!historicalReport || !causes || causes.events.length === 0) {
+      throw new Error('Expected a report with immutable menu and event causes.');
+    }
+    const nextDay = prepareDay(startNextDay(closeDay(reportState)), {
+      pricesCents: { espresso: 1_200, longBlack: 1_200 },
+      dialIn: 'speed',
+    });
+    new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(nextDay));
+
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Reports' }));
+    const dialog = screen.getByRole('dialog', { name: 'Game menu' });
+    await user.click(within(dialog).getByText('View full Day 1 report'));
+
+    const capturedMenu = within(dialog).getByRole('list', { name: 'Captured menu prices' });
+    for (const { drinkId, priceCents } of causes.plan.menu) {
+      const drinkName = DRINK_MAP.get(drinkId)?.name;
+      if (!drinkName) throw new Error(`Expected configured drink ${drinkId}.`);
+      const row = within(capturedMenu).getByText(drinkName).closest('li');
+      expect(row).toHaveTextContent(formatMoney(priceCents));
+    }
+    expect(capturedMenu).not.toHaveTextContent('$12.00');
+    expect(within(dialog).getByText(`${causes.plan.dialIn} · ${causes.plan.beanId}`)).toBeVisible();
+
+    for (const event of causes.events) {
+      const effects = within(dialog).getByLabelText(`${event.title} resolved effect values`);
+      expect(effects).toHaveTextContent(`Cash${signedMoney(event.effect.cashCents ?? 0)}`);
+      expect(effects).toHaveTextContent(`Arrivals${signedNumber(event.effect.addCustomers ?? 0)}`);
+      expect(effects).toHaveTextContent(`Demand×${String(event.effect.demandMultiplier ?? 1)}`);
+      expect(effects).toHaveTextContent(`Quality${signedNumber(event.effect.qualityBonus ?? 0)}`);
+      expect(effects).toHaveTextContent(`Reputation${signedNumber(event.effect.reputation ?? 0)}`);
+    }
+  });
+
+  it('renders separate Standard and Hard records with shared neutral unlocks', async () => {
+    const meta = {
+      ...createDefaultMeta(),
+      endlessUnlocked: true,
+      records: [
+        {
+          campaignId: 'standard-record',
+          difficulty: 'standard' as const,
+          result: 'victory' as const,
+          day: 40,
+          cashCents: 40_000,
+          reputation: 80,
+          venueId: 'departmentStore' as const,
+        },
+        {
+          campaignId: 'hard-record',
+          difficulty: 'hard' as const,
+          result: 'bankruptcy' as const,
+          day: 12,
+          cashCents: -10_001,
+          reputation: 30,
+          venueId: 'kiosk' as const,
+        },
+      ],
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(createCampaign({ seed: 8_202 }), createDefaultPreferences(), meta),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Records' }));
+    const dialog = screen.getByRole('dialog', { name: 'Game menu' });
+    expect(within(dialog).getByRole('heading', { name: 'Standard records' })).toBeVisible();
+    expect(within(dialog).getByRole('heading', { name: 'Hard records' })).toBeVisible();
+    expect(within(dialog).getByText(/shared across difficulties/i)).toBeVisible();
+    expect(within(dialog).getByText(/Day 40 · Department Store Coffee Hall/)).toBeVisible();
+    expect(within(dialog).getByText(/Day 12 · Coffee Kiosk/)).toBeVisible();
+  });
+
+  it('hires both cart-eligible roles and schedules a daily team with visible payroll', async () => {
     const user = userEvent.setup();
     renderGame();
     await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
     await user.click(await screen.findByRole('tab', { name: 'Team' }));
+    const initialHireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    expect(initialHireButtons).toHaveLength(4);
+    expect(initialHireButtons[2]).toBeDisabled();
+    expect(initialHireButtons[3]).toBeDisabled();
+    expect(screen.getAllByText(/hiring unlocks at the Department Store Coffee Hall/)).toHaveLength(
+      2,
+    );
     await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
     await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
     const barista = screen.getByRole('checkbox', { name: /Barista · speed/ });
@@ -290,41 +427,230 @@ describe('playable cart UI', () => {
     expect(screen.getByText(/payroll at close/)).toBeVisible();
   });
 
-  it('imports, hires, autosaves, and reloads repaired campaign-unique staff names', async () => {
-    const user = userEvent.setup();
-    const firstView = renderGame();
-    await user.click(screen.getByRole('button', { name: 'Game menu' }));
-    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
-    await user.upload(
-      screen.getByLabelText('Import save JSON file'),
-      new File([JSON.stringify(duplicateStaffNamesEnvelope())], 'duplicate-staff.json', {
-        type: 'application/json',
+  it('states the department staffing requirement truthfully when no one is hired', async () => {
+    const department = {
+      ...createCampaign({ seed: 8_219 }),
+      venueId: 'departmentStore' as const,
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(department, {
+        ...createDefaultPreferences(),
+        onboardingComplete: true,
       }),
     );
-    expect(await screen.findByText('Imported Day 10000 safely.')).toBeVisible();
-    await user.click(screen.getByRole('tab', { name: 'Team' }));
-
-    const importedNames = visibleTeamNames();
-    expect(importedNames).toHaveLength(6);
-    expect(new Set(importedNames).size).toBe(6);
-    expect(importedNames[0]).toBe('Ari Nguyen');
-    await user.click(screen.getAllByRole('button', { name: /^Hire / })[0]!);
-    const hiredNames = visibleTeamNames();
-    expect(hiredNames).toHaveLength(6);
-    expect(new Set(hiredNames).size).toBe(6);
-    firstView.unmount();
-
+    const user = userEvent.setup();
     renderGame();
     await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
     await user.click(screen.getByRole('tab', { name: 'Team' }));
-    expect(visibleTeamNames()).toEqual(hiredNames);
+
+    expect(
+      screen.getByText(
+        'Department stations require hired, scheduled staff with compatible assignments before service can start. Hire below to build station coverage.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/owner is covering every station/i)).not.toBeInTheDocument();
   });
 
-  it('buys equipment and promotes the same venue through kiosk to cafe', async () => {
+  it('shows ten-person department scheduling, operational value, and accessible overflow', async () => {
+    const envelope = departmentWorkforceEnvelope();
+    const expectedPayroll = envelope.activeRun?.staff.reduce(
+      (total, member) => total + member.wageCents,
+      0,
+    );
+    if (expectedPayroll === undefined) throw new Error('Expected department fixture.');
+    new BrowserSaveStore(window.localStorage).save(envelope);
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole('button', { name: 'Continue autosave' }));
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+
+    expect(screen.getByText(/10\/10 scheduled/)).toBeVisible();
+    expect(screen.getByText(/Roster · 10\/12 employed/)).toBeVisible();
+    expect(screen.getByText(`${formatMoney(expectedPayroll)} payroll at close`)).toBeVisible();
+    expect(document.querySelector('#schedule-capacity-note')).toHaveTextContent(
+      'Daily schedule full',
+    );
+    expect(
+      screen.getByRole('list', { name: 'Applied department workforce effects' }),
+    ).toHaveTextContent(
+      /Espresso bar:.*Manager.*coordination\/reliability.*Brew bar:.*Runner.*replenishment\/handoff/,
+    );
+    expect(screen.getAllByText(/without changing stock/).length).toBeGreaterThan(0);
+    const stationSelectors = screen.getAllByRole('combobox', { name: /service station/ });
+    expect(stationSelectors).toHaveLength(10);
+    const manager = envelope.activeRun?.staff.find((member) => member.role === 'manager');
+    if (!manager) throw new Error('Expected department Manager fixture.');
+    const managerStation = screen.getByRole('combobox', {
+      name: `${manager.name} service station`,
+    });
+    expect(within(managerStation).getByRole('option', { name: 'Cold bar' })).toBeDisabled();
+
+    await user.click(screen.getByRole('tab', { name: 'Menu' }));
+    const expressCards = ['Espresso', 'Batch Brew', 'Cold Brew', 'Long Black'].map((drinkName) => {
+      const heading = screen.getByText(drinkName, { selector: '.check-row strong' });
+      const card = heading.closest('.menu-card');
+      if (!card) throw new Error(`Expected ${drinkName} menu card.`);
+      return within(card as HTMLElement);
+    });
+    for (const card of expressCards) {
+      const menuChoice = card.getAllByRole('checkbox')[0];
+      if (!menuChoice) throw new Error('Expected menu choice.');
+      if (!menuChoice.hasAttribute('checked') && !(menuChoice as HTMLInputElement).checked) {
+        await user.click(menuChoice);
+      }
+    }
+    for (const card of expressCards.slice(0, 3)) {
+      await user.click(card.getByRole('checkbox', { name: /Express lane/ }));
+    }
+    expect(expressCards[0]?.getByRole('checkbox', { name: /Express lane/ })).toBeChecked();
+    expect(expressCards[3]?.getByRole('checkbox', { name: /Express lane/ })).toBeDisabled();
+    expect(expressCards[3]?.getByText('Maximum 3 express drinks selected.')).toBeVisible();
+
+    await user.click(screen.getByRole('tab', { name: 'Team' }));
+
+    let hireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    expect(hireButtons).toHaveLength(2);
+    expect(hireButtons.every((button) => !button.hasAttribute('disabled'))).toBe(true);
+    await user.click(hireButtons[0]!);
+    hireButtons = screen.getAllByRole('button', { name: /^Hire / });
+    await user.click(hireButtons[0]!);
+
+    expect(screen.getByText(/Roster · 12\/12 employed/)).toBeVisible();
+    const hired = screen.getByLabelText('Hired staff');
+    const checkboxes = within(hired).getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(12);
+    expect(checkboxes.filter((checkbox) => checkbox.hasAttribute('disabled'))).toHaveLength(2);
+    expect(screen.getByText(/candidate list is empty/)).toBeVisible();
+  });
+
+  it('imports legacy data through the preferences-only v4 boundary', async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as Record<string, unknown>;
+    legacy.schemaVersion = 3;
+    legacy.preferences = {
+      ...createDefaultPreferences(),
+      soundEnabled: true,
+      reducedMotion: true,
+      onboardingComplete: true,
+      activeTab: 'team',
+    };
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([JSON.stringify(legacy)], 'legacy-v3.json', {
+        type: 'application/json',
+      }),
+    );
+    expect(await screen.findByText(EVOLUTION_NOTICE)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Continue autosave' })).toBeNull();
+    const persisted = parseEnvelope(window.localStorage.getItem(SAVE_KEY) ?? '');
+    expect(persisted).toMatchObject({
+      schemaVersion: 4,
+      activeRun: null,
+      meta: createDefaultMeta(),
+      preferences: {
+        soundEnabled: true,
+        ambienceEnabled: false,
+        reducedMotion: true,
+        onboardingComplete: false,
+        activeTab: 'plan',
+        evolutionNoticeSeen: true,
+      },
+    });
+  });
+
+  it('fails a legacy import closed when browser storage is unavailable', async () => {
+    const unavailableStorage = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Storage is blocked.', 'SecurityError');
+    });
+    const user = userEvent.setup();
+    renderGame();
+    expect(
+      await screen.findByText(
+        'Browser storage is unavailable. You can still play, but this run may not persist.',
+      ),
+    ).toBeVisible();
+    unavailableStorage.mockRestore();
+
+    await user.click(screen.getByRole('button', { name: 'Game menu' }));
+    await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
+    const legacy = JSON.parse(JSON.stringify(nearVictoryEnvelope())) as Record<string, unknown>;
+    legacy.schemaVersion = 3;
+    legacy.preferences = {
+      ...createDefaultPreferences(),
+      soundEnabled: true,
+      reducedMotion: true,
+      onboardingComplete: true,
+      activeTab: 'team',
+    };
+    await user.upload(
+      screen.getByLabelText('Import save JSON file'),
+      new File([JSON.stringify(legacy)], 'legacy-without-storage.json', {
+        type: 'application/json',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Browser storage is unavailable, so the imported save was not applied.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByText('Import rejected; current data is unchanged.')).toBeVisible();
+    expect(screen.queryByText(EVOLUTION_NOTICE)).not.toBeInTheDocument();
+    expect(screen.queryByText('Save imported and verified.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue autosave' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(SAVE_KEY)).toBeNull();
+    expect(document.documentElement).toHaveAttribute('data-reduced-motion', 'false');
+
+    await user.click(screen.getByRole('tab', { name: 'Records' }));
+    expect(screen.getByText('No Standard outcomes yet.')).toBeVisible();
+    expect(screen.getByText('No Hard outcomes yet.')).toBeVisible();
+    expect(screen.getByText(/Endless mode:/)).toHaveTextContent('Win once to unlock');
+    await user.click(screen.getByRole('button', { name: 'Close game menu' }));
+    expect(screen.getByRole('heading', { name: 'Laneway Tycoon' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: /Standard/ })).toBeChecked();
+  });
+
+  it('preselects Standard while keeping scenario and difficulty independent', async () => {
+    const meta = {
+      ...createDefaultMeta(),
+      scenarios: ['lanewayClassic', 'rainySeason'] as const,
+    };
+    new BrowserSaveStore(window.localStorage).save(
+      createSaveEnvelope(null, createDefaultPreferences(), {
+        ...meta,
+        scenarios: [...meta.scenarios],
+      }),
+    );
+    const user = userEvent.setup();
+    renderGame();
+    const standard = screen.getByRole('radio', { name: /Standard/ });
+    const hard = screen.getByRole('radio', { name: /Hard/ });
+    const scenario = screen.getByRole('combobox', { name: 'Scenario' });
+    expect(standard).toBeChecked();
+    expect(hard).not.toBeChecked();
+    await user.selectOptions(scenario, 'rainySeason');
+    await user.click(hard);
+    expect(scenario).toHaveValue('rainySeason');
+    expect(hard).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Start new campaign' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Welcome to your laneway' }),
+    ).toHaveTextContent('Hard difficulty is locked for this run');
+    expect(parseEnvelope(window.localStorage.getItem(SAVE_KEY) ?? '')?.activeRun).toMatchObject({
+      difficulty: 'hard',
+      scenarioId: 'rainySeason',
+    });
+    expect(screen.queryByRole('radio', { name: /Hard/ })).toBeNull();
+  });
+
+  it('buys equipment and promotes the same venue through the department-store hall', async () => {
     const reinvest = {
       ...closeDay(stateAtReport()),
-      cashCents: 100_000,
-      reputation: 60,
+      cashCents: 200_000,
+      reputation: 80,
     };
     new BrowserSaveStore(window.localStorage).save(createSaveEnvelope(reinvest));
     const user = userEvent.setup();
@@ -336,7 +662,7 @@ describe('playable cart UI', () => {
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 1/ }));
     expect(firstPromotion).toBeEnabled();
     await user.click(firstPromotion);
-    expect(screen.getByRole('heading', { name: /Day 1\/30 · Coffee Kiosk/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/40 · Coffee Kiosk/ })).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: /Buy Grinder level 2/ }));
     await user.click(screen.getByRole('button', { name: /Buy Espresso machine level 2/ }));
@@ -345,7 +671,20 @@ describe('playable cart UI', () => {
     const cafePromotion = screen.getByRole('button', { name: 'Promote to Specialty Cafe' });
     expect(cafePromotion).toBeEnabled();
     await user.click(cafePromotion);
-    expect(screen.getByRole('heading', { name: /Day 1\/30 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: /Day 1\/40 · Specialty Cafe/ })).toBeVisible();
+    expect(screen.getByText(/Commercial grinder bank · \$85\.00 purchase/)).toHaveTextContent(
+      /requires Department Store Coffee Hall.*99% reliability.*\$2\.80\/day maintenance/,
+    );
+    const departmentPromotion = screen.getByRole('button', {
+      name: 'Promote to Department Store Coffee Hall',
+    });
+    expect(departmentPromotion).toBeEnabled();
+    await user.click(departmentPromotion);
+    expect(
+      screen.getByRole('heading', { name: /Day 1\/40 · Department Store Coffee Hall/ }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /Buy Grinder level 3/ }));
+    expect(screen.getByText('Level 3/3')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Reinvest or call it a night' })).toBeVisible();
     expect(document.querySelector('[data-game-layout="management"]')).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
@@ -363,16 +702,16 @@ describe('playable cart UI', () => {
       }),
     );
     expect(await screen.findByRole('heading', { name: 'How the cart traded' })).toBeVisible();
-    await user.click(screen.getByText('View full Day 30 report'));
+    await user.click(screen.getByText('View full Day 40 report'));
     expect(screen.getByText(/Lifecycle detail is unavailable for this older save/)).toBeVisible();
     expect(screen.getByText('Charge breakdown unavailable for this older report.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Settle & reinvest' }));
-    expect(await screen.findByRole('heading', { name: /local institution/ })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /coffee institution/ })).toBeVisible();
     expect(document.querySelector('[data-service-section]')).not.toBeInTheDocument();
     expect(screen.getByText(/Unlocked: endless mode/)).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Continue in endless mode' }));
     expect(
-      screen.getByRole('heading', { name: /Day 31 · Endless · Specialty Cafe/ }),
+      screen.getByRole('heading', { name: /Day 41 · Endless · Department Store Coffee Hall/ }),
     ).toBeVisible();
   });
 
@@ -421,13 +760,7 @@ describe('playable cart UI', () => {
     await user.click(screen.getByRole('button', { name: 'Game menu' }));
     await user.click(screen.getByRole('tab', { name: 'Save transfer' }));
     await user.click(screen.getByRole('button', { name: 'Restore last-known-good save' }));
-    expect(await screen.findByRole('heading', { name: /Day 1\/30 · Coffee Cart/ })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /Day 1\/40 · Coffee Cart/ })).toBeVisible();
     expect(window.localStorage.getItem(SAVE_KEY)).toBe(serializeEnvelope(first));
   });
 });
-
-function visibleTeamNames(): string[] {
-  return [...document.querySelectorAll('.staff-card strong, .candidate-card strong')].map(
-    (element) => element.textContent ?? '',
-  );
-}
