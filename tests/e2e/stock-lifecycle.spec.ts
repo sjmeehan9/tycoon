@@ -65,6 +65,7 @@ test.describe('stock lifecycle and capacity intelligence', () => {
   }, testInfo) => {
     test.setTimeout(120_000);
     const touch = testInfo.project.name === 'touch-mobile';
+    await page.clock.install({ time: Date.now() });
     await page.goto('./');
     await dismissOfflineReady(page, touch);
     await activate(page.getByRole('button', { name: 'Game menu', exact: true }), touch);
@@ -88,7 +89,17 @@ test.describe('stock lifecycle and capacity intelligence', () => {
     await expect(dairyCapacity).toContainText('500 ml carried + 8,000 ml pending');
     await expect(dairyCapacity).toContainText('500 ml expires after Day 3 rush');
 
+    // Freeze only the planning-to-service boundary so the time-zero inventory can be
+    // observed before the first real 250ms engine interval; every later tick runs normally.
+    await page.clock.pauseAt(Date.now());
     await activate(page.getByRole('button', { name: 'Open the cart' }), touch);
+    await activate(page.getByRole('button', { name: 'Pause' }), touch);
+    const resume = page.getByRole('button', { name: 'Resume' });
+    await expect(resume).toBeVisible();
+    await expect(resume).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+    await expect(page.getByText('No service activity has been recorded yet.')).toBeVisible();
+    await page.clock.resume();
     const stockGrid = page.getByRole('list', { name: 'Live rush stock' });
     await expect(stockGrid.getByRole('listitem')).toHaveCount(9);
     expect(
@@ -105,6 +116,8 @@ test.describe('stock lifecycle and capacity intelligence', () => {
     await expect(stockGrid.locator('[aria-live]')).toHaveCount(0);
 
     await activate(page.getByRole('button', { name: '4×' }), touch);
+    await expect(page.getByRole('button', { name: '4×' })).toHaveAttribute('aria-pressed', 'true');
+    await activate(resume, touch);
     const beansLive = stockGrid.locator('[data-ingredient="houseBeans"]');
     await expect
       .poll(async () => ingredientQuantity(beansLive), { timeout: 20_000 })

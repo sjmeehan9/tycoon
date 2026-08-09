@@ -554,11 +554,96 @@ sequential samples passed at 58.80, 59.91, 57.05, 58.32, and 58.52 FPS (median
 58.52; p95 19.2–21.0 ms). Global timeouts, Playwright workers/retries/skips,
 performance thresholds, and gameplay assertions remain unchanged.
 
-Because executable candidate identity changes, the stabilized fingerprint must
-pass the complete Tier 3 sequence and all candidate-bound
-Lighthouse/security/license/title/network supplements before release execution
-resumes. The title artwork and canonical game/economy state remain
-byte-identical; the generated service-renderer chunk is expected to change.
+That repair became global fingerprint
+`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
+The exact Tier 3 sequence passed with 220 Vitest cases, 88 applicable Playwright
+cases, and eight intentional project-routing skips; the candidate-bound
+Lighthouse median was 93 and its security, license, title, bundle, network, and
+runtime-identity supplements also passed. The coordinator committed it as
+`b7aba4df943a190943a9fb627bbb6c0fb679558f` and the protected merge produced
+exact main `864c1703c0ed08a259bdae13074450bac7ce12d0`.
+
+Merge-triggered Pages run `31289567300` passed frozen install, production
+build, lint, and every unit/component case, then exposed two Linux-runner
+browser conditions before upload or deployment. Desktop Chromium 149 reported
+`SwiftShader Device (Subzero)`, a CPU-only software WebGL backend distinct from
+the locally calibrated SwiftShader LLVM backend. Its three complete cadence
+samples measured 17.28, 17.50, and 17.57 FPS with 55.5–56.9 ms medians and
+65.4–66.7 ms p95 values. The stock-lifecycle desktop and touch journeys also
+observed 8,280 ml instead of the time-zero 8,500 ml because the slower runner
+allowed one coherent 220 ml service start before the initial-stock assertion.
+The run finished with 85 applicable cases passed, eight intentional skips, and
+three failed cases; artifact upload and deployment were skipped.
+
+The Pages workflow now declares
+`TYCOON_RENDERER_GATE_MODE=software-observation-subzero` only for its E2E step.
+That mode fails closed unless `GITHUB_ACTIONS` is exactly `true` and the actual
+desktop renderer contains the exact Subzero signature. It still executes the
+full 30-warm-up/120-sample measurement and retains raw FPS, median, p95,
+duration, full-LOD, 0.9-scale, entity, registry, draw-call, triangle, and page
+budget-state evidence against the unchanged 55 FPS/34 ms constants, but records
+the desktop result as non-authoritative software observation. Default desktop
+mode and every touch run remain calibrated authorities and still require the
+page PASS plus their exact 55/34 and 30/50 thresholds. Unknown modes, local
+attempts to opt into observation, and renderer-signature mismatches fail.
+
+The stock journey installs Playwright's clock before navigation and freezes it
+only across the planning-to-service boundary. It activates the real Pause
+control before a 250 ms engine interval can advance, proves Resume state,
+tick-zero progress, and an empty activity feed, resumes browser time for normal
+lazy rendering while the engine remains paused, and asserts the exact 8,500 ml
+live/500 ml expiry state. It then selects 4× and activates the real Resume
+control before retaining every later depletion, reload, expiry, charge, and
+reconciliation assertion. Three consecutive desktop and touch repetitions
+passed without force, sleep, retry, timeout, or accounting relaxation.
+
+The first predeclared five-sample default calibrated diagnosis on that
+architecture passed at 57.74 FPS once, then failed at 48.12, 45.77, 47.98, and
+49.86 FPS; all five retained their p95 margin at 21.8–31.2 ms. The bounded
+production optimization therefore replaces the department hall's remaining
+per-fragment Standard materials: opaque masonry, timber, trim, and general
+surfaces use Lambert lighting, while brass and equipment surfaces use Phong
+lighting with equivalent highlights. It changes no other scene and preserves
+colours, emissive/opacity/transparent cues, geometry, transforms, shadows,
+lights, entity/count truth, animation, full LOD, 0.9 scale, and gameplay.
+
+Five fresh consecutive default calibrated samples then all passed individually
+at 59.02, 55.70, 60.13, 59.98, and 60.22 FPS, with p95 values of 20.1, 24.5,
+18.4, 19.6, and 18.9 ms. Every sample retained 30 warm-up callbacks, 120
+measured callbacks, full LOD, 0.9 render scale, and the exact 55 FPS/34 ms
+contracts. The title artwork and canonical game/economy state remain
+byte-identical; only the bounded department renderer implementation changes.
+
+That architecture and mixed Lambert/Phong repair froze as global fingerprint
+`841466d8b79404b409ef4d90445e4d74edc3f1d6b431e6a554ae4c37962032b1`.
+Its exact Tier 3 install, build, lint, and all 220 Vitest cases passed. The first
+calibrated dense-hall case then measured 54.59 FPS against 55, while its 16.6 ms
+median, 25.1 ms p95, renderer budgets, full LOD, 0.9 scale, and functional
+assertions passed. The matrix was terminated immediately after that genuine
+0.41 FPS miss; seven earlier cases had passed, two project-routing cases had
+skipped, the next case was interrupted only by termination, and 85 cases did
+not run. No rerun or selective acceptance occurred.
+
+The final bounded production optimization replaces the department hall's nine
+remaining Phong materials with Lambert. The low-poly tycoon presentation does
+not require per-fragment specular, while the retained base colours preserve the
+normal/bright-brass and equipment distinctions. The glowing canopy also keeps
+its exact colour, emissive colour/intensity, opacity, and transparency. No
+geometry, transform, count/entity truth, shadow, light, LOD, 0.9 scale,
+animation, threshold, gameplay, workflow, test, or other scene changes.
+
+Five fresh consecutive default calibrated samples all passed individually at
+57.70, 60.12, 60.17, 60.08, and 60.10 FPS, with p95 values of 18.6, 18.6,
+18.6, 18.4, and 18.5 ms. Every sample retained SwiftShader LLVM, full LOD,
+0.9 render scale, 30 warm-up callbacks, 120 measured callbacks, and the exact
+55 FPS/34 ms contracts. The minimum FPS margin is 2.70 and the maximum p95 uses
+only 18.6 ms of the 34 ms budget.
+
+Because executable candidate identity changes again, this all-Lambert
+stabilization fingerprint must pass the complete Tier 3 sequence and all
+candidate-bound Lighthouse/security/license/title/network supplements before
+release execution resumes. The title artwork and canonical game/economy state
+remain byte-identical.
 
 After every fingerprint-included source, test, configuration, workflow, and
 contract-document path is stable, the Implement engagement records one

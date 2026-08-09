@@ -102,7 +102,7 @@ three-station parallel settlement, dense hall and 360×780 layout, complete
 40-day content/balance/history, PWA/offline/update behavior, and all enduring
 Phase 1–7 journeys. A sampled browser subset cannot satisfy this gate.
 
-## Merge and deployment identity — authorized; stabilization pending
+## Merge and deployment identity — authorized; second stabilization pending
 
 The original Component 8.9 candidate commit `b3b5320` was merged to exact main
 `c28ad429` under the received merge authority. Merge-triggered GitHub Pages run
@@ -131,10 +131,9 @@ animation, full LOD, 0.9 render scale, the 55 FPS threshold, and p95 threshold
 remain unchanged. Five sequential repaired samples all passed at 58.80, 59.91,
 57.05, 58.32, and 58.52 FPS (median 58.52; p95 19.2–21.0 ms).
 
-The repaired candidate must still pass a fresh complete Tier 3 gate and all
-candidate-bound supplements. After the Lead Coordinator commits and merges the
-accepted stabilization under the already received authorities, the existing
-`.github/workflows/deploy-pages.yml` workflow records:
+That repaired candidate was required to pass a fresh complete Tier 3 gate and
+all candidate-bound supplements. For each accepted stabilization merged under
+the already received authorities, `.github/workflows/deploy-pages.yml` records:
 
 - validated candidate commit and merged `main` commit;
 - pull request and merge method;
@@ -143,12 +142,97 @@ accepted stabilization under the already received authorities, the existing
 - deployment ID, status ID, environment, timestamp, and reported URL; and
 - proof that the published commit descends from the locally validated candidate.
 
+The first stabilization subsequently passed exact Tier 3 and all supplements
+as global fingerprint
+`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
+It was committed as `b7aba4df943a190943a9fb627bbb6c0fb679558f` and merged to
+exact main `864c1703c0ed08a259bdae13074450bac7ce12d0`. Merge-triggered
+Pages run `31289567300` passed frozen install, production build, lint, and all
+unit/component tests. Its browser job then completed with 85 applicable cases
+passed, eight intentional project-routing skips, and three failures; artifact
+upload and deployment were skipped, so Phase 8 still has no successful Pages
+deployment identity or hosted verdict.
+
+The dense desktop hall ran all three attempts on Chromium 149's
+`SwiftShader Device (Subzero)` CPU-only software WebGL renderer. They measured
+17.28, 17.50, and 17.57 FPS, 55.5–56.9 ms median frame time, and 65.4–66.7 ms
+p95 against the unchanged 55 FPS/34 ms release contract. This backend is a
+different capability class from the accepted local SwiftShader LLVM renderer;
+Chromium flags cannot select LLVM on the hosted runner. Desktop and touch stock
+journeys also failed their initial 8,500 ml assertion after one coherent 220 ml
+service-start consumption had already produced 8,280 ml. Every retry reproduced
+the respective environment/timing condition.
+
+The workflow therefore marks only exact GitHub Actions Subzero desktop cadence
+as a non-authoritative software observation. Selection fails closed unless
+`GITHUB_ACTIONS` is exactly `true` and the actual renderer contains the exact
+Subzero signature. The journey still executes and retains all 30 warm-up and
+120 measured callbacks, raw FPS/median/p95/duration, exact 55/34 constants,
+full LOD, 0.9 render scale, canonical entity/registry evidence, settled
+draw-call/triangle budgets, and the page's measured budget state. Default
+desktop mode and all touch runs remain calibrated authorities and enforce their
+unchanged 55/34 and 30/50 thresholds plus page PASS. Unknown modes, local
+observation attempts, and renderer mismatches fail; no threshold, retry, skip,
+timeout, LOD, content, or gameplay assertion is reduced.
+
+The stock journey now creates a causal time-zero barrier with Playwright's
+clock and the real Pause/Resume controls. Before browser time resumes, it proves
+the engine is paused at tick zero with no service activity. Lazy rendering then
+proceeds while service remains paused, the exact 8,500 ml live and 500 ml expiry
+state is asserted, and normal 4× service resumes before every existing exact
+depletion, reload, expiry, charge, and reconciliation check. Three consecutive
+desktop/touch repetitions passed with retries disabled and no force, sleep, or
+timeout change.
+
+A predeclared five-run default calibrated set then passed once at 57.74 FPS and
+failed at 48.12, 45.77, 47.98, and 49.86 FPS, while every p95 remained within
+21.8–31.2 ms. The final bounded renderer optimization changes only the
+department hall: remaining Standard materials become Lambert on opaque
+masonry, timber, trim, and general surfaces, or Phong on brass/equipment
+surfaces where highlights matter. Colours, emissive/opacity/transparent cues,
+geometry, transforms, counts/entity truth, shadows, lights, LOD, 0.9 scale,
+animation, visual story, gameplay, and the 55/34 contract are unchanged; no
+other scene is touched.
+
+Five fresh consecutive default calibrated samples all passed individually at
+59.02, 55.70, 60.13, 59.98, and 60.22 FPS, with p95 values of 20.1, 24.5,
+18.4, 19.6, and 18.9 ms. Each retains full LOD, 0.9 scale, 30 warm-up callbacks,
+120 measured callbacks, and the exact 55 FPS/34 ms authority. That candidate
+froze as global fingerprint
+`841466d8b79404b409ef4d90445e4d74edc3f1d6b431e6a554ae4c37962032b1`.
+
+Its exact Tier 3 install, build, lint, and all 220 unit/component cases passed.
+The first calibrated dense-hall case then measured 54.59 FPS against 55, with a
+passing 16.6 ms median and 25.1 ms p95. The matrix was terminated immediately:
+seven earlier cases passed, two project-routing cases skipped, the following
+case was interrupted only by termination, and 85 cases did not run. No blind
+rerun, threshold relaxation, or selective acceptance followed.
+
+The final bounded optimization changes the department hall's nine remaining
+Phong materials to Lambert. Per-fragment specular is not required for the
+low-poly tycoon aesthetic; exact base colours retain normal/bright-brass and
+equipment distinctions, and the canopy retains its colour, emissive
+colour/intensity, opacity, and transparency. Geometry, transforms, counts and
+entity truth, shadows, lights, LOD, 0.9 scale, animation, visual story,
+gameplay, workflow, tests, and 55/34 thresholds remain unchanged, and no other
+scene is touched.
+
+Five fresh consecutive default calibrated samples all passed individually at
+57.70, 60.12, 60.17, 60.08, and 60.10 FPS, with p95 values of 18.6, 18.6,
+18.6, 18.4, and 18.5 ms. Every sample retained SwiftShader LLVM, full LOD,
+0.9 scale, 30 warm-up callbacks, 120 measured callbacks, and the exact 55
+FPS/34 ms authority. The minimum FPS margin is 2.70 and the maximum p95 is
+18.6 ms. This new candidate must pass one fresh exact Tier 3 gate and every
+candidate-bound supplement before the coordinator may commit, merge, or resume
+release execution.
+
 Current [official GitHub Pages custom-workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages),
 rechecked on 2026-08-09, continues to use `actions/configure-pages@v5`,
 `actions/upload-pages-artifact@v4`, and `actions/deploy-pages@v4`, with
 `pages: write`, `id-token: write`, an explicit `github-pages` environment, and
 a build dependency. The repository workflow already matches that contract, so
-Component 8.9 changes no workflow.
+the current stabilization changes only the E2E renderer-observation environment
+described above and does not alter the Pages deployment contract.
 
 ## Owner-hosted verdict — pending
 

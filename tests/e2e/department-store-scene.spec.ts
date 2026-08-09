@@ -4,6 +4,14 @@ import { writeFileSync } from 'node:fs';
 import { serializeEnvelope } from '../../src/persistence/saveStore';
 import { denseDepartmentRushEnvelope } from '../fixtures/campaignFixtures';
 
+type RendererGateMode = 'calibrated' | 'software-observation-subzero';
+
+const RENDERER_GATE_MODE = rendererGateMode(
+  process.env.TYCOON_RENDERER_GATE_MODE,
+  process.env.GITHUB_ACTIONS,
+);
+const SUBZERO_RENDERER_SIGNATURE = 'SwiftShader Device (Subzero)';
+
 test.describe('dense department-store heritage hall', () => {
   test('renders exact canonical entities, all hall registries, and settled bounded WebGL', async ({
     page,
@@ -108,14 +116,20 @@ test.describe('dense department-store heritage hall', () => {
           : String(context.getParameter(context.RENDERER)),
       };
     });
+    const isTouch = testInfo.project.name === 'touch-mobile';
+    const isSubzeroObservation = RENDERER_GATE_MODE === 'software-observation-subzero';
+    const cadenceAuthority =
+      isSubzeroObservation && !isTouch ? 'software-observation' : 'calibrated';
     const frameEvidence = {
       ...framePerformance,
       browserName: testInfo.project.use.browserName ?? 'chromium',
       browserVersion: page.context().browser()?.version() ?? 'unknown',
+      cadenceAuthority,
       method:
         '30 React Three Fiber rendered-frame callbacks discarded, followed by 120 callback deltas in the foreground dense animated scene; BasicShadowMap and static instance colours refreshed on immutable snapshot changes; full LOD uses deliberate pixel-art upscaling from 0.9 internal scale',
       physicalDeviceClaimed: false,
       project: testInfo.project.name,
+      rendererGateMode: RENDERER_GATE_MODE,
     };
     const frameEvidencePath = testInfo.outputPath('renderer-frame-cadence.json');
     writeFileSync(frameEvidencePath, JSON.stringify(frameEvidence, null, 2), 'utf8');
@@ -127,20 +141,63 @@ test.describe('dense department-store heritage hall', () => {
     expect(frameEvidence.frameWarmupCount).toBe(30);
     expect(frameEvidence.antialias).toBe('false');
     expect(frameEvidence.colourUpdatePolicy).toBe('snapshot');
-    expect(frameEvidence.renderScale).toBe(testInfo.project.name === 'touch-mobile' ? 1 : 0.9);
+    expect(frameEvidence.minimumFramesPerSecond).toBe(isTouch ? 30 : 55);
+    expect(frameEvidence.maximumP95FrameTimeMs).toBe(isTouch ? 50 : 34);
+    expect(frameEvidence.renderScale).toBe(isTouch ? 1 : 0.9);
+    await expect(frame).toHaveAttribute('data-lod', isTouch ? 'compact' : 'full');
     expect(frameEvidence.canvasDevicePixelRatio).toBeCloseTo(
       Math.min(frameEvidence.browserDevicePixelRatio, frameEvidence.rendererDevicePixelRatioCap) *
         frameEvidence.renderScale,
       2,
     );
-    expect(
+    for (const metric of [
       frameEvidence.measuredFramesPerSecond,
-      JSON.stringify(frameEvidence),
-    ).toBeGreaterThanOrEqual(frameEvidence.minimumFramesPerSecond);
-    expect(frameEvidence.p95FrameTimeMs, JSON.stringify(frameEvidence)).toBeLessThanOrEqual(
-      frameEvidence.maximumP95FrameTimeMs,
-    );
-    await expect(frame).toHaveAttribute('data-frame-budget-status', 'pass');
+      frameEvidence.medianFrameTimeMs,
+      frameEvidence.p95FrameTimeMs,
+      frameEvidence.sampleDurationMs,
+    ]) {
+      expect(Number.isFinite(metric), JSON.stringify(frameEvidence)).toBe(true);
+      expect(metric, JSON.stringify(frameEvidence)).toBeGreaterThan(0);
+    }
+    if (isSubzeroObservation) {
+      expect(frameEvidence.webglRenderer).toContain(SUBZERO_RENDERER_SIGNATURE);
+    }
+    const measuredBudgetStatus =
+      frameEvidence.measuredFramesPerSecond >= frameEvidence.minimumFramesPerSecond &&
+      frameEvidence.p95FrameTimeMs <= frameEvidence.maximumP95FrameTimeMs
+        ? 'pass'
+        : 'fail';
+    await expect(frame).toHaveAttribute('data-frame-budget-status', measuredBudgetStatus);
+    if (cadenceAuthority === 'calibrated') {
+      expect(
+        frameEvidence.measuredFramesPerSecond,
+        JSON.stringify(frameEvidence),
+      ).toBeGreaterThanOrEqual(frameEvidence.minimumFramesPerSecond);
+      expect(frameEvidence.p95FrameTimeMs, JSON.stringify(frameEvidence)).toBeLessThanOrEqual(
+        frameEvidence.maximumP95FrameTimeMs,
+      );
+      await expect(frame).toHaveAttribute('data-frame-budget-status', 'pass');
+    }
+
+    await testInfo.attach('renderer-gate-disposition.json', {
+      body: Buffer.from(
+        JSON.stringify(
+          {
+            authority: cadenceAuthority,
+            measuredBudgetStatus,
+            mode: RENDERER_GATE_MODE,
+            preservedBudget: {
+              maximumP95FrameTimeMs: frameEvidence.maximumP95FrameTimeMs,
+              minimumFramesPerSecond: frameEvidence.minimumFramesPerSecond,
+            },
+            renderer: frameEvidence.webglRenderer,
+          },
+          null,
+          2,
+        ),
+      ),
+      contentType: 'application/json',
+    });
 
     const screenshot = await frame.screenshot({
       animations: 'disabled',
@@ -273,6 +330,20 @@ test.describe('dense department-store heritage hall', () => {
     }
   });
 });
+
+function rendererGateMode(
+  value: string | undefined,
+  githubActions: string | undefined,
+): RendererGateMode {
+  if (value === undefined || value === '' || value === 'calibrated') return 'calibrated';
+  if (value === 'software-observation-subzero') {
+    if (githubActions !== 'true') {
+      throw new Error('Subzero observation mode is restricted to GitHub Actions.');
+    }
+    return value;
+  }
+  throw new Error(`Unsupported TYCOON_RENDERER_GATE_MODE: ${value}`);
+}
 
 async function importDenseRush(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
