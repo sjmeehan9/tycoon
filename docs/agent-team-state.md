@@ -10,25 +10,29 @@ Deployment `5806728203` / status `16540798993` identifies that exact SHA at
 `https://sjmeehan9.github.io/tycoon/`. This is automated deployment evidence,
 not hosted-browser or physical-device proof.
 
-Phase 8 is active on isolated branch `phase-8-sealed` from that exact main
-head. Components 8.1–8.8 are committed and deliver the schema-v4 reset,
-immutable Standard/Hard difficulty, four-venue 40-day campaign, commercial
-equipment, department workforce, parallel service truth, dense heritage hall,
-causal history, and offline/update/release-readiness contracts.
+Phase 8 Components 8.1–8.8 and original Component 8.9 commit `b3b5320` deliver
+the schema-v4 reset, immutable Standard/Hard difficulty, four-venue 40-day
+campaign, commercial equipment, department workforce, parallel service truth,
+dense heritage hall, causal history, and offline/update/release-readiness
+contracts. The original candidate merged as `c28ad429`, but Pages run
+`31273149320` exceeded only the 120-campaign proof's 15-second outer timeout
+after install/build/lint and 219 other tests passed. E2E, artifact upload, and
+deployment were skipped, so there is no Phase 8 deployment identity.
 
-Component 8.9 is **LOCAL AUTOMATED PASS** on unchanged global fingerprint
-`09b45748f9afd3315ca632ae45bdce26c46efd7fcbb6312bb8193323692a3e59`:
-build/lint passed, all 220 Vitest tests passed, all 88 applicable Playwright
-tests passed with 8 intentional project-routing skips, five Lighthouse runs
-scored Performance 93 and Accessibility/Best Practices 100, and security,
-license, network, cache, and renderer evidence passed. The Lead Coordinator
-independently reproduced the fingerprint before the accepted gate.
+The stabilization candidate is **LOCAL AUTOMATED PASS** on isolated branch
+`phase-8-ci-stabilization` and unchanged global fingerprint
+`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
+Install/build/lint and all 220 Vitest tests passed; 88 applicable Playwright
+tests passed with 8 intentional project-routing skips; five Lighthouse runs
+scored Performance 93 and Accessibility/Best Practices 100; security, license,
+network, and cache evidence passed; and renderer cadence measured 57.63 desktop
+and 60.03 touch FPS. The Lead Coordinator independently reproduced the frozen
+fingerprint before the exact Tier 3 gate.
 
 The user's merge and Pages-publication authorities are **APPROVED / RECEIVED**.
-No Component 8.9 commit, PR, protected merge, workflow, deployment, or hosted
-verdict has executed or been claimed. Physical Safari/mobile-GPU/FPS evidence
-remains optional, pending, unclaimed, and owner-only against the exact final
-hosted build.
+The stabilization candidate has not been committed, merged, deployed, or
+hosted-validated. Physical Safari/mobile-GPU/FPS evidence remains optional,
+pending, unclaimed, and owner-only against the exact final hosted build.
 
 ## Next-Level Evolution Stage Progress
 
@@ -72,10 +76,15 @@ hosted build.
 - [x] Lead Coordinator audits and commits the repaired Component 8.7 candidate
 - [x] Component 8.8 delivers offline, update, performance, and release readiness
 - [x] Lead Coordinator audits and commits the repaired Component 8.8 candidate
-- [x] Component 8.9 cumulative local Tier 3 passes on fingerprint `09b45748…a3e59`
+- [x] Original Component 8.9 cumulative local Tier 3 passes on fingerprint `09b45748…a3e59`
 - [x] Human merge and Pages-publication authorities are received
-- [ ] Lead Coordinator audits and commits the unchanged Component 8.9 candidate
-- [ ] Authorized PR/protected merge and Pages workflow/deployment execute
+- [x] Lead Coordinator audits and commits original Component 8.9 as `b3b5320`
+- [x] Authorized original PR/protected merge executes as `c28ad429`
+- [x] Failed Pages run `31273149320` is diagnosed without claiming a deployment
+- [x] CI stabilization repairs the campaign outer budget and renderer margin
+- [x] Stabilization Tier 3 passes on fingerprint `280caa0bd…e32e1`
+- [ ] Lead Coordinator audits and commits the unchanged stabilization candidate
+- [ ] Authorized stabilization PR/protected merge and Pages deployment execute
 - [ ] Repository owner records the exact hosted gameplay verdict
 - [ ] Repository owner performs the optional hosted physical-device checklist
 
@@ -113,15 +122,16 @@ hosted build.
 
 ## Active agents
 
-| Agent                     | Role                       | Status                | Owns                                                                    |
-| ------------------------- | -------------------------- | --------------------- | ----------------------------------------------------------------------- |
-| three_phase_plan_retry    | Technical Business Analyst | done                  | `docs/phase-plan.md`                                                    |
-| lean_full_build           | Implement                  | done — HOSTED PASS    | application, validation, release evidence                               |
-| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS    | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
-| next_level_plan           | Technical Business Analyst | retired — stalled     | Intake/context audit; no artifact mutation returned                     |
-| next_level_plan_recovery  | Technical Business Analyst | done                  | Comprehensive and corrected Phases 7–8 plan                             |
-| plan_feasibility_audit    | Implement                  | done — ready          | Read-only feasibility audit and approval check; no implementation       |
-| next_level_implement      | Implement                  | done — 8.9 LOCAL PASS | Component 8.9 candidate/evidence; coordinator release execution pending |
+| Agent                     | Role                       | Status             | Owns                                                                    |
+| ------------------------- | -------------------------- | ------------------ | ----------------------------------------------------------------------- |
+| three_phase_plan_retry    | Technical Business Analyst | done               | `docs/phase-plan.md`                                                    |
+| lean_full_build           | Implement                  | done — HOSTED PASS | application, validation, release evidence                               |
+| sole_implement_phases_4_6 | Implement                  | done — HOSTED PASS | Phase 6 source, tests, fixes, local/hosted validation, release evidence |
+| next_level_plan           | Technical Business Analyst | retired — stalled  | Intake/context audit; no artifact mutation returned                     |
+| next_level_plan_recovery  | Technical Business Analyst | done               | Comprehensive and corrected Phases 7–8 plan                             |
+| plan_feasibility_audit    | Implement                  | done — ready       | Read-only feasibility audit and approval check; no implementation       |
+| next_level_implement      | Implement                  | done — 8.9 MERGED  | Original Component 8.9 candidate/evidence and merge                     |
+| phase8_ci_stabilize       | Implement                  | done — LOCAL PASS  | CI timeout/renderer repair and final Tier 3; coordinator commit pending |
 
 ## Previous release human task gate
 
@@ -217,10 +227,16 @@ hosted build.
 - **Component 8.8:** COMMITTED / TIER 2 PASS AFTER BOUNDED REMEDIATION —
   fingerprint `292d06c8…619e3b`; offline/update, production cache, renderer
   cadence, and release-readiness proof passed.
-- **Component 8.9:** LOCAL AUTOMATED TIER 3 PASS — global fingerprint
-  `09b45748…a3e59`; install/build/lint, 220 Vitest tests, 88 applicable
-  Playwright tests, five-run Lighthouse median 93, security/license, network,
-  cache, and renderer gates passed. Commit and release execution remain pending.
+- **Original Component 8.9:** MERGED / DEPLOYMENT FAILED — global fingerprint
+  `09b45748…a3e59` passed its local Tier 3, became commit `b3b5320`, and merged
+  as `c28ad429`. Pages run `31273149320` passed install/build/lint and 219 other
+  tests, then failed only the 120-campaign proof's 15-second outer timeout;
+  browser validation, artifact upload, and deployment were skipped.
+- **Component 8.9 stabilization:** LOCAL AUTOMATED TIER 3 PASS — global
+  fingerprint `280caa0bd…e32e1`; install/build/lint, 220 Vitest tests, 88
+  applicable Playwright tests, five-run Lighthouse median 93,
+  security/license, network, cache, and renderer gates passed. Stabilization
+  commit and release execution remain pending.
 - **Merge authority:** APPROVED / RECEIVED from the root-conversation
   implementation and merge direction; no repeat decision is required.
 - **Pages-publication authority:** APPROVED / RECEIVED from the root-conversation
@@ -279,6 +295,8 @@ hosted build.
 | 2026-08-08 | Bind staff identity and payroll at the v4 boundary          | Seed/day/slot-derived attributes, venue eligibility, complete daily pools, schedule IDs, and rush/report payroll are validated on import                                                                   | Component 8.4      |
 | 2026-08-08 | Make station/lane/job identity canonical                    | Fixed station ordering, bounded express fairness, service-start inventory consumption, and exact-once aggregates keep engine, persistence, UI, scene, and reports on one authority                         | Component 8.5      |
 | 2026-08-08 | Keep dense 3D presentation snapshot-only                    | Bounded frozen entities, fixed lifecycle destinations, instancing, measured renderer budgets, and reduced-motion parity add story depth without moving gameplay authority into WebGL                       | Component 8.6      |
+| 2026-08-09 | Stabilize 120-campaign CI hang protection                   | A 45-second test-only outer budget preserves all 120 campaigns, seeds, strategies, difficulty coverage, and assertions; three isolated runs completed in 5.64, 5.52, and 5.45 seconds                      | Component 8.9      |
+| 2026-08-09 | Optimize repeated dense-hall shading                        | Lambert lighting for repeated low-poly decorations, people, and bounded cues restores robust cadence margin while preserving geometry, counts, shadows, LOD, render scale, and 55 FPS/p95 contracts        | Component 8.9      |
 
 ## Drift log
 
@@ -302,6 +320,8 @@ hosted build.
 | 2026-08-08 | Component 8.3 audit found stale retained current-v4 browser contracts          | Operations now reaches the department flagship, transfer restores Day 40 department detail, and service layout iterates canonical four-venue content; 18/18 repaired desktop/touch cases pass                   |
 | 2026-08-08 | Another Codex process repeatedly changed the shared 8.5 checkout after freezes | Every in-scope delta was preserved and audited, then the complete candidate was snapshot-copied to ignored worktree `phase-8-sealed`; its stable fingerprint alone supplied completion evidence                 |
 | 2026-08-08 | Component 8.6 final browser gate exposed modal/background notice ordering      | The owned import helper now leaves the expected pending-event modal in control; the unchanged event test passed desktop/touch and the repaired complete Tier 2 gate passed                                      |
+| 2026-08-09 | Pages run `31273149320` failed the 120-campaign outer budget                   | All seeds and assertions were preserved; only the test-specific hang budget moved from 15 to 45 seconds, and three clean isolated reproductions passed in under 5.7 seconds                                     |
+| 2026-08-09 | Fresh stabilization Tier 3 exposed a desktop cadence margin defect             | Five untouched samples reproduced a 51.85 FPS median; bounded Lambert shading then produced five all-pass samples and a 57.63 FPS final gate without reducing any performance contract                          |
 
 ## Deferred log
 
@@ -317,9 +337,9 @@ hosted build.
   deferred runtime path or WebGL fallback.
 - Physical Safari/mobile-GPU/orientation/FPS validation remains pending and
   unclaimed as an owner-only hosted handoff, not deferred product behavior.
-  The exact final Phase 8 candidate is locally complete and both merge and
-  publication authorities are received; release execution and the owner's
-  public-game verdict remain pending.
+  The exact Phase 8 stabilization candidate is locally complete and both merge
+  and publication authorities are received; stabilization commit/release
+  execution and the owner's public-game verdict remain pending.
 - Phase 7 clean automated CI, artifact upload, Pages deployment, and exact
   identity capture are complete. Hosted-browser and physical findings remain
   unclaimed; they are not inferred from workflow success.

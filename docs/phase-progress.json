@@ -394,8 +394,8 @@
       "phase": 8,
       "phaseId": 8,
       "phaseName": "Forty-Day Department-Store Campaign",
-      "status": "local-pass-authorized-release-execution-pending",
-      "branch": "phase-8-sealed",
+      "status": "local-stabilization-pass-authorized-release-execution-pending",
+      "branch": "phase-8-ci-stabilization",
       "baseSha": "d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752",
       "approvedOn": "2026-08-08",
       "componentBreakdownDoc": "docs/phase-8-component-breakdown.md",
@@ -418,7 +418,7 @@
         "description": "No agent may access, reserve, identify, or claim availability of a physical device. Any Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, hosted against the exact final published candidate, and remains pending/unclaimed until the owner supplies evidence."
       },
       "releaseGates": {
-        "status": "authorities-received-execution-and-hosted-evidence-pending",
+        "status": "authorities-received-original-merge-complete-stabilization-and-deployment-pending",
         "decisions": [
           {
             "order": 1,
@@ -437,10 +437,22 @@
             "inferred": false
           }
         ],
-        "commitPrMergeExecution": "pending-lead-coordinator",
-        "workflowDeploymentExecutionAndIdentity": "pending",
+        "commitPrMergeExecution": "stabilization-pending-lead-coordinator",
+        "workflowDeploymentExecutionAndIdentity": "stabilization-pending-after-failed-original-run",
         "ownerHostedVerdict": "pending-owner",
         "optionalPhysicalEvidence": "pending-unclaimed-owner-only"
+      },
+      "postMergeCi": {
+        "originalComponentHead": "b3b53201162f0570da246eac5e7a5cb8f27f35c3",
+        "originalMergeCommit": "c28ad429",
+        "runId": 31273149320,
+        "status": "failed-unit-test-outer-timeout-no-deployment",
+        "passedBeforeFailure": ["install", "build", "lint", "219-other-unit-component-tests"],
+        "skippedAfterFailure": ["e2e", "artifact-upload", "pages-deploy"],
+        "stabilizationBranch": "phase-8-ci-stabilization",
+        "stabilizationFingerprint": "280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1",
+        "localTier3": "pass",
+        "deployment": "pending"
       },
       "components": [
         {
@@ -883,18 +895,20 @@
           "assuranceReasons": [
             "Standard Test triggers recorded: destructive migration, persistence/offline/update round trips, concurrent service, responsive UI, WebGL cadence, accessibility, and cumulative regression behavior.",
             "Standard Review triggers recorded: broad core/app/config/documentation scope, public save/game contracts, release safety, and frozen candidate identity; the approved lean override assigns cumulative Tier 3 self-review and validation to Implement.",
-            "Bounded gate repair corrected stale browser synchronization, serialized renderer evidence, and deferred local-audio construction until first input without weakening retries, timeouts, skips, thresholds, or product behavior."
+            "Bounded gate repair corrected stale browser synchronization, serialized renderer evidence, and deferred local-audio construction until first input without weakening retries, skips, thresholds, or product behavior.",
+            "Post-merge Linux CI proved the unchanged 120-campaign assertions needed a realistic test-only outer hang budget; 45 seconds preserves all seeds and assertions while three isolated runs completed in 5.64, 5.52, and 5.45 seconds.",
+            "Five untouched cadence samples reproduced a genuine desktop rendering-margin defect. Lambert lighting for repeated low-poly decorations, people, and bounded cues restored robust margin without changing geometry, counts, LOD, render scale, shadows, or the 55 FPS and p95 contracts."
           ],
           "validationOwner": "Implement",
           "commitOwner": "Lead Coordinator",
           "fingerprintScope": ["global repository executable candidate (unscoped)"],
-          "evidenceFingerprint": "09b45748f9afd3315ca632ae45bdce26c46efd7fcbb6312bb8193323692a3e59",
+          "evidenceFingerprint": "280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1",
           "validationEvidence": "docs/phase-8-test-report.md",
           "componentOverview": "docs/components/phase-8-component-8-9-overview.md",
           "authorRepairUsed": true,
-          "remediationCycles": 4,
-          "disposition": "local-tier-3-pass-authorities-received-release-execution-pending",
-          "status": "local-pass-awaiting-coordinator-commit"
+          "remediationCycles": 6,
+          "disposition": "local-stabilization-tier-3-pass-authorities-received-release-execution-pending",
+          "status": "local-stabilization-pass-awaiting-coordinator-commit"
         }
       ]
     }
