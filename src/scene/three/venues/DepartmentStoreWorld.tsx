@@ -462,11 +462,9 @@ function Instances({
   }, [dummy, transforms]);
   if (transforms.length === 0) return null;
   const material = (
-    <meshStandardMaterial
+    <meshLambertMaterial
       color={colour}
-      metalness={type.startsWith('brass') ? 0.55 : 0.04}
       opacity={type === 'window' ? 0.78 : 1}
-      roughness={type.startsWith('brass') ? 0.34 : 0.82}
       transparent={type === 'window'}
       vertexColors={colour === undefined}
     />

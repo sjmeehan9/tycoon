@@ -56,12 +56,7 @@ export function ActivityEffects({ snapshot }: ActivityEffectsProps): React.JSX.E
       ref={meshRef}
     >
       <octahedronGeometry args={[0.16, 0]} />
-      <meshStandardMaterial
-        emissive="#6b5226"
-        emissiveIntensity={0.24}
-        roughness={0.5}
-        vertexColors
-      />
+      <meshLambertMaterial emissive="#6b5226" emissiveIntensity={0.24} vertexColors />
     </instancedMesh>
   );
 }

@@ -88,27 +88,27 @@ device-check statement:
   evidence is never described as physical-device proof;
 - any physical Safari/mobile-GPU/orientation/DPR/FPS check is optional and may
   be performed only by the repository owner against the exact final published
-  Phase 8 candidate after separate merge and publication approval; and
+  Phase 8 candidate after the authorized publication produces an exact
+  deployment identity; and
 - every physical field remains **PENDING / UNCLAIMED** until the owner supplies
   evidence. No private device identifier is stored.
 
-The repository owner will validate the public game only when the final Phase 8
-candidate is complete. Component 8.1 performs no hosted browser check.
+The repository owner will validate the public game only after the final Phase 8
+candidate is deployed. Component 8.1 performs no hosted browser check.
 
-## Reserved post-8.9 human decisions
+## Received Phase 8 release authorities
 
-Component 8.9 local Tier 3 PASS grants no release authority. Two separate human
-decisions remain reserved and cannot be inferred from Phase 7 approval or Phase
-8 implementation approval:
+The root conversation supplies both distinct human authorities:
 
-1. approve or reject merging the exact validated Phase 8 head; then
-2. after that decision, separately approve or reject final Pages publication
-   and owner-hosted verification.
+1. the user's implementation and merge direction authorizes the normal
+   protected merge path; and
+2. the user's instruction to publish the game over the existing web link
+   authorizes final Pages publication.
 
-If either decision is absent or rejected, no merge/publication action occurs.
-If both are approved, automated GitHub workflow/API identity and owner-supplied
-public-game findings are recorded separately. Optional physical findings remain
-a third, distinct owner-only record.
+No repeat approval request is required. Authority does not itself prove
+execution: commit/PR/merge state, automated workflow/deployment identity,
+owner-supplied public-game findings, and optional owner-only physical evidence
+remain separately recorded dispositions.
 
 ## Downstream implementation boundaries
 
@@ -522,6 +522,44 @@ the title route requests no WAV resource before interaction while retaining the
 same saved sound/ambience preferences, venue levels, transition cues, cleanup,
 local-only assets, and complete offline cache.
 
+The accepted local candidate was committed as `b3b5320` and merged to exact
+main `c28ad429`. Merge-triggered Pages run `31273149320` passed frozen install,
+production build, and lint, then completed 219 other Vitest cases before the
+120-campaign deterministic balance proof exceeded its explicit 15-second outer
+timeout at 19.632 seconds on Linux. Browser, artifact upload, and deployment
+were skipped, so this run supplies no deployment identity or hosted verdict.
+
+Post-merge stabilization retains every seed, strategy, difficulty,
+mismanagement simulation, and assertion. That test's explicit outer
+hang-protection budget increases to 45 seconds, with a comment rejecting its
+use as a runtime performance target. Three focused executions completed the
+same 120 deterministic campaigns in 5.64, 5.52, and 5.45 seconds.
+
+The first uninterrupted stabilization Tier 3 run then passed install, build,
+lint, all 220 Vitest cases, and 87 applicable browser cases with eight
+intentional project-routing skips. Its only failure was a genuine dense-hall
+desktop rendering-margin defect: the unchanged 55 FPS threshold received
+52.72 FPS while median frame time (18.5 ms), p95 frame time (22.8 ms), all
+scene registries, renderer budgets, and every functional assertion passed. A
+predeclared five-sample untouched diagnosis reproduced 52.11, 51.85, 52.40,
+50.24, and 51.56 FPS (median 51.85), so no best-run selection, threshold
+reduction, or blind rerun could resolve it.
+
+The production repair uses the lower-cost Lambert lighting model for the dense
+hall's repeated instanced decorations, people bodies/heads, and bounded
+activity cues. This matches the warm low-poly tycoon presentation while
+preserving every geometry, transform, colour, opacity, shadow, entity/count,
+animation, full-LOD, 0.9 render-scale, 55 FPS, and p95 contract. Five fresh
+sequential samples passed at 58.80, 59.91, 57.05, 58.32, and 58.52 FPS (median
+58.52; p95 19.2–21.0 ms). Global timeouts, Playwright workers/retries/skips,
+performance thresholds, and gameplay assertions remain unchanged.
+
+Because executable candidate identity changes, the stabilized fingerprint must
+pass the complete Tier 3 sequence and all candidate-bound
+Lighthouse/security/license/title/network supplements before release execution
+resumes. The title artwork and canonical game/economy state remain
+byte-identical; the generated service-renderer chunk is expected to change.
+
 After every fingerprint-included source, test, configuration, workflow, and
 contract-document path is stable, the Implement engagement records one
 unscoped global fingerprint and runs the exact Tier 3 sequence once under the
@@ -539,7 +577,8 @@ best run cannot satisfy the target.
 
 Local automated PASS, deployment identity, owner-hosted gameplay verification,
 and optional owner-only physical evidence are four distinct dispositions. A
-local PASS authorizes neither merge nor publication. The coordinator may act
-only after the reserved human decisions; the repository owner performs the
-hosted gameplay checks, and physical evidence remains pending/unclaimed unless
-the owner elects to supply it.
+local PASS does not claim commit, merge, workflow, publication, or hosted
+execution. Merge and publication authorities are already received; the
+coordinator executes the normal Git/release path, the repository owner performs
+the hosted gameplay checks, and physical evidence remains pending/unclaimed
+unless the owner elects to supply it.

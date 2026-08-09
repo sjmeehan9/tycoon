@@ -398,7 +398,9 @@ describe('seeded full-campaign balance', () => {
         mismanaged.filter(({ day, outcome }) => outcome?.type === 'bankruptcy' && day <= 25).length,
       ).toBeGreaterThanOrEqual(16);
     }
-  }, 15_000);
+    // Hang protection for 120 complete deterministic campaigns; this is not a runtime
+    // performance target.
+  }, 45_000);
 
   it.each([
     ['Standard careful quality', 'standard', 7_301, 'quality', 0],

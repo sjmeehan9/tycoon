@@ -3,8 +3,8 @@
 ## Evidence model
 
 This file is part of the executable candidate fingerprint. It defines the
-stable release contents, evidence authorities, and remaining human gates; it
-does not duplicate mutable post-freeze command or deployment results.
+stable release contents, evidence authorities, and current execution boundary;
+it does not duplicate mutable post-freeze command results.
 
 - The exact global candidate fingerprint, local commands, durations, counts,
   target map, and local verdict are authoritative only in
@@ -20,6 +20,9 @@ does not duplicate mutable post-freeze command or deployment results.
   owner-only class and remains pending/unclaimed unless supplied by the owner.
 
 No local, deployment, hosted, or physical verdict may be inferred from another.
+The user's merge and Pages-publication authorities are **APPROVED / RECEIVED**;
+authority is not evidence that Git, workflow, deployment, or hosted validation
+executed successfully.
 
 ## Release notes
 
@@ -99,13 +102,39 @@ three-station parallel settlement, dense hall and 360×780 layout, complete
 40-day content/balance/history, PWA/offline/update behavior, and all enduring
 Phase 1–7 journeys. A sampled browser subset cannot satisfy this gate.
 
-## Deployment identity — pending separate approval
+## Merge and deployment identity — authorized; stabilization pending
 
-Phase 8 has no deployment identity in this candidate file. After local PASS,
-the repository owner must first approve the exact merge and then separately
-approve Pages publication. Only then may the coordinator push/open a pull
-request, merge through the normal checks, observe the existing
-`.github/workflows/deploy-pages.yml` workflow, and record:
+The original Component 8.9 candidate commit `b3b5320` was merged to exact main
+`c28ad429` under the received merge authority. Merge-triggered GitHub Pages run
+`31273149320` passed frozen install, production build, and lint. Vitest completed
+219 other cases, but the deterministic 120-campaign balance proof exceeded its
+explicit 15-second outer timeout at 19.632 seconds on Linux. Browser testing,
+artifact upload, and deployment were skipped. Therefore Phase 8 still has no
+successful Pages deployment identity or hosted verdict.
+
+The stabilization candidate raises only that proof's outer hang-protection
+budget to 45 seconds while retaining every seed, strategy, difficulty,
+mismanagement simulation, and assertion. Three focused repetitions completed
+the 120-campaign proof in 5.64, 5.52, and 5.45 seconds.
+
+Its first uninterrupted Tier 3 browser matrix exposed one additional genuine
+release-margin defect: 87 applicable cases passed, eight project-routing cases
+skipped intentionally, and the dense desktop hall alone measured 52.72 FPS
+against the unchanged 55 FPS contract. Every functional assertion and the
+22.8 ms p95 contract passed. Five untouched diagnostic samples reproduced a
+51.85 FPS median, so the candidate was not rerun or accepted selectively.
+
+The production repair replaces per-fragment PBR materials only on repeated
+low-poly hall decorations, people, and bounded activity cues with Lambert
+lighting. Geometry, transforms, colours, opacity, shadows, entity/count truth,
+animation, full LOD, 0.9 render scale, the 55 FPS threshold, and p95 threshold
+remain unchanged. Five sequential repaired samples all passed at 58.80, 59.91,
+57.05, 58.32, and 58.52 FPS (median 58.52; p95 19.2–21.0 ms).
+
+The repaired candidate must still pass a fresh complete Tier 3 gate and all
+candidate-bound supplements. After the Lead Coordinator commits and merges the
+accepted stabilization under the already received authorities, the existing
+`.github/workflows/deploy-pages.yml` workflow records:
 
 - validated candidate commit and merged `main` commit;
 - pull request and merge method;

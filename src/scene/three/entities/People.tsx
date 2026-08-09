@@ -92,7 +92,7 @@ function PeopleBatch({
         ref={bodiesRef}
       >
         <boxGeometry args={[0.42, 0.78, 0.34]} />
-        <meshStandardMaterial roughness={0.82} vertexColors />
+        <meshLambertMaterial vertexColors />
       </instancedMesh>
       <instancedMesh
         args={[undefined, undefined, capacity]}
@@ -103,7 +103,7 @@ function PeopleBatch({
         ref={headsRef}
       >
         <sphereGeometry args={[0.24, 7, 5]} />
-        <meshStandardMaterial color="#d9a77f" roughness={0.88} />
+        <meshLambertMaterial color="#d9a77f" />
       </instancedMesh>
     </group>
   );

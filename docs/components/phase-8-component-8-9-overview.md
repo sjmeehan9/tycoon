@@ -14,14 +14,26 @@ keyboard interaction; after interaction, local sound/ambience preferences,
 venue volume, transition cues, disposal, offline caching, and local-only assets
 behave as before.
 
-This is a **local automated PASS** only. The user's merge and publication
-authorities are **APPROVED / RECEIVED**. Commit/PR/merge execution, publication
-execution and deployment identity, owner-hosted gameplay, and optional
-owner-only physical evidence remain separate pending dispositions.
+Post-merge stabilization also gives the complete 120-campaign deterministic
+proof a realistic 45-second outer hang budget while preserving every seed and
+assertion. The dense hall now shades repeated low-poly decorations, people, and
+bounded activity cues with Lambert lighting. Geometry, entity truth, motion,
+shadows, full LOD, 0.9 render scale, and the 55 FPS/p95 contracts are unchanged;
+the final gate measured 57.63 desktop and 60.03 touch FPS.
+
+This is a **local automated stabilization PASS** only. The user's merge and
+publication authorities are **APPROVED / RECEIVED**. The original Component 8.9
+commit merged as `c28ad429`, but Pages run `31273149320` failed before upload or
+deployment. Stabilization commit/PR/merge execution, successful deployment
+identity, owner-hosted gameplay, and optional owner-only physical evidence
+remain separate pending dispositions.
 
 ## Public interfaces and contracts exposed
 
 - No game/save/schema/content public API changed in Component 8.9.
+- Renderer material selection is internal presentation implementation; the
+  snapshot, layout, entity, geometry, and performance-budget contracts are
+  unchanged.
 - `BrowserAudioManager` retains its constructor and methods. `AudioDirector`
   now creates exactly one manager after first input and disposes that committed
   instance through a ref-backed cleanup path.
@@ -39,8 +51,12 @@ owner-only physical evidence remain separate pending dispositions.
 Runtime/test/configuration gate repairs:
 
 - `src/audio/AudioDirector.tsx`
+- `src/scene/three/entities/ActivityEffects.tsx`
+- `src/scene/three/entities/People.tsx`
+- `src/scene/three/venues/DepartmentStoreWorld.tsx`
 - `playwright.config.ts`
 - `tests/components/presentation.test.tsx`
+- `tests/unit/campaign.test.ts`
 - `tests/e2e/cart-day.spec.ts`
 - `tests/e2e/department-workforce.spec.ts`
 - `tests/e2e/parallel-service.spec.ts`
@@ -106,6 +122,13 @@ the policy in the phase report. Preview/browser use requires an exclusive port
   reading ordered attributes from lazy service sections.
 - Lighthouse is variable. Retain all five reports and use the declared median
   rule; never publish a selected best score.
+- The 45-second campaign timeout is outer hang protection for 120 complete
+  deterministic campaigns, not a runtime performance target. Seeds,
+  strategies, difficulty coverage, mismanagement proof, and assertions remain
+  unchanged.
+- High-count hall decorations, people, and bounded cues deliberately use
+  Lambert lighting for the warm low-poly tycoon aesthetic. Do not restore PBR
+  materials without re-proving the unchanged 55 FPS/p95 contract.
 - The 724.52 kB Three.js file produces Vite's 500 kB advisory but remains below
   the enforced 1 MB release ceiling and is fully precached/offline-tested.
 - Playwright Chromium 149/SwiftShader evidence is not physical Safari, device
@@ -120,11 +143,11 @@ the policy in the phase report. Preview/browser use requires an exclusive port
 | Acceptance criterion                                                                                                            | Delivery and proof                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Every Phase 8 and retained Phase 1–7 criterion has named passing evidence                                                       | Complete 220-test Vitest suite and 96-case desktop/touch Playwright matrix; target map in `docs/phase-8-test-report.md`                                                                                                       |
-| Final report records Tier 3 PASS for one frozen global candidate                                                                | Unscoped fingerprint `09b45748f9afd3315ca632ae45bdce26c46efd7fcbb6312bb8193323692a3e59`; install/build/lint/test/E2E all PASS                                                                                                 |
+| Final report records Tier 3 PASS for one frozen global candidate                                                                | Unscoped fingerprint `280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`; install/build/lint/test/E2E all PASS                                                                                                 |
 | Complete reset, difficulty, progression, workforce, parallel service, dense hall, 40-day history, and PWA behavior are verified | Unit/component and browser evidence mapped target-by-target in the phase report                                                                                                                                               |
 | Release documents match delivered behavior                                                                                      | README, requirements, brief, solution design, runbooks, context, checklist, and release evidence reconciled to schema v4, Standard/Hard, 40 days, four venues, three tiers, four roles, parallel service, and 3D-only service |
-| Performance/accessibility/release targets pass                                                                                  | Lighthouse Performance median 93, A11y/BP 100; renderer 58.09 desktop and 60.05 touch FPS; zero dependency findings; local-only network evidence                                                                              |
-| Deployment and hosted evidence remain identity-bound after authorization                                                        | Progress state records both human authorities as received while leaving commit/merge/deployment execution, exact deployment identity, hosted verdict, and optional physical evidence pending; no external mutation performed  |
+| Performance/accessibility/release targets pass                                                                                  | Lighthouse Performance median 93, A11y/BP 100; renderer 57.63 desktop and 60.03 touch FPS; zero dependency findings; local-only network evidence                                                                              |
+| Deployment and hosted evidence remain identity-bound after authorization                                                        | The failed original Pages run is recorded separately; stabilization commit/merge/deployment, exact deployment identity, hosted verdict, and optional physical evidence remain pending                                         |
 
 ## Assurance lane
 
@@ -143,9 +166,13 @@ retains Git and human-gate orchestration.
 
 - The component planned no feature work, but its gate exposed real release
   defects. Coordinator-approved scope added only browser synchronization repairs
-  and consent-gated local-audio construction.
-- No retry, timeout, skip, performance threshold, project, title artwork,
-  gameplay rule, or canonical-state assertion was weakened.
+  and consent-gated local-audio construction. Post-merge validation exposed a
+  Linux-only outer-timeout mismatch and a reproduced desktop rendering-margin
+  defect; both received bounded repairs.
+- No retry, skip, performance threshold, project, title artwork, gameplay rule,
+  seed, strategy, or canonical-state assertion was weakened. Only the
+  120-campaign proof's test-specific outer hang budget changed from 15 to 45
+  seconds; three focused runs completed in 5.64, 5.52, and 5.45 seconds.
 - Four concurrent Playwright workers made renderer cadence non-authoritative;
   the whole cumulative matrix is serialized at one worker.
 - An initial consent-gated implementation constructed the manager inside a
@@ -155,9 +182,10 @@ retains Git and human-gate orchestration.
   coordinator ownership. Root-conversation audit confirmed both human
   authorities were already received; this does not transfer Git or deployment
   execution to Implement.
-- The fingerprint-included release-evidence document was frozen before that
-  authority audit. These fingerprint-excluded status artifacts correct the
-  current disposition without mutating the validated executable candidate.
+- Five untouched pre-repair renderer samples reproduced a 51.85 FPS median.
+  Five final Lambert samples all passed (`58.80, 59.91, 57.05, 58.32, 58.52`)
+  before the exact Tier 3 run; no selected best run or threshold reduction was
+  accepted.
 - Current official GitHub Pages custom-workflow guidance was rechecked on
   2026-08-09. The existing configure-pages v5, upload-pages-artifact v4, and
   deploy-pages v4 workflow remains correct; no workflow edit was required.
@@ -171,21 +199,25 @@ python3 scripts/worktree-fingerprint.py
 ```
 
 Result before and after all accepted checks:
-`09b45748f9afd3315ca632ae45bdce26c46efd7fcbb6312bb8193323692a3e59`.
+`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
 The Lead Coordinator independently reproduced it before Tier 3.
 
-- Install: exit 0, 0.27s.
-- Build: exit 0, 5.20s; 25-entry, 1,808.29 KiB precache graph.
-- Lint/format: exit 0, 9.64s.
-- Vitest: exit 0, 9.58s; 16 files, 220 tests.
-- Playwright: exit 0, 9.3m; 88 passed, 8 intentional skips, 0 failures.
+- Focused campaign proof:
+  `pnpm exec vitest run tests/unit/campaign.test.ts -t 'keeps both strategies viable and mismanagement consequential across 20 fixed seeds'`;
+  exit 0 in three isolated runs, with the three matching test bodies completing
+  in 5.64s, 5.52s, and 5.45s.
+- Install: exit 0, 0.40s.
+- Build: exit 0, 5.62s; 25-entry, 1,808.16 KiB precache graph.
+- Lint/format: exit 0, 11.00s.
+- Vitest: exit 0, 13.16s; 16 files, 220 tests.
+- Playwright: exit 0, 9.5m; 88 passed, 8 intentional skips, 0 failures.
 - Lighthouse: five Performance 93 results, median 93; Accessibility and Best
   Practices 100 in every run; no runtime/console errors or audio requests.
 - Dependency audit: 19 production dependencies, zero findings at all
   severities; MIT/BSD-3-Clause only.
 - Runtime network: 27/27 requests same-origin under `/tycoon/`; zero
   installability errors; largest precached file 724,524 bytes.
-- Renderer: desktop 58.09 FPS/p95 20.2ms; touch 60.05 FPS/p95 17.8ms.
+- Renderer: desktop 57.63 FPS/p95 20.2ms; touch 60.03 FPS/p95 17.8ms.
 - Final port check: no listener on 4173.
 
 Raw logs/artifacts and all Lighthouse report hashes are listed in
