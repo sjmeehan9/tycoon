@@ -418,7 +418,7 @@
         "description": "No agent may access, reserve, identify, or claim availability of a physical device. Any Safari/mobile-GPU/orientation/DPR/FPS check is optional, owner-only, hosted against the exact final published candidate, and remains pending/unclaimed until the owner supplies evidence."
       },
       "releaseGates": {
-        "status": "authorities-received-original-merge-complete-stabilization-and-deployment-pending",
+        "status": "authorities-received-two-merges-complete-final-stabilization-and-deployment-pending",
         "decisions": [
           {
             "order": 1,
@@ -437,8 +437,8 @@
             "inferred": false
           }
         ],
-        "commitPrMergeExecution": "stabilization-pending-lead-coordinator",
-        "workflowDeploymentExecutionAndIdentity": "stabilization-pending-after-failed-original-run",
+        "commitPrMergeExecution": "final-stabilization-pending-lead-coordinator",
+        "workflowDeploymentExecutionAndIdentity": "pending-after-two-failed-pages-runs",
         "ownerHostedVerdict": "pending-owner",
         "optionalPhysicalEvidence": "pending-unclaimed-owner-only"
       },
@@ -446,11 +446,29 @@
         "originalComponentHead": "b3b53201162f0570da246eac5e7a5cb8f27f35c3",
         "originalMergeCommit": "c28ad429",
         "runId": 31273149320,
-        "status": "failed-unit-test-outer-timeout-no-deployment",
+        "status": "two-failed-pages-runs-no-deployment-final-stabilization-local-pass",
         "passedBeforeFailure": ["install", "build", "lint", "219-other-unit-component-tests"],
         "skippedAfterFailure": ["e2e", "artifact-upload", "pages-deploy"],
         "stabilizationBranch": "phase-8-ci-stabilization",
-        "stabilizationFingerprint": "280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1",
+        "firstStabilizationHead": "b7aba4df943a190943a9fb627bbb6c0fb679558f",
+        "firstStabilizationMerge": "864c1703c0ed08a259bdae13074450bac7ce12d0",
+        "firstStabilizationRunId": 31289567300,
+        "firstStabilizationRunStatus": "failed-e2e-subzero-observation-and-stock-time-zero-race-no-deployment",
+        "firstStabilizationPassedBeforeFailure": [
+          "install",
+          "build",
+          "lint",
+          "220-unit-component-tests",
+          "85-applicable-e2e-tests",
+          "8-intentional-project-routing-skips"
+        ],
+        "firstStabilizationFailures": [
+          "desktop-subzero-cadence-non-representative",
+          "desktop-stock-time-zero-race",
+          "touch-stock-time-zero-race"
+        ],
+        "firstStabilizationSkippedAfterFailure": ["artifact-upload", "pages-deploy"],
+        "stabilizationFingerprint": "6b31368c6a0ddf2b7ec255543365c896716f5a818b28c2c75938de88020c9ae2",
         "localTier3": "pass",
         "deployment": "pending"
       },
@@ -897,18 +915,20 @@
             "Standard Review triggers recorded: broad core/app/config/documentation scope, public save/game contracts, release safety, and frozen candidate identity; the approved lean override assigns cumulative Tier 3 self-review and validation to Implement.",
             "Bounded gate repair corrected stale browser synchronization, serialized renderer evidence, and deferred local-audio construction until first input without weakening retries, skips, thresholds, or product behavior.",
             "Post-merge Linux CI proved the unchanged 120-campaign assertions needed a realistic test-only outer hang budget; 45 seconds preserves all seeds and assertions while three isolated runs completed in 5.64, 5.52, and 5.45 seconds.",
-            "Five untouched cadence samples reproduced a genuine desktop rendering-margin defect. Lambert lighting for repeated low-poly decorations, people, and bounded cues restored robust margin without changing geometry, counts, LOD, render scale, shadows, or the 55 FPS and p95 contracts."
+            "Five untouched cadence samples reproduced a genuine desktop rendering-margin defect. Lambert lighting for repeated low-poly decorations, people, and bounded cues restored robust margin without changing geometry, counts, LOD, render scale, shadows, or the 55 FPS and p95 contracts.",
+            "Pages run 31289567300 proved GitHub Chromium's exact Subzero software backend is non-representative and exposed a time-zero stock race. The fail-closed workflow observation mode and Playwright-clock Pause/Resume barrier preserve all constants, raw evidence, calibrated default/touch authority, and later inventory/accounting assertions.",
+            "The final department-only all-Lambert material repair preserved every visual/gameplay contract and produced five consecutive 57.70–60.17 FPS samples before exact Tier 3 passed at 60.08 desktop and 60.06 touch FPS."
           ],
           "validationOwner": "Implement",
           "commitOwner": "Lead Coordinator",
           "fingerprintScope": ["global repository executable candidate (unscoped)"],
-          "evidenceFingerprint": "280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1",
+          "evidenceFingerprint": "6b31368c6a0ddf2b7ec255543365c896716f5a818b28c2c75938de88020c9ae2",
           "validationEvidence": "docs/phase-8-test-report.md",
           "componentOverview": "docs/components/phase-8-component-8-9-overview.md",
           "authorRepairUsed": true,
-          "remediationCycles": 6,
-          "disposition": "local-stabilization-tier-3-pass-authorities-received-release-execution-pending",
-          "status": "local-stabilization-pass-awaiting-coordinator-commit"
+          "remediationCycles": 10,
+          "disposition": "final-local-stabilization-tier-3-pass-authorities-received-release-execution-pending",
+          "status": "final-local-stabilization-pass-awaiting-coordinator-commit"
         }
       ]
     }

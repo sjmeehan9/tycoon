@@ -47,6 +47,8 @@ jobs:
         run: pnpm test
 
       - name: Run production-preview journeys
+        env:
+          TYCOON_RENDERER_GATE_MODE: software-observation-subzero
         run: pnpm test:e2e
 
       - name: Upload Pages artifact

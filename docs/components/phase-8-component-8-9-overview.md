@@ -16,17 +16,27 @@ behave as before.
 
 Post-merge stabilization also gives the complete 120-campaign deterministic
 proof a realistic 45-second outer hang budget while preserving every seed and
-assertion. The dense hall now shades repeated low-poly decorations, people, and
-bounded activity cues with Lambert lighting. Geometry, entity truth, motion,
-shadows, full LOD, 0.9 render scale, and the 55 FPS/p95 contracts are unchanged;
-the final gate measured 57.63 desktop and 60.03 touch FPS.
+assertion. The dense hall now shades every owned low-poly surface with Lambert
+lighting. Geometry, colours, emissive/transparent cues, entity truth, motion,
+shadows, lights, full LOD, 0.9 render scale, and the 55 FPS/p95 contracts are
+unchanged; the final gate measured 60.08 desktop and 60.06 touch FPS.
+
+GitHub Actions now treats only the exact GitHub/Subzero desktop renderer as a
+non-authoritative software observation while retaining the complete raw
+measurement and every entity/render-budget assertion. Default desktop and all
+touch runs remain calibrated authorities. The stock lifecycle journey uses a
+Playwright clock plus the real Pause/Resume controls to prove exact tick-zero
+stock before normal service, then retains every depletion, expiry, charge, and
+reconciliation assertion.
 
 This is a **local automated stabilization PASS** only. The user's merge and
 publication authorities are **APPROVED / RECEIVED**. The original Component 8.9
 commit merged as `c28ad429`, but Pages run `31273149320` failed before upload or
-deployment. Stabilization commit/PR/merge execution, successful deployment
-identity, owner-hosted gameplay, and optional owner-only physical evidence
-remain separate pending dispositions.
+deployment. The first stabilization merged as exact main `864c1703`, but Pages
+run `31289567300` also failed before upload or deployment. Final stabilization
+commit/PR/merge execution, successful deployment identity, owner-hosted
+gameplay, and optional owner-only physical evidence remain separate pending
+dispositions.
 
 ## Public interfaces and contracts exposed
 
@@ -39,6 +49,13 @@ remain separate pending dispositions.
   instance through a ref-backed cleanup path.
 - Playwright runs one worker because renderer cadence is release evidence and
   must not compete with another browser worker.
+- `TYCOON_RENDERER_GATE_MODE=software-observation-subzero` is valid only inside
+  GitHub Actions and only for an exact Subzero signature. The desktop result
+  retains raw 55/34 evidence but is not a calibrated claim; default desktop and
+  every touch run still enforce their unchanged thresholds and page PASS.
+- The stock journey's clock freeze ends only after the real engine Pause state,
+  tick-zero progress, empty activity, and exact initial inventory are proved;
+  later time and gameplay run normally.
 - Parallel-service checks use auto-retrying rendered-section assertions and the
   runtime's existing 620px mobile-tab breakpoint.
 - `docs/phase-8-test-report.md` is the sole authoritative mutable local verdict.
@@ -50,6 +67,7 @@ remain separate pending dispositions.
 
 Runtime/test/configuration gate repairs:
 
+- `.github/workflows/deploy-pages.yml`
 - `src/audio/AudioDirector.tsx`
 - `src/scene/three/entities/ActivityEffects.tsx`
 - `src/scene/three/entities/People.tsx`
@@ -61,6 +79,8 @@ Runtime/test/configuration gate repairs:
 - `tests/e2e/department-workforce.spec.ts`
 - `tests/e2e/parallel-service.spec.ts`
 - `tests/e2e/presentation.spec.ts`
+- `tests/e2e/department-store-scene.spec.ts`
+- `tests/e2e/stock-lifecycle.spec.ts`
 
 Reconciled candidate documentation:
 
@@ -81,7 +101,9 @@ Fingerprint-excluded handoff evidence:
 - `docs/phase-progress.json`
 - `docs/agent-team-state.md`
 
-No workflow file changed.
+The workflow change is limited to the explicit E2E renderer-observation mode;
+the Pages build, permissions, artifact, environment, and deployment contract is
+unchanged.
 
 ## How to run and verify
 
@@ -126,9 +148,10 @@ the policy in the phase report. Preview/browser use requires an exclusive port
   deterministic campaigns, not a runtime performance target. Seeds,
   strategies, difficulty coverage, mismanagement proof, and assertions remain
   unchanged.
-- High-count hall decorations, people, and bounded cues deliberately use
-  Lambert lighting for the warm low-poly tycoon aesthetic. Do not restore PBR
-  materials without re-proving the unchanged 55 FPS/p95 contract.
+- Every department-hall material deliberately uses Lambert lighting for the
+  warm low-poly tycoon aesthetic and robust cadence margin. Do not restore PBR
+  or per-fragment specular materials without re-proving the unchanged 55
+  FPS/p95 contract.
 - The 724.52 kB Three.js file produces Vite's 500 kB advisory but remains below
   the enforced 1 MB release ceiling and is fully precached/offline-tested.
 - Playwright Chromium 149/SwiftShader evidence is not physical Safari, device
@@ -143,11 +166,11 @@ the policy in the phase report. Preview/browser use requires an exclusive port
 | Acceptance criterion                                                                                                            | Delivery and proof                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Every Phase 8 and retained Phase 1–7 criterion has named passing evidence                                                       | Complete 220-test Vitest suite and 96-case desktop/touch Playwright matrix; target map in `docs/phase-8-test-report.md`                                                                                                       |
-| Final report records Tier 3 PASS for one frozen global candidate                                                                | Unscoped fingerprint `280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`; install/build/lint/test/E2E all PASS                                                                                                 |
+| Final report records Tier 3 PASS for one frozen global candidate                                                                | Unscoped fingerprint `6b31368c6a0ddf2b7ec255543365c896716f5a818b28c2c75938de88020c9ae2`; install/build/lint/test/E2E all PASS                                                                                                 |
 | Complete reset, difficulty, progression, workforce, parallel service, dense hall, 40-day history, and PWA behavior are verified | Unit/component and browser evidence mapped target-by-target in the phase report                                                                                                                                               |
 | Release documents match delivered behavior                                                                                      | README, requirements, brief, solution design, runbooks, context, checklist, and release evidence reconciled to schema v4, Standard/Hard, 40 days, four venues, three tiers, four roles, parallel service, and 3D-only service |
-| Performance/accessibility/release targets pass                                                                                  | Lighthouse Performance median 93, A11y/BP 100; renderer 57.63 desktop and 60.03 touch FPS; zero dependency findings; local-only network evidence                                                                              |
-| Deployment and hosted evidence remain identity-bound after authorization                                                        | The failed original Pages run is recorded separately; stabilization commit/merge/deployment, exact deployment identity, hosted verdict, and optional physical evidence remain pending                                         |
+| Performance/accessibility/release targets pass                                                                                  | Lighthouse Performance median 93, A11y/BP 100; renderer 60.08 desktop and 60.06 touch FPS; zero dependency findings; local-only network evidence                                                                              |
+| Deployment and hosted evidence remain identity-bound after authorization                                                        | Both failed Pages runs are recorded separately; final stabilization commit/merge/deployment, exact deployment identity, hosted verdict, and optional physical evidence remain pending                                         |
 
 ## Assurance lane
 
@@ -183,12 +206,23 @@ retains Git and human-gate orchestration.
   authorities were already received; this does not transfer Git or deployment
   execution to Implement.
 - Five untouched pre-repair renderer samples reproduced a 51.85 FPS median.
-  Five final Lambert samples all passed (`58.80, 59.91, 57.05, 58.32, 58.52`)
-  before the exact Tier 3 run; no selected best run or threshold reduction was
-  accepted.
+  The first stabilization passed and merged, but hosted Subzero and a stock
+  timing race required explicit evidence architecture. A mixed Lambert/Phong
+  candidate then missed exact Tier 3 at 54.59 FPS. The final all-Lambert five
+  samples all passed (`57.70, 60.12, 60.17, 60.08, 60.10`) before the exact
+  Tier 3 run; no selected best run or threshold reduction was accepted.
+- Pages run `31289567300` proved GitHub Chromium uses CPU-only Subzero while
+  the calibrated local gate uses SwiftShader LLVM. The explicit workflow mode
+  fails closed on caller/environment/renderer mismatch and cannot be used to
+  opt out locally. Full sampling, constants, entity truth, render budgets, and
+  touch authority are preserved.
+- The Playwright clock repair creates only a causal time-zero stock barrier.
+  It uses the real Pause/Resume controls and retains all later exact inventory
+  and accounting behavior without force, sleep, timeout, or retry changes.
 - Current official GitHub Pages custom-workflow guidance was rechecked on
   2026-08-09. The existing configure-pages v5, upload-pages-artifact v4, and
-  deploy-pages v4 workflow remains correct; no workflow edit was required.
+  deploy-pages v4 contract remains correct; the explicit E2E observation
+  environment is the only workflow edit.
 
 ## Validation evidence
 
@@ -199,25 +233,26 @@ python3 scripts/worktree-fingerprint.py
 ```
 
 Result before and after all accepted checks:
-`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
+`6b31368c6a0ddf2b7ec255543365c896716f5a818b28c2c75938de88020c9ae2`.
 The Lead Coordinator independently reproduced it before Tier 3.
 
 - Focused campaign proof:
   `pnpm exec vitest run tests/unit/campaign.test.ts -t 'keeps both strategies viable and mismanagement consequential across 20 fixed seeds'`;
   exit 0 in three isolated runs, with the three matching test bodies completing
   in 5.64s, 5.52s, and 5.45s.
-- Install: exit 0, 0.40s.
-- Build: exit 0, 5.62s; 25-entry, 1,808.16 KiB precache graph.
-- Lint/format: exit 0, 11.00s.
-- Vitest: exit 0, 13.16s; 16 files, 220 tests.
+- Install: exit 0, 0.58s.
+- Build: exit 0, 5.85s; 25-entry, 1,807.79 KiB precache graph.
+- Lint/format: exit 0, 11.22s.
+- Vitest: exit 0, 13.30s; 16 files, 220 tests.
 - Playwright: exit 0, 9.5m; 88 passed, 8 intentional skips, 0 failures.
 - Lighthouse: five Performance 93 results, median 93; Accessibility and Best
   Practices 100 in every run; no runtime/console errors or audio requests.
 - Dependency audit: 19 production dependencies, zero findings at all
   severities; MIT/BSD-3-Clause only.
 - Runtime network: 27/27 requests same-origin under `/tycoon/`; zero
-  installability errors; largest precached file 724,524 bytes.
-- Renderer: desktop 57.63 FPS/p95 20.2ms; touch 60.03 FPS/p95 17.8ms.
+  installability errors; 25 files/1,875,599 bytes precached; largest file
+  724,524 bytes.
+- Renderer: desktop 60.08 FPS/p95 18.4ms; touch 60.06 FPS/p95 17.7ms.
 - Final port check: no listener on 4173.
 
 Raw logs/artifacts and all Lighthouse report hashes are listed in

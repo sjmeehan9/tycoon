@@ -104,28 +104,26 @@ function HeritageShell({ lod, snapshot }: DepartmentStoreWorldProps): React.JSX.
     <group name="motif-patterned-heritage-tiles">
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[DEPARTMENT_LAYOUT.floor.width, DEPARTMENT_LAYOUT.floor.depth]} />
-        <meshStandardMaterial color="#4d453f" roughness={0.98} />
+        <meshLambertMaterial color="#4d453f" />
       </mesh>
       <Instances transforms={tiles} type="tile" />
       <mesh receiveShadow position={[0, 3.15, -3.85]}>
         <boxGeometry args={[21.6, 6.3, 0.42]} />
-        <meshStandardMaterial color="#9f725e" roughness={0.94} />
+        <meshLambertMaterial color="#9f725e" />
       </mesh>
       <mesh receiveShadow position={[-10.75, 2.2, -0.5]}>
         <boxGeometry args={[0.38, 4.4, 7.1]} />
-        <meshStandardMaterial color="#79503f" roughness={0.94} />
+        <meshLambertMaterial color="#79503f" />
       </mesh>
       <Instances colour={DEPARTMENT_PALETTE.stone} transforms={columns} type="column" />
       <Instances transforms={windows} type="window" />
       <mesh castShadow position={[0, 5.75, -1.65]} scale={[2.4, 0.54, 1]}>
         <sphereGeometry args={[3.25, lod === 'compact' ? 12 : 18, 8]} />
-        <meshStandardMaterial
+        <meshLambertMaterial
           color={daylight}
           emissive={daylight}
           emissiveIntensity={afterHoursGlow ? 0.24 : 0.1}
-          metalness={0.08}
           opacity={0.8}
-          roughness={0.36}
           transparent
         />
       </mesh>
@@ -170,11 +168,11 @@ function VisibleEscalators({ lod }: { readonly lod: DepartmentLod }): React.JSX.
       <Instances colour="#5f6768" transforms={steps} type="escalator-step" />
       <mesh castShadow position={[8.55, 1.55, -2]} rotation={[0.75, 0, -0.75]}>
         <boxGeometry args={[0.12, 4.5, 0.12]} />
-        <meshStandardMaterial color={DEPARTMENT_PALETTE.brass} metalness={0.58} roughness={0.34} />
+        <meshLambertMaterial color={DEPARTMENT_PALETTE.brass} />
       </mesh>
       <mesh castShadow position={[7.55, 1.55, -2.8]} rotation={[0.75, 0, -0.75]}>
         <boxGeometry args={[0.12, 4.5, 0.12]} />
-        <meshStandardMaterial color={DEPARTMENT_PALETTE.brass} metalness={0.58} roughness={0.34} />
+        <meshLambertMaterial color={DEPARTMENT_PALETTE.brass} />
       </mesh>
     </group>
   );
@@ -216,7 +214,7 @@ function ServiceBays({ snapshot }: { readonly snapshot: RenderSnapshot }): React
       {snapshot.operation.hasStreetSign ? (
         <mesh castShadow name="physical-upgrade-street-sign" position={[-8.4, 2.1, 2.2]}>
           <boxGeometry args={[1.55, 1, 0.14]} />
-          <meshStandardMaterial color={CART_PALETTE.wattle} roughness={0.68} />
+          <meshLambertMaterial color={CART_PALETTE.wattle} />
         </mesh>
       ) : null}
     </group>
@@ -235,15 +233,11 @@ function PhysicalUpgrades({ snapshot }: { readonly snapshot: RenderSnapshot }): 
         >
           <mesh castShadow position={[0, 0, 0.18]}>
             <boxGeometry args={[3.05, 0.82, 0.24]} />
-            <meshStandardMaterial
-              color={DEPARTMENT_PALETTE.brassBright}
-              metalness={0.62}
-              roughness={0.3}
-            />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.brassBright} />
           </mesh>
           <mesh castShadow position={[0, -0.52, 0.12]}>
             <boxGeometry args={[2.45, 0.16, 0.16]} />
-            <meshStandardMaterial color={DEPARTMENT_PALETTE.tileCream} roughness={0.55} />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.tileCream} />
           </mesh>
         </group>
       ) : null}
@@ -254,15 +248,11 @@ function PhysicalUpgrades({ snapshot }: { readonly snapshot: RenderSnapshot }): 
         >
           <mesh castShadow position={[0, -1.18, 1.1]}>
             <boxGeometry args={[2.8, 0.14, 0.24]} />
-            <meshStandardMaterial
-              color={DEPARTMENT_PALETTE.brass}
-              metalness={0.55}
-              roughness={0.34}
-            />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.brass} />
           </mesh>
           <mesh castShadow position={[0, -0.88, 1.1]}>
             <boxGeometry args={[0.55, 0.5, 0.18]} />
-            <meshStandardMaterial color={DEPARTMENT_PALETTE.espresso} roughness={0.55} />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.espresso} />
           </mesh>
         </group>
       ) : null}
@@ -274,11 +264,7 @@ function PhysicalUpgrades({ snapshot }: { readonly snapshot: RenderSnapshot }): 
           {[-0.72, 0, 0.72].map((x) => (
             <mesh castShadow key={x} position={[x, -0.82, 0.9]}>
               <cylinderGeometry args={[0.2, 0.24, 0.76, 10]} />
-              <meshStandardMaterial
-                color={DEPARTMENT_PALETTE.brew}
-                metalness={0.22}
-                roughness={0.5}
-              />
+              <meshLambertMaterial color={DEPARTMENT_PALETTE.brew} />
             </mesh>
           ))}
         </group>
@@ -290,15 +276,11 @@ function PhysicalUpgrades({ snapshot }: { readonly snapshot: RenderSnapshot }): 
         >
           <mesh castShadow position={[0, -1.2, 1.05]} rotation={[0, 0, Math.PI / 2]}>
             <cylinderGeometry args={[0.07, 0.07, 3.05, 8]} />
-            <meshStandardMaterial
-              color={DEPARTMENT_PALETTE.brassBright}
-              metalness={0.62}
-              roughness={0.3}
-            />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.brassBright} />
           </mesh>
           <mesh castShadow position={[0, -0.86, 1.02]}>
             <boxGeometry args={[1.25, 0.38, 0.3]} />
-            <meshStandardMaterial color={DEPARTMENT_PALETTE.cold} roughness={0.42} />
+            <meshLambertMaterial color={DEPARTMENT_PALETTE.cold} />
           </mesh>
         </group>
       ) : null}
@@ -348,18 +330,14 @@ function EquipmentMesh({
     return (
       <mesh castShadow={lod === 'full'} name={`equipment-${equipmentId}`} position={position}>
         <cylinderGeometry args={[width * 0.32, width * 0.42, 0.86, 8]} />
-        <meshStandardMaterial color="#465354" metalness={0.28} roughness={0.44} />
+        <meshLambertMaterial color="#465354" />
       </mesh>
     );
   }
   return (
     <mesh castShadow={lod === 'full'} name={`equipment-${equipmentId}`} position={position}>
       <boxGeometry args={[width, equipmentId === 'refrigeration' ? 1.45 : 0.72, 0.72]} />
-      <meshStandardMaterial
-        color={equipmentId === 'pos' ? '#233738' : '#93a2a1'}
-        metalness={0.32}
-        roughness={0.42}
-      />
+      <meshLambertMaterial color={equipmentId === 'pos' ? '#233738' : '#93a2a1'} />
     </mesh>
   );
 }
@@ -377,7 +355,7 @@ function DepartmentStockWall({
     <group name="department-stock-cues">
       <mesh castShadow position={[-6.25, 1.45, -2.05]}>
         <boxGeometry args={[2.8, 2.9, 0.36]} />
-        <meshStandardMaterial color={DEPARTMENT_PALETTE.timberDark} roughness={0.92} />
+        <meshLambertMaterial color={DEPARTMENT_PALETTE.timberDark} />
       </mesh>
       <Instances transforms={stock} type="stock" />
     </group>
