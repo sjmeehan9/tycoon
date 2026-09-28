@@ -30,3 +30,5 @@ xcuserdata/
 fastlane/.env
 fastlane/report.xml
 fastlane/test_output/
+# Raw validation evidence stays out of the repository
+.evidence/
