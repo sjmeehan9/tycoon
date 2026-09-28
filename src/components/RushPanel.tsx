@@ -59,12 +59,20 @@ export function RushPanel(): React.JSX.Element {
       <section
         className="panel rush-panel rush-dashboard"
         aria-labelledby="rush-title"
+        data-active-job-count={activeJobs.length}
+        data-express-waiting={flow.expressWaiting}
+        data-normal-waiting={flow.normalWaiting}
         data-service-section="dashboard"
+        data-total-waiting={flow.totalWaiting}
       >
         <div className="panel-heading rush-dashboard-heading">
           <div>
             <p className="eyebrow">Service rush · {VENUES[game.venueId].shortName}</p>
-            <h2 id="rush-title">The laneway is moving</h2>
+            <h2 id="rush-title">
+              {game.venueId === 'departmentStore'
+                ? 'The coffee hall is moving'
+                : 'The laneway is moving'}
+            </h2>
           </div>
           <strong className="rush-clock" data-dashboard-field="time">
             <span className="sr-only">Service time </span>
@@ -124,7 +132,11 @@ export function RushPanel(): React.JSX.Element {
                 (aggregate) => aggregate.stationId === stationId && aggregate.laneId === 'normal',
               )?.assignedStaffIds.length ?? 0;
             return (
-              <li data-station-id={stationId} key={stationId}>
+              <li
+                aria-label={`${STATION_DETAILS[stationId].label} service: ${job ? `${job.laneId} job ${job.id}` : 'idle'}, ${assignedStaff} staff, ${normalWaiting} normal and ${expressWaiting} express waiting`}
+                data-station-id={stationId}
+                key={stationId}
+              >
                 <strong>{STATION_DETAILS[stationId].shortLabel}</strong>
                 <span>
                   {job

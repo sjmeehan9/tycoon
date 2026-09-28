@@ -1,17 +1,21 @@
 import {
   ALL_DRINK_IDS,
   CAMPAIGN_RULES,
+  EVENT_TEMPLATES,
+  EVENT_TEMPLATE_IDS,
   DRINK_MAP,
   EQUIPMENT,
   EQUIPMENT_IDS,
   INGREDIENT_DETAILS,
   INGREDIENT_IDS,
   INGREDIENT_UNIT_COST_CENTS,
+  IMPROVEMENT_IDS,
   MAX_INVENTORY_BATCHES_PER_INGREDIENT,
   RUSH_ACTIVITY_LIMIT,
   STAFF_ROLES,
   TICKS_PER_SECOND,
   VENUE_IDS,
+  VENUES,
   emptyIngredientTotals,
   milkIngredient,
   staffRoleAvailableAtVenue,
@@ -52,9 +56,11 @@ import type {
   CustomerSegment,
   DayPlan,
   DayReport,
+  DayReportCauseSnapshot,
   Difficulty,
   DrinkId,
   EquipmentState,
+  EventChoiceEffect,
   GamePhase,
   GameState,
   IngredientAmount,
@@ -66,6 +72,7 @@ import type {
   Preferences,
   ReportChargeGroup,
   RushState,
+  ResolvedEvent,
   SaveEnvelope,
   ScenarioId,
   ServiceAggregate,
@@ -94,8 +101,21 @@ const GAME_PHASES: GamePhase[] = [
 ];
 const SEGMENTS: CustomerSegment[] = ['commuter', 'student', 'enthusiast', 'regular'];
 const SCENARIOS: ScenarioId[] = ['lanewayClassic', 'rainySeason', 'festivalWeek'];
-const COSMETICS: CosmeticId[] = ['classicAwning', 'wattleAwning', 'neonCup'];
-const ACHIEVEMENTS: AchievementId[] = ['cafeFounder', 'goldenCup', 'hardLessons'];
+const COSMETICS: CosmeticId[] = [
+  'classicAwning',
+  'wattleAwning',
+  'neonCup',
+  'mosaicFloor',
+  'brassBayPlaques',
+  'afterHoursGlow',
+];
+const ACHIEVEMENTS: AchievementId[] = [
+  'cafeFounder',
+  'goldenCup',
+  'hardLessons',
+  'departmentInstitution',
+  'threeBayConductor',
+];
 const DIFFICULTIES: Difficulty[] = ['standard', 'hard'];
 
 export const EVOLUTION_NOTICE =
@@ -583,9 +603,38 @@ function canonicalizeCurrentV4Rush(
       };
     }
   }
+  if (Array.isArray(rush.resolvedEvents)) {
+    rush.resolvedEvents = rush.resolvedEvents.map((event) => canonicalizeResolvedEvent(event));
+  }
   delete rush.queue;
   delete rush.activeService;
   return rush;
+}
+
+function canonicalizeResolvedEvent(value: unknown): unknown {
+  if (!isRecord(value) || typeof value.eventId !== 'string' || typeof value.choiceId !== 'string') {
+    return value;
+  }
+  if (
+    value.title !== undefined &&
+    value.description !== undefined &&
+    value.choiceLabel !== undefined &&
+    value.choiceDescription !== undefined &&
+    value.effect !== undefined
+  ) {
+    return value;
+  }
+  const event = EVENT_TEMPLATES.find((candidate) => candidate.id === value.eventId);
+  const choice = event?.choices.find((candidate) => candidate.id === value.choiceId);
+  if (!event || !choice) return value;
+  return {
+    ...value,
+    title: event.title,
+    description: event.description,
+    choiceLabel: choice.label,
+    choiceDescription: choice.description,
+    effect: { ...choice.effect },
+  };
 }
 
 function canonicalizeLegacyCustomer(
@@ -676,25 +725,26 @@ function canonicalizeLegacyActivity(
 }
 
 function canonicalizeCurrentV4Report(source: Record<string, unknown>): Record<string, unknown> {
-  if (source.serviceAggregates !== undefined || typeof source.day !== 'number') return source;
-  return {
-    ...source,
-    serviceAggregates: migrateServiceAggregates(
+  const report = { ...source };
+  if (report.causeSnapshot === undefined) report.causeSnapshot = null;
+  if (report.serviceAggregates === undefined && typeof report.day === 'number') {
+    report.serviceAggregates = migrateServiceAggregates(
       {
-        served: source.served,
-        revenueCents: source.revenueCents,
+        served: report.served,
+        revenueCents: report.revenueCents,
         totalWaitTicks:
-          typeof source.averageWaitSeconds === 'number' && typeof source.served === 'number'
-            ? Math.round(source.averageWaitSeconds * source.served * TICKS_PER_SECOND)
+          typeof report.averageWaitSeconds === 'number' && typeof report.served === 'number'
+            ? Math.round(report.averageWaitSeconds * report.served * TICKS_PER_SECOND)
             : 0,
         satisfactionTotal:
-          typeof source.satisfactionPercent === 'number' && typeof source.served === 'number'
-            ? source.satisfactionPercent * source.served
+          typeof report.satisfactionPercent === 'number' && typeof report.served === 'number'
+            ? report.satisfactionPercent * report.served
             : 0,
       },
-      source.day,
-    ),
-  };
+      report.day,
+    );
+  }
+  return report;
 }
 
 function migrateServiceAggregates(
@@ -830,20 +880,20 @@ function validateGameState(value: unknown): asserts value is GameState {
     'Every hired role must be eligible for the active venue.',
   );
   validatePlan(state.plan, venueId, staff, equipment);
+  const scheduledIds = new Set(state.plan.scheduledStaffIds);
+  const expectedPayrollCents = staff
+    .filter((member) => scheduledIds.has(member.id))
+    .reduce((total, member) => total + member.wageCents, 0);
   if (state.rush !== null) {
     validateRush(state.rush, state.day, venueId, state.plan, equipment, inventory, state.phase);
   }
   if (state.report !== null) {
-    validateReport(state.report, 'activeRun.report');
+    validateReport(state.report, 'activeRun.report', expectedPayrollCents);
     assert(
       state.report.difficulty === state.difficulty,
       'activeRun.report difficulty must match its campaign.',
     );
   }
-  const scheduledIds = new Set(state.plan.scheduledStaffIds);
-  const expectedPayrollCents = staff
-    .filter((member) => scheduledIds.has(member.id))
-    .reduce((total, member) => total + member.wageCents, 0);
   if (state.rush !== null) {
     assert(
       state.rush.wageCostCents === expectedPayrollCents,
@@ -857,8 +907,15 @@ function validateGameState(value: unknown): asserts value is GameState {
     );
   }
   assertNumber(state.lastSettledDay, 'activeRun.lastSettledDay', 0, 10_000, true);
-  const improvements = expectArray(state.improvements, 'activeRun.improvements', 20);
-  improvements.forEach((item, index) => assertString(item, `activeRun.improvements[${index}]`, 40));
+  const improvements = expectArray(
+    state.improvements,
+    'activeRun.improvements',
+    IMPROVEMENT_IDS.length,
+  );
+  improvements.forEach((item, index) =>
+    assertEnum(item, IMPROVEMENT_IDS, `activeRun.improvements[${index}]`),
+  );
+  assert(new Set(improvements).size === improvements.length, 'Improvements must be unique.');
   expectArray(state.history, 'activeRun.history', CAMPAIGN_RULES.maximumHistoryDays).forEach(
     (report, index) => {
       validateReport(report, `activeRun.history[${index}]`);
@@ -1061,11 +1118,11 @@ function validateRush(
     liveCustomers.set(job.customer.id, job.customer);
   }
   if (rush.pendingEvent !== null) validateEvent(rush.pendingEvent);
-  expectArray(rush.resolvedEvents, 'rush.resolvedEvents', 10).forEach((event, index) => {
-    const record = expectRecord(event, `rush.resolvedEvents[${index}]`);
-    assertSafeId(record.eventId, `resolvedEvents[${index}].eventId`);
-    assertSafeId(record.choiceId, `resolvedEvents[${index}].choiceId`);
-    assertString(record.summary, `resolvedEvents[${index}].summary`, 240);
+  const resolvedEventIds = new Set<string>();
+  expectArray(rush.resolvedEvents, 'rush.resolvedEvents', 2).forEach((event, index) => {
+    const resolved = validateResolvedEvent(event, `rush.resolvedEvents[${index}]`);
+    assert(!resolvedEventIds.has(resolved.eventId), 'Resolved event IDs must be unique per rush.');
+    resolvedEventIds.add(resolved.eventId);
   });
   expectArray(rush.eventTriggerTicks, 'rush.eventTriggerTicks', 2).forEach((tick, index) =>
     assertNumber(tick, `eventTriggerTicks[${index}]`, 0, 2_000, true),
@@ -1451,22 +1508,111 @@ function validateCustomer(
 
 function validateEvent(value: unknown): void {
   const event = expectRecord(value, 'rush.pendingEvent');
-  assertSafeId(event.id, 'event.id');
+  assertEnum(event.id, EVENT_TEMPLATE_IDS, 'event.id');
   assertString(event.title, 'event.title', 160);
   assertString(event.description, 'event.description', 500);
-  expectArray(event.choices, 'event.choices', 4).forEach((choice, index) => {
+  const choices = expectArray(event.choices, 'event.choices', 2);
+  assert(choices.length === 2, 'event.choices must contain exactly two choices.');
+  choices.forEach((choice, index) => {
     const record = expectRecord(choice, `event.choices[${index}]`);
     assertSafeId(record.id, `event.choices[${index}].id`);
     assertString(record.label, `event.choices[${index}].label`, 120);
     assertString(record.description, `event.choices[${index}].description`, 500);
-    const effect = expectRecord(record.effect, `event.choices[${index}].effect`);
-    for (const effectValue of Object.values(effect)) {
-      assertNumber(effectValue, 'event effect', -1_000_000, 1_000_000);
-    }
+    validateEventEffect(record.effect, `event.choices[${index}].effect`);
   });
+  const configured = EVENT_TEMPLATES.find(({ id }) => id === event.id);
+  assert(configured !== undefined, 'Pending event must identify configured content.');
+  assert(
+    JSON.stringify({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      choices: event.choices,
+    }) ===
+      JSON.stringify({
+        id: configured.id,
+        title: configured.title,
+        description: configured.description,
+        choices: configured.choices,
+      }),
+    'Pending event must match canonical configured content.',
+  );
 }
 
-function validateReport(value: unknown, path: string): asserts value is DayReport {
+function validateResolvedEvent(value: unknown, path: string): ResolvedEvent {
+  const event = expectRecord(value, path);
+  assertEnum(event.eventId, EVENT_TEMPLATE_IDS, `${path}.eventId`);
+  assertString(event.title, `${path}.title`, 160);
+  assertString(event.description, `${path}.description`, 500);
+  assertSafeId(event.choiceId, `${path}.choiceId`);
+  assertString(event.choiceLabel, `${path}.choiceLabel`, 120);
+  assertString(event.choiceDescription, `${path}.choiceDescription`, 500);
+  validateEventEffect(event.effect, `${path}.effect`);
+  assertString(event.summary, `${path}.summary`, 240);
+  const configured = EVENT_TEMPLATES.find(({ id }) => id === event.eventId);
+  const choice = configured?.choices.find(({ id }) => id === event.choiceId);
+  assert(
+    configured !== undefined && choice !== undefined,
+    `${path} must reference one configured choice.`,
+  );
+  assert(
+    event.title === configured.title,
+    `${path}.title must match canonical configured content.`,
+  );
+  assert(
+    event.description === configured.description,
+    `${path}.description must match canonical configured content.`,
+  );
+  assert(
+    event.choiceLabel === choice.label,
+    `${path}.choiceLabel must match canonical configured content.`,
+  );
+  assert(
+    event.choiceDescription === choice.description,
+    `${path}.choiceDescription must match canonical configured content.`,
+  );
+  const capturedEffect = event.effect as EventChoiceEffect;
+  const capturedKeys = Object.keys(capturedEffect).sort();
+  const canonicalKeys = Object.keys(choice.effect).sort();
+  assert(
+    JSON.stringify(capturedKeys) === JSON.stringify(canonicalKeys) &&
+      canonicalKeys.every(
+        (key) =>
+          capturedEffect[key as keyof EventChoiceEffect] ===
+          choice.effect[key as keyof EventChoiceEffect],
+      ),
+    `${path}.effect must match canonical configured content.`,
+  );
+  assert(
+    event.summary === `${configured.title}: ${choice.label}`,
+    `${path}.summary must match canonical configured content.`,
+  );
+  return event as unknown as ResolvedEvent;
+}
+
+function validateEventEffect(value: unknown, path: string): void {
+  const effect = expectRecord(value, path);
+  const bounds = {
+    cashCents: [-1_200, 1_200],
+    demandMultiplier: [0.88, 1.12],
+    qualityBonus: [-4, 4],
+    reputation: [-2, 2],
+    addCustomers: [0, 5],
+  } as const;
+  const entries = Object.entries(effect);
+  assert(entries.length > 0, `${path} must contain an observable effect.`);
+  for (const [key, effectValue] of entries) {
+    const range = bounds[key as keyof typeof bounds];
+    assert(range !== undefined, `${path}.${key} is not a supported event effect.`);
+    assertNumber(effectValue, `${path}.${key}`, range[0], range[1], key !== 'demandMultiplier');
+  }
+}
+
+function validateReport(
+  value: unknown,
+  path: string,
+  expectedPayrollCents?: number,
+): asserts value is DayReport {
   const report = expectRecord(value, path);
   assertEnum(report.difficulty, DIFFICULTIES, `${path}.difficulty`);
   for (const key of [
@@ -1489,6 +1635,12 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
     'reputationChange',
   ]) {
     assertNumber(report[key], `${path}.${key}`, -1_000_000_000, 1_000_000_000);
+  }
+  if (expectedPayrollCents !== undefined) {
+    assert(
+      report.wageCostCents === expectedPayrollCents,
+      `${path}.wageCostCents must equal the exact scheduled payroll.`,
+    );
   }
   assertEnum(report.weather, ['mild', 'sunny', 'rainy', 'coldSnap'], `${path}.weather`);
   validateBoundedNumberRecord(report.waste, INGREDIENT_IDS, `${path}.waste`);
@@ -1553,6 +1705,14 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
   expectArray(report.explanations, `${path}.explanations`, 30).forEach((item, index) =>
     assertString(item, `${path}.explanations[${index}]`, 500),
   );
+  if (report.causeSnapshot !== null) {
+    validateReportCauseSnapshot(
+      report.causeSnapshot,
+      `${path}.causeSnapshot`,
+      report as unknown as DayReport,
+      serviceTotals.totalWaitTicks,
+    );
+  }
   if (report.chargeGroups !== undefined) {
     validateChargeGroups(
       report.chargeGroups,
@@ -1562,6 +1722,134 @@ function validateReport(value: unknown, path: string): asserts value is DayRepor
     );
   }
   assert(typeof report.settled === 'boolean', `${path}.settled must be boolean.`);
+}
+
+function validateReportCauseSnapshot(
+  value: unknown,
+  path: string,
+  report: DayReport,
+  aggregateWaitTicks: number,
+): asserts value is DayReportCauseSnapshot {
+  const snapshot = expectRecord(value, path);
+  assertEnum(snapshot.venueId, VENUE_IDS, `${path}.venueId`);
+  const plan = expectRecord(snapshot.plan, `${path}.plan`);
+  const menu = expectArray(plan.menu, `${path}.plan.menu`, ALL_DRINK_IDS.length);
+  assert(menu.length >= 1, `${path}.plan.menu must contain at least one drink.`);
+  const menuIds: DrinkId[] = [];
+  menu.forEach((value, index) => {
+    const itemPath = `${path}.plan.menu[${index}]`;
+    const item = expectRecord(value, itemPath);
+    assertEnum(item.drinkId, ALL_DRINK_IDS, `${itemPath}.drinkId`);
+    assertNumber(item.priceCents, `${itemPath}.priceCents`, 250, 1_200, true);
+    menuIds.push(item.drinkId);
+  });
+  assert(new Set(menuIds).size === menuIds.length, `${path}.plan.menu must be unique.`);
+  assertEnum(plan.dialIn, ['speed', 'balanced', 'quality'], `${path}.plan.dialIn`);
+  assertEnum(
+    plan.beanId,
+    ['houseBeans', 'singleOriginBeans', 'darkRoastBeans'],
+    `${path}.plan.beanId`,
+  );
+  const expressDrinkIds = expectArray(plan.expressDrinkIds, `${path}.plan.expressDrinkIds`, 3);
+  expressDrinkIds.forEach((drinkId, index) => {
+    assertEnum(drinkId, ALL_DRINK_IDS, `${path}.plan.expressDrinkIds[${index}]`);
+    assert(menuIds.includes(drinkId), `${path}.plan express drinks must be on the menu.`);
+  });
+  assert(
+    new Set(expressDrinkIds).size === expressDrinkIds.length,
+    `${path}.plan.expressDrinkIds must be unique.`,
+  );
+
+  const staffing = expectArray(snapshot.staffing, `${path}.staffing`, 10);
+  const staffIds = new Set<string>();
+  let wageCostCents = 0;
+  staffing.forEach((value, index) => {
+    const staffPath = `${path}.staffing[${index}]`;
+    const member = expectRecord(value, staffPath);
+    assertSafeId(member.staffId, `${staffPath}.staffId`);
+    assert(!staffIds.has(member.staffId), `${path}.staffing IDs must be unique.`);
+    staffIds.add(member.staffId);
+    assertString(member.name, `${staffPath}.name`, 80);
+    assertEnum(member.role, STAFF_ROLES, `${staffPath}.role`);
+    assertNumber(member.speed, `${staffPath}.speed`, 0, 100, true);
+    assertNumber(member.skill, `${staffPath}.skill`, 0, 100, true);
+    assertEnum(
+      member.trait,
+      ['quickHands', 'peoplePerson', 'perfectionist', 'steady'],
+      `${staffPath}.trait`,
+    );
+    assertNumber(member.wageCents, `${staffPath}.wageCents`, 0, 100_000, true);
+    if (member.stationId !== null)
+      assertEnum(member.stationId, STATION_IDS, `${staffPath}.stationId`);
+    wageCostCents += member.wageCents;
+  });
+  assert(wageCostCents === report.wageCostCents, `${path}.staffing wages must reconcile.`);
+
+  const equipment = expectRecord(snapshot.equipment, `${path}.equipment`);
+  validateEquipment(equipment.levels);
+  const levels = equipment.levels;
+  const improvements = expectArray(
+    equipment.improvements,
+    `${path}.equipment.improvements`,
+    IMPROVEMENT_IDS.length,
+  );
+  improvements.forEach((id, index) =>
+    assertEnum(id, IMPROVEMENT_IDS, `${path}.equipment.improvements[${index}]`),
+  );
+  assert(
+    new Set(improvements).size === improvements.length,
+    `${path}.equipment improvements must be unique.`,
+  );
+  assertNumber(
+    equipment.venueOperatingCostCents,
+    `${path}.equipment.venueOperatingCostCents`,
+    0,
+    100_000,
+    true,
+  );
+  assertNumber(
+    equipment.equipmentOperatingCostCents,
+    `${path}.equipment.equipmentOperatingCostCents`,
+    0,
+    100_000,
+    true,
+  );
+  const expectedVenueCost = VENUES[snapshot.venueId].operatingCostCents;
+  const expectedEquipmentCost = EQUIPMENT_IDS.reduce((total, equipmentId) => {
+    const level = levels[equipmentId];
+    const tier = EQUIPMENT[equipmentId].tiers.find((candidate) => candidate.level === level);
+    return total + (tier?.operatingCostCents ?? 0);
+  }, 0);
+  assert(
+    equipment.venueOperatingCostCents === expectedVenueCost,
+    `${path} venue cost must be canonical.`,
+  );
+  assert(
+    equipment.equipmentOperatingCostCents === expectedEquipmentCost,
+    `${path} equipment cost must be canonical.`,
+  );
+  assert(
+    expectedVenueCost + expectedEquipmentCost === report.operatingCostCents,
+    `${path} operating costs must reconcile with the report.`,
+  );
+
+  const events = expectArray(snapshot.events, `${path}.events`, 2);
+  const eventIds = new Set<string>();
+  let eventCashDeltaCents = 0;
+  events.forEach((value, index) => {
+    const event = validateResolvedEvent(value, `${path}.events[${index}]`);
+    assert(!eventIds.has(event.eventId), `${path}.events must be unique.`);
+    eventIds.add(event.eventId);
+    eventCashDeltaCents += event.effect.cashCents ?? 0;
+  });
+  assert(eventCashDeltaCents === report.eventCashDeltaCents, `${path}.events cash must reconcile.`);
+
+  const wait = expectRecord(snapshot.wait, `${path}.wait`);
+  assertNumber(wait.peakQueue, `${path}.wait.peakQueue`, 0, 64, true);
+  assertNumber(wait.queueCapacity, `${path}.wait.queueCapacity`, 1, 64, true);
+  assertNumber(wait.totalWaitTicks, `${path}.wait.totalWaitTicks`, 0, 1_000_000_000, true);
+  assert(wait.peakQueue <= wait.queueCapacity, `${path}.wait peak cannot exceed capacity.`);
+  assert(wait.totalWaitTicks === aggregateWaitTicks, `${path}.wait ticks must reconcile.`);
 }
 
 function activeRushConsumptionEvidence(

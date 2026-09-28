@@ -1,7 +1,9 @@
 import {
+  ARRIVAL_BASE_RATE,
+  BALANCE_RANGES,
   BEAN_DETAILS,
+  EVENT_TEMPLATES,
   CAMPAIGN_RULES,
-  CART_IMPROVEMENT_COST_CENTS,
   DAY_PLAN_LIMITS,
   DEPARTMENT_WORKLOAD_DELAYS,
   DRINK_MAP,
@@ -11,6 +13,8 @@ import {
   INGREDIENT_UNIT_COST_CENTS,
   INITIAL_CASH_CENTS,
   INITIAL_REPUTATION,
+  IMPROVEMENTS,
+  IMPROVEMENT_IDS,
   MILK_SURCHARGE_CENTS,
   PURCHASE_PACKAGES,
   RUSH_ACTIVITY_LIMIT,
@@ -84,6 +88,7 @@ import type {
   CustomerSegment,
   DayPlan,
   DayReport,
+  DayReportCauseSnapshot,
   DrinkConfig,
   DrinkId,
   DrinkSize,
@@ -93,6 +98,7 @@ import type {
   GameState,
   IngredientAmount,
   IngredientId,
+  ImprovementId,
   LaneId,
   MilkChoice,
   Order,
@@ -145,48 +151,6 @@ export const MAX_REPORT_CHARGE_PRICE_CENTS =
 
 /** Lowest canonical order charge reachable from the bounded morning plan. */
 export const MIN_REPORT_CHARGE_PRICE_CENTS = DAY_PLAN_LIMITS.priceCents.minimum;
-
-const LANEWAY_EVENT: SimulationEvent = {
-  id: 'office-coffee-run',
-  title: 'The office coffee run arrives',
-  description: 'A nearby studio wants a tray immediately. The queue is already eyeing the clock.',
-  choices: [
-    {
-      id: 'take-order',
-      label: 'Take the order',
-      description: 'Add three impatient customers and gain a little afternoon buzz.',
-      effect: { addCustomers: 3, demandMultiplier: 1.08, qualityBonus: -3 },
-    },
-    {
-      id: 'protect-queue',
-      label: 'Protect the queue',
-      description: 'Politely decline. The regulars appreciate the calm service.',
-      effect: { reputation: 1, qualityBonus: 2 },
-    },
-  ],
-};
-
-const WEATHER_EVENT: SimulationEvent = {
-  id: 'sudden-downpour',
-  title: 'The heavens open',
-  description: 'A sharp Melbourne downpour sends pedestrians under every nearby awning.',
-  choices: [
-    {
-      id: 'shelter-crowd',
-      label: 'Shelter the crowd',
-      description: 'Welcome them in. Demand rises, but the queue gets lively.',
-      effect: { addCustomers: 2, demandMultiplier: 1.12, reputation: 1 },
-    },
-    {
-      id: 'close-awning',
-      label: 'Protect the machine',
-      description: 'Keep the awning tight and service controlled.',
-      effect: { demandMultiplier: 0.94, qualityBonus: 3 },
-    },
-  ],
-};
-
-const RUSH_EVENTS = [LANEWAY_EVENT, WEATHER_EVENT];
 
 /** Create a deterministic, serializable campaign at the first morning plan. */
 export function createCampaign(options: CampaignOptions): GameState {
@@ -414,7 +378,12 @@ export function resolveEvent(state: GameState, choiceId: string): GameState {
         ...activeRush.resolvedEvents,
         {
           eventId: event.id,
-          choiceId,
+          title: event.title,
+          description: event.description,
+          choiceId: choice.id,
+          choiceLabel: choice.label,
+          choiceDescription: choice.description,
+          effect: { ...choice.effect },
           summary: `${event.title}: ${choice.label}`,
         },
       ],
@@ -428,7 +397,15 @@ export function closeDay(state: GameState): GameState {
   requirePhase(state, 'report');
   if (!state.report) throw new GameRuleError('There is no day report to settle.');
   const settledReport: DayReport = { ...state.report, settled: true };
-  const closingReputation = clamp(state.reputation + settledReport.reputationChange, 0, 100);
+  const positiveReputationCeiling = Math.max(
+    state.reputation,
+    CAMPAIGN_RULES.reputationSoftCeiling,
+  );
+  const closingReputation = clamp(
+    state.reputation + settledReport.reputationChange,
+    0,
+    settledReport.reputationChange > 0 ? positiveReputationCeiling : 100,
+  );
   const settled: GameState = {
     ...state,
     phase: 'reinvest',
@@ -477,17 +454,34 @@ export function closeDay(state: GameState): GameState {
   return settled;
 }
 
-/** Buy the representative Phase 1 cart improvement during reinvestment. */
-export function buyImprovement(state: GameState, improvementId: string): GameState {
+/** Buy one configured physical improvement during reinvestment. */
+export function buyImprovement(state: GameState, improvementId: ImprovementId): GameState {
   requirePhase(state, 'reinvest');
-  if (improvementId !== 'street-sign') throw new GameRuleError('That improvement is unavailable.');
+  if (!IMPROVEMENT_IDS.includes(improvementId)) {
+    throw new GameRuleError('That improvement is unavailable.');
+  }
   if (state.improvements.includes(improvementId)) return state;
-  if (state.cashCents < CART_IMPROVEMENT_COST_CENTS) {
-    throw new GameRuleError('The hand-painted street sign costs $25.00.');
+  const improvement = IMPROVEMENTS[improvementId];
+  if (!venueMeetsRequirement(state.venueId, improvement.requiresVenue)) {
+    throw new GameRuleError(
+      `${improvement.name} requires the ${VENUES[improvement.requiresVenue].shortName}.`,
+    );
+  }
+  const missingEquipment = Object.entries(improvement.requiredEquipment).find(
+    ([equipmentId, level]) => state.equipment[equipmentId as EquipmentId] < level,
+  );
+  if (missingEquipment) {
+    const [equipmentId, level] = missingEquipment;
+    throw new GameRuleError(
+      `${improvement.name} requires ${EQUIPMENT[equipmentId as EquipmentId].name} level ${level}.`,
+    );
+  }
+  if (state.cashCents < improvement.costCents) {
+    throw new GameRuleError(`${improvement.name} costs ${formatCents(improvement.costCents)}.`);
   }
   return {
     ...state,
-    cashCents: state.cashCents - CART_IMPROVEMENT_COST_CENTS,
+    cashCents: state.cashCents - improvement.costCents,
     improvements: [...state.improvements, improvementId],
   };
 }
@@ -708,6 +702,15 @@ export function operationalEffects(state: GameState, stationId?: StationId): Ope
   let proposedManagerReductionTicks = 0;
   let proposedRunnerReductionTicks = 0;
 
+  for (const improvementId of state.improvements) {
+    const effects = IMPROVEMENTS[improvementId].effects;
+    if (effects.stationId !== undefined && effects.stationId !== stationId) continue;
+    preparationMultiplier *= effects.preparationMultiplier ?? 1;
+    satisfactionBonus += effects.satisfactionBonus ?? 0;
+    patienceMultiplier *= effects.patienceMultiplier ?? 1;
+    queueBonus += effects.queueCapacityBonus ?? 0;
+  }
+
   const applicableEquipmentIds =
     state.venueId === 'departmentStore' && stationId
       ? STATION_EQUIPMENT_IDS[stationId]
@@ -854,7 +857,7 @@ export function candidatePoolForDay(seed: number, day: number): StaffMember[] {
     rngState = traitDraw.state;
     const role = STAFF_ROLES[index] ?? 'barista';
     const wageCents =
-      Math.round((1_200 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50 +
+      Math.round((1_600 + speedDraw.value * 8 + skillDraw.value * 10) / 50) * 50 +
       STAFF_ROLE_DETAILS[role].wagePremiumCents;
     candidates.push({
       id: candidateStaffId(normalizedSeed, day, index),
@@ -875,7 +878,7 @@ function advanceSingleTick(state: GameState): GameState {
   if (!rush) throw new GameRuleError('No service rush is active.');
   const nextTick = rush.tick + 1;
   if (rush.eventTriggerTicks.includes(nextTick)) {
-    const event = RUSH_EVENTS[rush.resolvedEvents.length % RUSH_EVENTS.length] ?? LANEWAY_EVENT;
+    const event = eventForTrigger(state, rush.resolvedEvents.length);
     return {
       ...state,
       phase: 'event',
@@ -1367,7 +1370,6 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
   const dialMultiplier =
     state.plan.dialIn === 'speed' ? 0.8 : state.plan.dialIn === 'quality' ? 1.2 : 1;
   const beanMultiplier = BEAN_DETAILS[state.plan.beanId].speed;
-  const signMultiplier = state.improvements.includes('street-sign') ? 0.96 : 1;
   const effects = operationalEffects(state, stationForDrink(state.venueId, drink.id));
   const equipmentMultiplier = equipmentPreparationMultiplier(state, drink.id);
   return {
@@ -1386,7 +1388,6 @@ function makeOrder(state: GameState, drink: DrinkConfig, size: DrinkSize, milk: 
           variant.preparationTicks *
             dialMultiplier *
             beanMultiplier *
-            signMultiplier *
             effects.preparationMultiplier *
             equipmentMultiplier,
         ),
@@ -1526,10 +1527,17 @@ function finishRush(state: GameState): GameState {
           (completedRush.stats.totalWaitTicks / completedRush.stats.served / TICKS_PER_SECOND) * 10,
         ) / 10
       : 0;
-  const reputationChange =
+  const uncappedReputationChange =
     Math.round((satisfaction - 70) / 8) +
     completedRush.eventReputationDelta -
     (completedRush.stats.stockouts > 3 ? 1 : 0);
+  const reputationChange =
+    uncappedReputationChange > 0
+      ? Math.min(
+          uncappedReputationChange,
+          Math.max(0, CAMPAIGN_RULES.reputationSoftCeiling - state.reputation),
+        )
+      : uncappedReputationChange;
   const eventCash = completedRush.eventCashDeltaCents;
   const wageCost = completedRush.wageCostCents ?? 0;
   const closingCash =
@@ -1539,6 +1547,11 @@ function finishRush(state: GameState): GameState {
     wageCost -
     completedRush.operatingCostCents;
   const explanations = buildExplanations(state, completedRush, satisfaction);
+  if (reputationChange < uncappedReputationChange) {
+    explanations.push(
+      `Positive reputation gains pause at ${CAMPAIGN_RULES.reputationSoftCeiling}; reputation losses still apply.`,
+    );
+  }
   const expiredNames = Object.entries(waste).map(
     ([ingredientId, quantity]) =>
       `${INGREDIENT_DETAILS[ingredientId as IngredientId].name} ${String(quantity)}`,
@@ -1588,10 +1601,61 @@ function finishRush(state: GameState): GameState {
     serviceAggregates,
     bottleneck: determineBottleneck(state, completedRush),
     explanations,
+    causeSnapshot: createReportCauseSnapshot(state, completedRush),
     ...(chargeGroups === undefined ? {} : { chargeGroups }),
     settled: false,
   };
   return { ...state, phase: 'report', inventory, rush: completedRush, report };
+}
+
+function createReportCauseSnapshot(state: GameState, rush: RushState): DayReportCauseSnapshot {
+  const stationByStaffId = new Map<string, StationId>();
+  for (const stationId of STATION_IDS) {
+    for (const staffId of state.plan.stationAssignments[stationId]) {
+      stationByStaffId.set(staffId, stationId);
+    }
+  }
+  const equipmentOperatingCostCents = EQUIPMENT_IDS.reduce((total, equipmentId) => {
+    const tier = equipmentTierAtLevel(equipmentId, state.equipment[equipmentId]);
+    return total + (tier?.operatingCostCents ?? 0);
+  }, 0);
+  return {
+    venueId: state.venueId,
+    plan: {
+      menu: state.plan.activeMenu.map((drinkId) => ({
+        drinkId,
+        priceCents: state.plan.pricesCents[drinkId],
+      })),
+      dialIn: state.plan.dialIn,
+      beanId: state.plan.beanId,
+      expressDrinkIds: [...state.plan.expressDrinkIds],
+    },
+    staffing: scheduledStaff(state).map((member) => ({
+      staffId: member.id,
+      name: member.name,
+      role: member.role,
+      speed: member.speed,
+      skill: member.skill,
+      trait: member.trait,
+      wageCents: member.wageCents,
+      stationId: stationByStaffId.get(member.id) ?? null,
+    })),
+    equipment: {
+      levels: { ...state.equipment },
+      improvements: [...state.improvements],
+      venueOperatingCostCents: VENUES[state.venueId].operatingCostCents,
+      equipmentOperatingCostCents,
+    },
+    events: rush.resolvedEvents.map((event) => ({
+      ...event,
+      effect: { ...event.effect },
+    })),
+    wait: {
+      peakQueue: rush.stats.peakQueue,
+      queueCapacity: serviceQueueCapacity(state),
+      totalWaitTicks: rush.stats.totalWaitTicks,
+    },
+  };
 }
 
 function finalizedChargeGroups(rush: RushState): ReportChargeGroup[] | undefined {
@@ -1751,7 +1815,10 @@ export function demandRate(state: GameState): number {
     state.plan.activeMenu.length;
   const baselinePriceFactor = clamp(1.15 - (averagePrice - 500) / 900, 0.55, 1.25);
   const baselineReputationFactor = 0.8 + state.reputation / 250;
-  const baselineSignFactor = state.improvements.includes('street-sign') ? 1.08 : 1;
+  const baselineImprovementFactor = state.improvements.reduce(
+    (factor, improvementId) => factor * (IMPROVEMENTS[improvementId].effects.demandMultiplier ?? 1),
+    1,
+  );
   const baselineQualityFactor =
     state.plan.dialIn === 'quality' ? 1.06 : state.plan.dialIn === 'speed' ? 0.97 : 1;
   const baselineBeanFactor = 1 + BEAN_DETAILS[state.plan.beanId].quality / 100;
@@ -1788,7 +1855,7 @@ export function demandRate(state: GameState): number {
     arrivalImprovements: applyDemandInfluence(
       state.difficulty,
       'arrivalImprovements',
-      baselineSignFactor,
+      baselineImprovementFactor,
     ),
     arrivalDialIn: applyDemandInfluence(state.difficulty, 'arrivalDialIn', baselineQualityFactor),
     arrivalBean: applyDemandInfluence(state.difficulty, 'arrivalBean', baselineBeanFactor),
@@ -1823,10 +1890,10 @@ export function demandRate(state: GameState): number {
   return clamp(
     ARRIVAL_DEMAND_ENGINE_INFLUENCES.reduce(
       (rate, influenceId) => rate * factors[influenceId],
-      0.075,
+      ARRIVAL_BASE_RATE,
     ),
-    0.005,
-    0.3,
+    BALANCE_RANGES.arrivalFinalRate.minimum,
+    BALANCE_RANGES.arrivalFinalRate.maximum,
   );
 }
 
@@ -1934,6 +2001,42 @@ function createEventTriggerTicks(state: GameState): number[] {
   if (count === 0) return [];
   if (count === 1) return [Math.floor(RUSH_DURATION_TICKS * 0.42)];
   return [Math.floor(RUSH_DURATION_TICKS * 0.31), Math.floor(RUSH_DURATION_TICKS * 0.68)];
+}
+
+function eventForTrigger(state: GameState, triggerOrdinal: number): SimulationEvent {
+  const resolvedIds = new Set(state.rush?.resolvedEvents.map(({ eventId }) => eventId) ?? []);
+  const eligible = EVENT_TEMPLATES.filter(
+    (event) =>
+      event.eligibleVenues.includes(state.venueId) &&
+      state.day >= event.firstDay &&
+      state.day <= event.lastDay &&
+      !resolvedIds.has(event.id),
+  );
+  if (eligible.length === 0) {
+    throw new GameRuleError('No eligible service event is configured for this trigger.');
+  }
+  const totalWeight = eligible.reduce((total, event) => total + event.weight, 0);
+  const selector =
+    (state.seed ^
+      Math.imul(state.day, 2_654_435_761) ^
+      Math.imul(triggerOrdinal + 1, 2_246_822_519)) >>>
+    0;
+  let ticket = selector % totalWeight;
+  const selected =
+    eligible.find((event) => {
+      ticket -= event.weight;
+      return ticket < 0;
+    }) ?? eligible[eligible.length - 1];
+  if (!selected) throw new GameRuleError('No weighted service event could be selected.');
+  return {
+    id: selected.id,
+    title: selected.title,
+    description: selected.description,
+    choices: selected.choices.map((choice) => ({
+      ...choice,
+      effect: { ...choice.effect },
+    })),
+  };
 }
 
 function emptyRushStats(state: GameState): RushStats {

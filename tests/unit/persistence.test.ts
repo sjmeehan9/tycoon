@@ -8,6 +8,7 @@ import {
   advanceTick,
   activeServiceJobs,
   candidatePoolForDay,
+  closeDay,
   createCampaign,
   defaultStationAssignments,
   inventoryTotals,
@@ -15,6 +16,7 @@ import {
   resolveEvent,
   setRushSpeed,
   startRush,
+  startNextDay,
   togglePause,
   type GameState,
   type SaveEnvelope,
@@ -288,6 +290,78 @@ describe('schema-v4 save envelope', () => {
     expect(rewritten.activeRun?.rush).not.toHaveProperty('activeService');
     expect(rewritten.activeRun?.rush).toHaveProperty('normalQueue');
     expect(rewritten.activeRun?.rush).toHaveProperty('serviceJobsByStation');
+  });
+
+  it('canonicalizes old report causes honestly and keeps new causes byte-stable and historical', () => {
+    const generatedEnvelope = completeReport(70, 'standard');
+    const generatedReport = generatedEnvelope.activeRun?.report;
+    if (!generatedReport?.causeSnapshot) throw new Error('Expected immutable report causes.');
+    expect(generatedReport.causeSnapshot.events).toHaveLength(2);
+    expect(generatedReport.causeSnapshot.wait.totalWaitTicks).toBe(
+      generatedReport.serviceAggregates.reduce(
+        (total, aggregate) => total + aggregate.totalWaitTicks,
+        0,
+      ),
+    );
+
+    const exported = serializeEnvelope(generatedEnvelope);
+    const imported = importEnvelope(exported);
+    expect(serializeEnvelope(imported)).toBe(exported);
+    expect(imported.activeRun?.report?.causeSnapshot).toEqual(generatedReport.causeSnapshot);
+
+    const settled = closeDay(imported.activeRun!);
+    const originalHistory = JSON.stringify(settled.history[0]?.causeSnapshot);
+    const nextDay = prepareDay(startNextDay(settled), {
+      pricesCents: { espresso: 1_200, longBlack: 1_200 },
+      dialIn: 'speed',
+    });
+    expect(JSON.stringify(nextDay.history[0]?.causeSnapshot)).toBe(originalHistory);
+    const reloadedNextDay = importEnvelope(serializeEnvelope(createSaveEnvelope(nextDay)));
+    expect(JSON.stringify(reloadedNextDay.activeRun?.history[0]?.causeSnapshot)).toBe(
+      originalHistory,
+    );
+
+    const older = JSON.parse(exported) as Record<string, unknown>;
+    const olderRun = older.activeRun as { report?: Record<string, unknown> };
+    if (!olderRun.report) throw new Error('Expected serializable report.');
+    delete olderRun.report.causeSnapshot;
+    const canonical = importEnvelope(JSON.stringify(older));
+    expect(canonical.activeRun?.report?.causeSnapshot).toBeNull();
+    expect(importEnvelope(serializeEnvelope(canonical))).toEqual(canonical);
+  });
+
+  it('rejects malformed immutable cause details and non-canonical resolved effects', () => {
+    const source = completeReport(70, 'standard');
+    if (!source.activeRun?.report?.causeSnapshot) {
+      throw new Error('Expected a report with immutable causes.');
+    }
+
+    const invalidPrice = structuredClone(source);
+    invalidPrice.activeRun!.report!.causeSnapshot!.plan.menu[0]!.priceCents = 1_201;
+    expect(() => importEnvelope(JSON.stringify(invalidPrice))).toThrow(
+      /causeSnapshot\.plan\.menu\[0\]\.priceCents/,
+    );
+
+    const invalidWait = structuredClone(source);
+    invalidWait.activeRun!.report!.causeSnapshot!.wait.totalWaitTicks += 1;
+    expect(() => importEnvelope(JSON.stringify(invalidWait))).toThrow(
+      /causeSnapshot\.wait ticks must reconcile/,
+    );
+
+    const forgedEffect = structuredClone(source);
+    const resolvedEvent = forgedEffect.activeRun!.report!.causeSnapshot!.events[0];
+    if (!resolvedEvent) throw new Error('Expected a resolved event.');
+    resolvedEvent.effect = { ...resolvedEvent.effect, reputation: 0 };
+    expect(() => importEnvelope(JSON.stringify(forgedEffect))).toThrow(
+      /effect must match canonical configured content/,
+    );
+
+    const forgedChoiceText = structuredClone(source);
+    forgedChoiceText.activeRun!.report!.causeSnapshot!.events[0]!.choiceDescription =
+      'This was not the choice that resolved during service.';
+    expect(() => importEnvelope(JSON.stringify(forgedChoiceText))).toThrow(
+      /choiceDescription must match canonical configured content/,
+    );
   });
 
   it('keeps migrated historical service identity independent of current department topology', () => {

@@ -41,8 +41,7 @@ one normal lane.
   rush-end jobs retain their consumed cost while producing no sale.
 - Each service activity contains station, lane, and nullable/canonical job
   identity. Each rush/report contains six ordered station/lane aggregates with
-  rush-start staff/equipment metadata only for active topology and globally
-  unique completed job IDs. Inactive legacy station/lane buckets stay empty.
+  rush-start staff/equipment metadata and globally unique completed job IDs.
 - `serviceFlowSummary` exposes normal, express, combined waiting, and active-job
   totals for semantic UI without applying gameplay rules in presentation.
 - Current schema-v4 saves that predate Component 8.5 are canonicalized
@@ -50,11 +49,6 @@ one normal lane.
   `queue`/`activeService` fields never remain authoritative. Historical totals
   with no route evidence are represented honestly in espresso/normal buckets
   with empty historical coverage metadata.
-- Active rush/event imports conserve every ingredient against opening,
-  purchases, and consumed totals. Saves with canonical charge groups also
-  derive exact completed-plus-active consumption and ingredient cost, rejecting
-  coherent inventory/stat forgeries; optional pre-charge-capture v4 rushes keep
-  aggregate conservation because truncated history cannot prove old recipes.
 - Strict active rush/event imports reconcile each inventory total to opening
   stock plus purchased stock minus canonical consumed totals. Current-day
   customer identities begin at `c1`, while canonical service-job identities
@@ -138,8 +132,7 @@ responsive-layout, and WebGL browser paths.
 - `serviceAggregatesForPlan` captures staffing and installed station equipment
   at rush start. Planning and equipment commands cannot run during a rush, so
   strict import can validate active aggregate metadata against the immutable
-  plan/equipment snapshot. It leaves metadata empty unless both the bucket's
-  station and lane are active at that venue.
+  plan/equipment snapshot.
 - Combined normal/express waiting counts feed the existing queue/wait demand
   influence once. Shared inventory after exact-once job starts feeds the
   availability influence once. Active jobs are not counted as waiting.
@@ -196,11 +189,18 @@ Lead Coordinator owns the serialized commit.
   single-customer scene snapshots, their unit/WebGL consumers, and the campaign
   simulation's newly required valid station assignments. No Component 8.6
   multi-customer visual work was started.
-- Coordinator pre-freeze audits produced bounded repairs for active-rush
-  conservation, active-menu truth, inactive-lane metadata, accepted-array
-  immutability, and the Department Store's no-staff planner copy. Each repair
-  has focused proof and none introduces a second authority or Component 8.6
-  visual work.
+- Four late but in-scope shared-worktree delta groups were preserved under the
+  coordinator's non-reversion rule, then audited before the final sealed
+  freeze. They add strict active-rush inventory/customer-domain checks, correct
+  the Department Store's no-staff planner copy, defensively clone caller-owned
+  express/schedule arrays, keep inactive station/lane aggregate metadata empty,
+  require retained queued/active orders to remain on the morning menu, and make
+  the dense-rush fixtures derive canonical ingredient totals/costs with complete
+  equipment coverage. None introduces a second authority or expands into
+  Component 8.6.
+- Repeated writes in the shared checkout invalidated earlier otherwise-green
+  candidates. The coordinator snapshot-copied every approved 8.5 delta into the
+  isolated `phase-8-sealed` worktree; the final audit and gate ran only there.
 - Existing library/platform assumptions remained current and no dependency or
   external capability changed. Technical validation used strict compilation,
   deterministic concurrency/import tests, and local Chromium.
@@ -212,16 +212,19 @@ Lead Coordinator owns the serialized commit.
 
 ## Validation evidence
 
-Targeted evidence before final candidate freeze:
+Targeted sealed-candidate evidence before the final freeze:
 
-- The final pre-freeze strict TypeScript plus complete Vitest diagnostic passed
-  all 16 files / 199 tests in 10.63s. The last conservation/topology repair's
-  focused engine and persistence run passed 55/55.
-- `pnpm exec playwright test tests/e2e/parallel-service.spec.ts` passed 4/4
-  desktop/touch cases in 6.6s. The retained department, WebGL, cart-day, and
-  accessibility diagnostic passed 16 cases with two intentional project skips.
-- Scoped ESLint, Prettier, and `git diff --check` diagnostics passed before
-  candidate freeze.
+- `env PATH=/Users/seanmeehan/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:/usr/bin:/bin pnpm exec vitest run tests/unit/engine.test.ts tests/unit/persistence.test.ts tests/unit/inventory.test.ts tests/unit/operations.test.ts`
+  exited 0 in 0.90s: 4 files / 82 tests passed. This directly covers defensive
+  planning copies, inactive legacy bucket metadata, retained-menu validation,
+  canonical consumption/cost evidence, shared-stock conservation, and equipment
+  coverage.
+- A first sealed attempt exited 254 in 1.73s before test execution because its
+  dependency symlink was temporarily absent. After the coordinator restored the
+  link, a Homebrew Node 26 attempt exited 1 in 1.30s because that runtime exposed
+  an unusable experimental global `localStorage`; all failures shared that setup
+  error. The profile-compatible Node 24.18 command above passed without a source
+  change. Neither environment-only attempt was a Tier 2 gate.
 
 Final scoped candidate identity:
 
@@ -229,37 +232,46 @@ Final scoped candidate identity:
 python3 scripts/worktree-fingerprint.py -- src/game/types.ts src/game/engine.ts src/game/inventory.ts src/game/serviceStations.ts src/game/selectors.ts src/game/index.ts src/game/demandInfluences.ts src/game/capacity.ts src/content/gameContent.ts src/persistence/saveStore.ts src/components/Planner.tsx src/components/TeamPlanner.tsx src/components/RushPanel.tsx src/components/ReportPanel.tsx src/accessibility/GameAnnouncer.tsx src/styles.css src/scene/sceneModel.ts src/scene/three/renderSnapshot.ts tests/unit/engine.test.ts tests/unit/operations.test.ts tests/unit/demand.test.ts tests/unit/inventory.test.ts tests/unit/persistence.test.ts tests/unit/scene.test.ts tests/unit/campaign.test.ts tests/components/game-loop.test.tsx tests/components/accessibility.test.tsx tests/e2e/parallel-service.spec.ts tests/e2e/department-store.spec.ts tests/e2e/webgl-service.spec.ts tests/fixtures/campaignFixtures.ts docs/phase-8-component-breakdown.md docs/components/phase-8-component-8-5-overview.md docs/implementation-context-phase-8.md docs/phase-progress.json
 ```
 
-The command exited 0 before the gate and again afterward with the identical
-fingerprint
-`c425989a24deb4a783b0cbfd7237356e1f213325e71c1181a05dca02a533ebe9`.
+The command exited 0 before the gate, immediately afterward, and after evidence
+writing with the identical fingerprint
+`af1212722978e7c4991e0f65d28bcc7eca7ea831f842a6b9740163df4acb1c6f`.
 The explicit scope includes every declared source/test/configuration path,
 unchanged capacity/spec contracts, approved scene/browser/campaign
 compatibility paths, the shared fixture, and component evidence paths. The
 fingerprint tool intentionally excludes the overview and phase-progress
 payloads.
 
-The final Tier 2 gate for that unchanged candidate passed:
+Before this final sealed freeze, two full-scope reads spanning more than 30
+seconds were identical at `af1212…`; no scoped file was touched between polls.
 
-- `pnpm build` exited 0 in 3.91s. Strict TypeScript and the production Vite/PWA
-  build passed; 19 entries / 1,782.13 KiB were precached and the largest emitted
+The one final Tier 2 gate for that unchanged sealed candidate passed under the
+profile-compatible Node 24.18 runtime:
+
+- `env PATH=/Users/seanmeehan/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:/usr/bin:/bin pnpm build`
+  exited 0 in 4.01s. Strict TypeScript and the production Vite/PWA build passed;
+  19 entries / 1,782.13 KiB were precached and the largest emitted
   file remained the isolated 724.51 kB Three.js chunk below the one-megabyte
   Workbox limit.
-- `pnpm lint` exited 0 in 8.32s. ESLint reported zero warnings and Prettier
-  reported that every checked source/test/configuration file matched.
-- `pnpm test` exited 0 in 7.64s. All 16 Vitest files and 199 unit/component
-  tests passed.
-- `pnpm exec playwright test tests/e2e/cart-day.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/department-store.spec.ts tests/e2e/parallel-service.spec.ts tests/e2e/webgl-service.spec.ts`
-  exited 0 through the profiled macOS Chromium fallback in 46.7s. Twenty
-  desktop/touch cases passed, none failed or timed out, and the two
-  opposite-input cases were intentionally skipped by existing project guards.
+- `env PATH=/Users/seanmeehan/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:/usr/bin:/bin pnpm lint`
+  exited 0 in 8.06s. ESLint reported zero warnings and Prettier reported that
+  every checked source/test/configuration file matched.
+- `env PATH=/Users/seanmeehan/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:/usr/bin:/bin pnpm test`
+  exited 0 in 7.44s. All 16 Vitest files and 199 unit/component tests passed.
+- `env PATH=/Users/seanmeehan/.nvm/versions/node/v24.18.0/bin:/opt/homebrew/bin:/usr/bin:/bin pnpm exec playwright test tests/e2e/parallel-service.spec.ts tests/e2e/department-store.spec.ts tests/e2e/webgl-service.spec.ts tests/e2e/cart-day.spec.ts tests/e2e/accessibility.spec.ts`
+  exited 0 through the profiled macOS Chromium fallback in 46.8s. Twenty
+  desktop/touch cases passed, none failed or timed out, and two opposite-input
+  cases were intentionally skipped by existing project guards.
 
-All earlier candidate fingerprints, including `510828…`, were invalidated
-before this gate by coordinator-requested source/test repairs and are not
-completion evidence. No executable scoped path changed after `c425989a…` was
-recorded.
+Earlier shared-checkout gates are retained only as invalidated evidence, never
+as completion proof. Candidate `05d39f…` stopped at a test-only formatting
+failure. Repaired candidates at `947200…`, `4ba0af…`, and `510828…` passed their
+executed commands but were invalidated by subsequent in-scope persistence,
+fixture, engine, planner, and test writes. The isolated `af1212…` result above is
+the sole final completion gate.
 
-Post-gate `git diff --check` passed and the title-art SHA-256 remained exactly
+Immediate and post-evidence `git diff --check` passed, the scoped fingerprint
+remained `af1212…`, and the title-art SHA-256 remained exactly
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
-No raw failure log is required: the formatting issue was fully reported by the
-bounded command output, and every command for the final fingerprint exited
-successfully. The Git index remained empty throughout Implement's handoff.
+No raw failure log is required: each bounded environment/failure output was
+fully reported in command evidence, and every final-gate command exited
+successfully.

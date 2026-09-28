@@ -1,21 +1,41 @@
 import { lazy, Suspense } from 'react';
 
 import { useGame } from './app/GameContext';
-import { AudioDirector } from './audio/AudioDirector';
-import { GameAnnouncer } from './accessibility/GameAnnouncer';
-import { EventDialog } from './components/EventDialog';
-import { EndingPanel } from './components/EndingPanel';
-import { GameHeader } from './components/GameHeader';
-import { GameTools } from './components/GameTools';
-import { Planner } from './components/Planner';
 import { OnboardingGuide } from './components/OnboardingGuide';
-import { ReinvestPanel } from './components/ReinvestPanel';
-import { ReportPanel } from './components/ReportPanel';
+import { Planner } from './components/Planner';
 import { RushPanel } from './components/RushPanel';
-import { RushStockGrid } from './components/RushStockGrid';
 import { TitleScreen } from './components/TitleScreen';
 import { PwaUpdatePrompt } from './pwa/PwaUpdatePrompt';
 
+const LazyAudioDirector = lazy(() =>
+  import('./audio/AudioDirector').then(({ AudioDirector }) => ({ default: AudioDirector })),
+);
+const LazyGameAnnouncer = lazy(() =>
+  import('./accessibility/GameAnnouncer').then(({ GameAnnouncer }) => ({
+    default: GameAnnouncer,
+  })),
+);
+const LazyEventDialog = lazy(() =>
+  import('./components/EventDialog').then(({ EventDialog }) => ({ default: EventDialog })),
+);
+const LazyEndingPanel = lazy(() =>
+  import('./components/EndingPanel').then(({ EndingPanel }) => ({ default: EndingPanel })),
+);
+const LazyGameHeader = lazy(() =>
+  import('./components/GameHeader').then(({ GameHeader }) => ({ default: GameHeader })),
+);
+const LazyGameTools = lazy(() =>
+  import('./components/GameTools').then(({ GameTools }) => ({ default: GameTools })),
+);
+const LazyReinvestPanel = lazy(() =>
+  import('./components/ReinvestPanel').then(({ ReinvestPanel }) => ({ default: ReinvestPanel })),
+);
+const LazyReportPanel = lazy(() =>
+  import('./components/ReportPanel').then(({ ReportPanel }) => ({ default: ReportPanel })),
+);
+const LazyRushStockGrid = lazy(() =>
+  import('./components/RushStockGrid').then(({ RushStockGrid }) => ({ default: RushStockGrid })),
+);
 const LazyServiceWorld = lazy(() =>
   import('./scene/three/ServiceWorld').then(({ ServiceWorld }) => ({ default: ServiceWorld })),
 );
@@ -26,12 +46,16 @@ export default function App(): React.JSX.Element {
   if (!game) {
     return (
       <>
-        <AudioDirector />
-        <GameAnnouncer />
+        <Suspense fallback={null}>
+          <LazyAudioDirector />
+          <LazyGameAnnouncer />
+        </Suspense>
         <PwaUpdatePrompt />
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         <TitleScreen />
-        <GameTools />
+        <Suspense fallback={<GameToolsLoading />}>
+          <LazyGameTools />
+        </Suspense>
       </>
     );
   }
@@ -40,14 +64,18 @@ export default function App(): React.JSX.Element {
 
   return (
     <>
-      <AudioDirector />
-      <GameAnnouncer />
+      <Suspense fallback={null}>
+        <LazyAudioDirector />
+        <LazyGameAnnouncer />
+      </Suspense>
       <PwaUpdatePrompt />
       <div
         className={`app-shell ${serviceActive ? 'is-service' : 'is-management'}`}
         data-phase={game.phase}
       >
-        <GameHeader />
+        <Suspense fallback={null}>
+          <LazyGameHeader />
+        </Suspense>
         {message ? <GlobalMessage message={message} onClose={clearMessage} /> : null}
         {serviceActive ? (
           <main className="game-layout service-layout" data-game-layout="service">
@@ -66,7 +94,9 @@ export default function App(): React.JSX.Element {
                 <LazyServiceWorld />
               </Suspense>
               <RushPanel />
-              <RushStockGrid />
+              <Suspense fallback={<ServiceStockLoading />}>
+                <LazyRushStockGrid />
+              </Suspense>
               <div className="control-column service-guide" tabIndex={-1}>
                 <OnboardingGuide />
               </div>
@@ -76,20 +106,55 @@ export default function App(): React.JSX.Element {
           <main className="game-layout management-layout" data-game-layout="management">
             <div className="control-column management-flow" tabIndex={-1}>
               <OnboardingGuide />
-              {game.phase === 'planning' ? <Planner /> : null}
-              {game.phase === 'report' ? <ReportPanel /> : null}
-              {game.phase === 'reinvest' ? <ReinvestPanel /> : null}
-              {game.phase === 'victory' || game.phase === 'defeat' ? <EndingPanel /> : null}
+              <Suspense fallback={<ManagementLoading />}>
+                {game.phase === 'planning' ? <Planner /> : null}
+                {game.phase === 'report' ? <LazyReportPanel /> : null}
+                {game.phase === 'reinvest' ? <LazyReinvestPanel /> : null}
+                {game.phase === 'victory' || game.phase === 'defeat' ? <LazyEndingPanel /> : null}
+              </Suspense>
             </div>
           </main>
         )}
         <footer className="game-footer">
           Autosaved locally · no account · deterministic seed {game.seed}
         </footer>
-        <EventDialog />
-        <GameTools />
+        <Suspense fallback={null}>
+          <LazyEventDialog />
+        </Suspense>
+        <Suspense fallback={<GameToolsLoading />}>
+          <LazyGameTools />
+        </Suspense>
       </div>
     </>
+  );
+}
+
+function GameToolsLoading(): React.JSX.Element {
+  return (
+    <button
+      aria-label="Game menu is loading"
+      className="button game-tools-button"
+      disabled
+      type="button"
+    >
+      Game menu
+    </button>
+  );
+}
+
+function ManagementLoading(): React.JSX.Element {
+  return (
+    <section aria-live="polite" className="panel" role="status">
+      Preparing your coffee operation…
+    </section>
+  );
+}
+
+function ServiceStockLoading(): React.JSX.Element {
+  return (
+    <section aria-live="polite" className="panel" data-service-section="stock" role="status">
+      Preparing live stock…
+    </section>
   );
 }
 

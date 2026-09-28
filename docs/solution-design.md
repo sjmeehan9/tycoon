@@ -41,13 +41,15 @@ accessible panels <- selectors/reports <- immutable snapshots -> WebGL2 scene
 
 - **Content configuration:** drinks, recipes, ingredients, customers, staff,
   traits, equipment, venues, events, progression, and economy tuning.
-- **Simulation engine:** seeded PRNG, demand generation, arrivals, ordering,
-  queues, preparation, fulfillment, satisfaction, inventory, cash, reputation,
-  and day settlement.
+- **Simulation engine:** seeded PRNG, registered difficulty-aware demand,
+  arrivals, order choice, normal/express routing, station assignments, parallel
+  service jobs, exact-once fulfillment, satisfaction, inventory, cash,
+  reputation, and day settlement.
 - **Campaign controller:** phase transitions, win/loss, unlocks, endless mode,
   history, and event-choice orchestration.
-- **Persistence:** versioned save envelope, autosave, migration, import/export,
-  corruption recovery, and settings/meta separation.
+- **Persistence:** schema-v4 save envelope, preferences-only v1/v2/v3 reset,
+  autosave, import/export, corruption recovery, anti-resurrection quarantine,
+  and settings/meta separation.
 - **Presentation:** responsive app shell, scene-free morning planner,
   fixed-isometric service world, complete rush dashboard, event dialog, compact
   day result and disclose-on-request report, reopenable report history,
@@ -67,9 +69,12 @@ rather than private implementation details.
 ## Data flow and persistence
 
 Player commands validate against the current game phase, return immutable state,
-and produce serializable domain events. Rendering consumes snapshots only.
-Browser persistence stores a small JSON-compatible save locally; export/import
-uses the same validated envelope. Save migrations are keyed by `schemaVersion`.
+and produce serializable domain events. Fixed station and lane ordering resolves
+concurrent work deterministically; inventory is consumed once when a canonical
+job starts and economic settlement occurs once when it completes. Rendering
+consumes snapshots only. Browser persistence stores a small JSON-compatible save
+locally; export/import uses the same validated envelope. The sole breaking
+legacy boundary normalizes every supported v1/v2/v3 source into schema v4.
 
 ## Security, resilience, and privacy
 
@@ -105,8 +110,9 @@ and Pages are the only release infrastructure.
 ## Key decisions and non-goals
 
 All product decisions, assumptions, and exclusions from `docs/requirements.md`
-are approved. Phase 7 deliberately retains schema v3, the 30-day campaign, one
-balanced mode, and cart/kiosk/cafe. Phase 8 alone owns the v4 reset,
-Standard/Hard demand contracts, 40-day campaign, and department-store venue.
+are approved. The Phase 8 candidate implements the schema-v4 reset,
+Standard/Hard demand contracts, 40-day campaign, four-venue progression,
+three-tier equipment, department workforce, three-station parallel service,
+dense heritage hall, causal history, and offline/update release contract.
 Internal simplification is welcome only when it preserves the full observable
 feature set and quality bar.

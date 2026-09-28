@@ -1,9 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import App from '../../src/App';
 import { GameProvider } from '../../src/app/GameContext';
+import { advanceTick, createCampaign, startRush, type SaveEnvelope } from '../../src/game';
+import { SAVE_KEY, createSaveEnvelope, serializeEnvelope } from '../../src/persistence/saveStore';
+import { denseDepartmentRushEnvelope } from '../fixtures/campaignFixtures';
 
 const serviceWorker = vi.hoisted(() => ({
   setNeedRefresh: vi.fn(),
@@ -20,6 +23,8 @@ vi.mock('virtual:pwa-register/react', () => ({
 }));
 
 describe('safe PWA update prompt', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('defers without refreshing the active campaign', async () => {
     const user = userEvent.setup();
     renderGame();
@@ -50,6 +55,30 @@ describe('safe PWA update prompt', () => {
     );
   });
 
+  it.each([
+    ['rush', denseDepartmentRushEnvelope(), 'Resume'],
+    ['event', eventEnvelope(), 'Protect the queue'],
+  ] as const)(
+    'keeps a waiting worker inactive throughout %s service',
+    async (_phase, envelope, activeControl) => {
+      const user = userEvent.setup();
+      window.localStorage.setItem(SAVE_KEY, serializeEnvelope(envelope));
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      renderGame();
+
+      await user.click(screen.getByRole('button', { name: 'Continue autosave' }));
+      setItem.mockClear();
+      const update = screen.getByRole('button', { name: 'Finish service to update' });
+
+      expect(update).toBeDisabled();
+      expect(update).toHaveAccessibleDescription(/service is active/i);
+      await user.click(update);
+      expect(setItem).not.toHaveBeenCalled();
+      expect(serviceWorker.update).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: new RegExp(activeControl, 'i') })).toBeVisible();
+    },
+  );
+
   it('blocks activation when browser storage cannot verify the checkpoint', async () => {
     const user = userEvent.setup();
     renderGame();
@@ -71,4 +100,15 @@ function renderGame(): void {
       <App />
     </GameProvider>,
   );
+}
+
+function eventEnvelope(): SaveEnvelope {
+  let state = startRush(createCampaign({ seed: 222 }));
+  let safety = 0;
+  while (state.phase === 'rush' && safety < 1_000) {
+    state = advanceTick(state);
+    safety += 1;
+  }
+  if (state.phase !== 'event') throw new Error('Seed 222 did not produce a service event.');
+  return createSaveEnvelope(state);
 }

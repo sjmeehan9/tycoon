@@ -1,0 +1,8 @@
+# Paths that exist only in project-template and must not persist on a generated repository.
+# Consumed by bootstrap.sh (its final "template hygiene" step) and scripts/template-cleanup.sh.
+# One repo-relative path per line; directories end with "/". Blank lines and # comments are ignored.
+# Every path listed here must also appear in templates/templatesyncignore (mirrored into the root
+# .templatesyncignore), or the next template-sync PR re-adds it.
+corporate-copilot-agent-team/
+supporting-files/IMPROVEMENT_PLAN.md
+supporting-files/IMPROVEMENT_PLAN_2026-09.md

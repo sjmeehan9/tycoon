@@ -72,6 +72,9 @@ class WorktreeFingerprintTests(unittest.TestCase):
 
     def test_evidence_files_do_not_change_candidate_identity(self) -> None:
         before = self.fingerprint()
+        (self.repo / "docs" / "steward-ledger.md").write_text(
+            "# Steward Ledger\n\n## Holds\n| S-1 | X.2 | commit | stale evidence |\n"
+        )
         (self.repo / "docs" / "agent-team-state.md").write_text(
             "state\n", encoding="utf-8"
         )

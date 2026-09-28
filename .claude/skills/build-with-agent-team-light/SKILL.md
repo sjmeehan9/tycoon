@@ -31,7 +31,9 @@ The only task agents this skill may delegate to are:
 
 Do not delegate to Competitor Analysis, Tech Lead, Test, or Debug. Do not perform positioning reconciliation, all-phase refinement, adjacent-phase cross-review, or per-component independent executable testing. The coordinator fills the lost specification role through the **coordinator-authored component breakdown** and fills the lost tracker role by remaining sole team-mode writer of `docs/agent-team-state.md` and `docs/phase-progress.json`.
 
-The coordinator may write only those two coordination files and `docs/phase-X-component-breakdown.md` for the selected phase. It may relay and record findings, approvals, and lifecycle evidence. It never writes or fixes product code, tests, component overviews, research reports, planning documents owned by agents, test reports, or phase summaries.
+The coordinator may write only those two coordination files and `docs/phase-X-component-breakdown.md` for the selected phase (plus `docs/steward-ledger.md` in its Steward capacity on a platform without a Steward thread). It may relay and record findings, approvals, and lifecycle evidence. It never writes or fixes product code, tests, component overviews, research reports, planning documents owned by agents, test reports, or phase summaries.
+
+In addition to those seven task agents, one **control-plane role** is mandatory on every run: the **Steward** (see *The Steward* below). It is not a task agent, is never counted in the registry above or the max-agents ceiling, and may challenge any engagement — including the coordinator-authored breakdown.
 
 ## Project Profile
 
@@ -72,6 +74,8 @@ Every message you send is exactly one **Agent Report** block. No free-form narra
 ```
 
 **Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
+
+**Steward Challenges (team mode):** the Steward is not a task agent. It is the one role that may message you directly, with a **Steward Challenge** (class scope / pace / standards / waste / posture / coherence) copied to the Lead Coordinator. Answer it in your next Agent Report — comply, or justify under *Drift* / *Open questions* — before you request your next gate or commit. If it carries a **Steward Hold**, do not request that gate, commit, or deploy until the Lead Coordinator clears the Hold. Ignoring a Challenge is itself a standards breach.
 
 **Approval gates:** when you need sign-off, send a report with the request under *Open questions* and *Required actions (human)*, set Status to BLOCKED, and wait.
 
@@ -117,7 +121,7 @@ Parse optional positions by stage:
 | `planning` / `full` | max agents `2`; select next phase | value is `max-agents`; select next phase | first is `max-agents`; second is `phase-number` |
 | `implementation` | invalid: phase required | value is `phase-number`; max agents `2` | first is `max-agents`; second is `phase-number` |
 
-Both numeric values must be positive integers. Max agents is a ceiling, not a target.
+Both numeric values must be positive integers. Max agents is a ceiling, not a target. The Steward is mandatory and sits outside the max-agents ceiling.
 
 If the argument shape is invalid, report the accepted shapes and stop. Planning is dependency-sequential. Implementation keeps one active component-delivery engagement at a time by default; concurrent authors are allowed only when `docs/project-profile.md` activates its complete branch/worktree integration protocol. Never fill available slots merely because they exist.
 
@@ -140,7 +144,7 @@ docs/phase-summary.md
 
 For an implementation resume with a current component, take the fast path: profile/standards, both state files, that component's full spec, declared dependency overviews, its current overview/evidence, and Git state. Expand only for a concrete unresolved decision.
 
-Resume at the first incomplete gate. Do not duplicate an owner, rewrite a complete artifact, rerun matching validation, repeat an accepted approval, or repeat a human blocker. Reuse the same Implement or Review engagement for its bounded repair/resume while it remains available. On a fresh session or retired engagement, create exactly one replacement of the same recorded agent role, give it the persisted assignment/evidence/repair state, record the replacement identity and reason, and confirm the prior engagement is not active before work resumes. If state and artifacts conflict, record the discrepancy under Drift and stop only when it prevents safe ownership or gate reconstruction.
+Resume at the first incomplete gate. A fresh session re-spawns the Steward first and hands it the persisted `docs/steward-ledger.md`; a replacement Steward is a control-plane replacement, not a task-agent one. Do not duplicate an owner, rewrite a complete artifact, rerun matching validation, repeat an accepted approval, or repeat a human blocker. Reuse the same Implement or Review engagement for its bounded repair/resume while it remains available. On a fresh session or retired engagement, create exactly one replacement of the same recorded agent role, give it the persisted assignment/evidence/repair state, record the replacement identity and reason, and confirm the prior engagement is not active before work resumes. If state and artifacts conflict, record the discrepancy under Drift and stop only when it prevents safe ownership or gate reconstruction.
 
 Prerequisites:
 
@@ -161,6 +165,7 @@ Keep the existing full-skill artifacts interoperable; do not invent a light-only
 - Planning artifact owner/status/input identity and any resumed engagement.
 - Component lifecycle rows: component, status, route, reasons, validation owner, commit owner, fingerprint/evidence, `commitSha`, ordered `repairCommitShas`, `authorRepairUsed`, cycles, assigned/replacement engagement, timestamps, and disposition.
 - Active agents, leases, human gate attempts/results, phase-level `phaseGateRepairUsed`, `phaseValidationAttempts`, contracts, open questions, Drift, Deferred, and decisions.
+- A Steward section: ledger path `docs/steward-ledger.md`, delivery posture in force and its source, pace budget source, and the Holds table (id, engagement/component, gate blocked, raised, reason, disposition).
 
 `docs/phase-progress.json` remains the machine-readable lifecycle twin. Preserve other phases and existing fields. Every selected-phase component records `assuranceLane`, `assuranceReasons`, `validationOwner`, `commitOwner`, `status`, evidence/fingerprint, `commitSha`, ordered `repairCommitShas`, `authorRepairUsed`, repair/cycle counts, and disposition; the phase entry records `phaseGateRepairUsed`, `phaseValidationAttempts`, and the ordered commit sequence. Update these fields immediately after every commit so historical identity is reconstructable after a fresh-session resume. While planning is unapproved, new entries remain `queued`; after the consolidated approval and completed Technical Validation, the coordinator sets them to `spec-validated`.
 
@@ -202,7 +207,7 @@ This assignment override changes orchestration cadence and light-specific route/
 4. Resume the same Solutions Architect engagement with all research findings. It applies every accepted correction and records each in the Amendment Log.
 5. Delegate `technical-business-analyst` to draft `docs/phase-plan.md` from the provisional brief and corrected design. Every phase retains feature statements, Component X.1 human setup, a final phase-validation component, named user-facing flows, named critical backend Validation Targets, and phase acceptance criteria.
 6. Select one phase and author `docs/phase-X-component-breakdown.md` as coordinator. If a new component-specific external assumption is unresolved, resume Technical Research in component scope, receive `docs/technical-research-phase-X.md`, and incorporate the finding; there is no separate research gate.
-7. Validate cross-document consistency and present all four planning documents plus research evidence for **one consolidated planning approval**.
+7. Obtain the Steward's consistency verdict on the package, then present all four planning documents plus research evidence for **one consolidated planning approval**.
 
 ### Component Breakdown Contract
 
@@ -227,7 +232,7 @@ If changes are requested, route each owned document back to its owner, update th
 1. Record the approval decision as finalization-pending in state, then relay it to Project Manager, Solutions Architect, and TBA so each finalizes its Approval section and reports COMPLETE; do not create new approval waits.
 2. Finalize the coordinator-owned breakdown/tracker approval fields, recompute the post-finalization identities of every planning artifact, and record those stable identities with the approval timestamp and selected phase. Never retain the pre-Approval-section draft hashes as the approved identities.
 3. Mark breakdown components `spec-validated` only when their Technical Validation sections are complete.
-4. Persist the approved package before reporting planning complete: acquire the Git lease; verify/create the profile-named phase branch; stage only the exact changed planning artifacts (`brief.md`, `solution-design.md`, research report(s), `phase-plan.md`, selected breakdown, and both state trackers); commit them with the profile's planning/docs convention; release the lease on every exit; and push only when the profile requires it. The Light Lead Coordinator is commit owner for this documentation-only planning-package commit. Record a `self` marker with the finalized identities in the committed state and report the resolved commit SHA; a fresh resume resolves `self` as the commit containing those identities.
+4. Persist the approved package before reporting planning complete: obtain the Steward's pre-commit verdict; acquire the Git lease; verify/create the profile-named phase branch; stage only the exact changed planning artifacts (`brief.md`, `solution-design.md`, research report(s), `phase-plan.md`, selected breakdown, and both state trackers); commit them with the profile's planning/docs convention; release the lease on every exit; and push only when the profile requires it. The Light Lead Coordinator is commit owner for this documentation-only planning-package commit. Record a `self` marker with the finalized identities in the committed state and report the resolved commit SHA; a fresh resume resolves `self` as the commit containing those identities.
 5. In `planning`, report completion with the planning-package commit. In `full`, continue to implementation, where Gate 0 records that commit as or before the clean phase-base SHA.
 
 ## `LIGHT_ASSURANCE_CONTRACT_V1`
@@ -270,6 +275,7 @@ One unchanged candidate receives one executable completion gate. Matching eviden
 3. Normalize imported expansive state before delegation: `test` and `full` become `review`; their component validation owner becomes Implement and commit owner becomes Review; the final `phase-gate` validation owner becomes Review in `light-phase-gate`. Apply the same mechanical light-mode normalization to the selected breakdown and both trackers without changing approved files, interfaces, acceptance criteria, or test requirements. Any other non-light lane/owner conflict is BLOCKED for user disposition.
 4. Plan exclusive validation and Git leases. Before any branch creation or switch, acquire the Git lease and verify/create the profile-named phase branch. If step 3 changed the coordinator-owned breakdown/trackers, commit those exact normalization paths with the profile's planning/docs convention. Then require a globally owned candidate before component work: the shared worktree may contain only selected-phase owned changes and fingerprint-excluded coordination/evidence. If unrelated user changes exist, do not alter or stash them; use a profile-authorized isolated worktree based on the phase branch or stop and ask the user to commit/move them. Record the resulting clean phase-base SHA, then release the lease. No Git mutation occurs while merely planning a lease.
 5. Verify each normalized light route and add newly discovered triggers upgrade-only. Resume any in-progress component before starting another.
+6. Obtain the Steward's Gate 0 verdict before delegating Component X.1.
 
 ### Component Delivery
 
@@ -277,8 +283,8 @@ One unchanged candidate receives one executable completion gate. Matching eviden
 2. In dependency order, delegate each ready component to `implement` with its exact spec, ownership, dependency overviews, profile/standards, route/reasons, validation owner, commit owner, and lease rules.
 3. Implement owns source and essential tests within spec plus `docs/components/phase-X-component-X-Y-overview.md`. The overview is the sole manifest: outcome, files/interfaces, acceptance-criterion map, decisions/drift, route reasons, exact evidence/fingerprint, verification instructions, and gotchas.
 4. Implement always runs targeted validation. It runs the component tier exactly once for `fast`/`review`, but only targeted evidence for `phase-gate`; the final component instead prepares the specified phase E2E coverage.
-5. For `fast`, the coordinator runs the smallest pre-commit Steward check, grants the Git lease, and Implement commits explicit scoped paths.
-6. For `review`, delegate the same candidate to `review` with the spec, overview, current evidence/fingerprint, declared scope, remediation count, and Git contract. Review trusts matching executable evidence, performs the independent static/spec/diff audit, and commits only after approval while holding the Git lease.
+5. For `fast`, the coordinator obtains the Steward's pre-commit verdict, grants the Git lease, and Implement commits explicit scoped paths.
+6. For `review`, delegate the same candidate to `review` with the spec, overview, current evidence/fingerprint, declared scope, remediation count, and Git contract. Review trusts matching executable evidence, performs the independent static/spec/diff audit, and commits only after approval while holding the Git lease; the coordinator obtains the Steward's pre-commit verdict before granting that lease.
 
 A clear author-owned component finding gets one bounded component repair by the same Implement engagement, followed by the invalidated gate only; set that component's `authorRepairUsed` before routing it so resume cannot reset the allowance. If it remains unresolved, is ambiguous/systemic, or reveals a spec/architecture gap, escalate to the user; this light workflow has no diagnostic fallback role. Under the serialized default, never start a second component while the current delivery engagement is unresolved. Under a profile-authorized parallel protocol, never start a dependent/overlapping component or abandon the unresolved engagement; follow the profile's integration order and isolation rules exactly.
 
@@ -297,11 +303,13 @@ Review must:
 7. On FAIL/BLOCKED, do not commit. Return the owner mapping and evidence to the coordinator.
 8. On PASS for the unchanged candidate, acquire the Git lease and complete the `phase-gate` commit with the final component artifacts and phase report.
 
+The coordinator obtains the Steward's pre-commit verdict before granting the phase-gate Git lease, and its phase-close verdict before delegating Phase Docs.
+
 The phase gate has one shared repair cycle, separate from component `authorRepairUsed` flags. On its first repairable FAIL/BLOCKED, atomically set phase-level `phaseGateRepairUsed: true` before routing work; this allowance never resets on resume. Move named committed owners to `Reopened` and route one repair within this shared cycle to each same Implement engagement. A previously committed owner repeats only its invalidated light-route gate and receives a scoped fix commit whose SHA is appended immediately; the uncommitted final component returns directly to the phase gate after targeted evidence. Refresh the aggregate audit, increment `phaseValidationAttempts` for the resumed invocation, then resume the same Review `light-phase-gate` engagement. Once `phaseGateRepairUsed` is true, any later aggregate verdict other than APPROVED or phase result other than PASS—including infrastructure BLOCKED or stale identity—escalates to the user; no second repair cycle is allowed. Stale technical assumptions or architecture/spec failure demote the affected component to `queued` for renewed planning rather than being worked around.
 
 ### Human Gate And Phase Close
 
-After phase PASS/commit, run any on-device/external human validation named by the profile. Distribution commands require explicit approval and must match the profile exactly.
+After phase PASS/commit, run any on-device/external human validation named by the profile. Distribution commands require explicit approval, the Steward's pre-distribution verdict, and must match the profile exactly.
 
 - If the user has not performed or declines the action, or distribution/external infrastructure is unavailable, record the human gate as BLOCKED and stop before Phase Docs. Do not consume a code-repair allowance or claim phase completion; resume only after the user supplies the missing action/authority or environment.
 - If the human gate exposes a reproducible defect on an approved requirement and `phaseGateRepairUsed` is false, set it true, map the defect to its owning component, route the one shared repair cycle through the same Implement engagement and recorded component gate/commit owner, then repeat aggregate Review, automated phase validation, its phase-gate commit, and the human gate for the new fingerprint.
@@ -326,22 +334,37 @@ Every task assignment names:
 - Validation tier, fingerprint scope, lease, and commit owner.
 - Resume identity and repair count when continuing an engagement.
 - A prohibition on child task agents and direct task-agent messaging.
+- The Steward Challenge rule: a Steward Challenge is answered in the agent's next report before its next gate or commit; a Steward Hold blocks that gate until the coordinator clears it.
 
 All inter-agent coordination flows through the Light Lead Coordinator. Preserve reported Drift/Deferred items in state before routing them.
 
-## Event-Driven Steward Duties
+## The Steward
 
-The coordinator performs the smallest relevant check; never spawn a Steward:
+A **persistent Steward** accompanies the whole run as the team's timekeeper, scope-to-spec and drift enforcer, standards bearer, and waste steerer. It is not a task agent and sits outside the max-agents ceiling. **Spawn the Steward first**, before any task agent, and retire it last, after its close audit. Its definition is the single source of its duties; this skill supplies only the assignment and the coordinator mechanics.
 
-- **Gate 0:** prerequisites, document/tracker parity, dependencies, ownership, route reasons/owners, branch baseline, and leases.
-- **Exceptional report:** inspect only the reported artifact/spec/diff; classify defect versus spec gap/new risk versus Hardening and route it.
-- **Pre-commit:** current lifecycle state, complete overview, matching fingerprint/evidence, explicit staged scope, commit owner, clean exclusive Git lease, and no unresolved blocker.
-- **Planning/phase close:** all applicable checklist items, approval/gate evidence, Drift/Deferred disposition, and resumable continuation state.
+- **Forward everything.** Send the Steward every delegation contract and every task-agent Agent Report as they arrive. Routine reports need no reply — silence is acknowledgement; do not wait.
+- **Wait at gate events.** Its verdict is a required input at Gate 0, on every exceptional report (BLOCKED, Drift, Deferred, spec gap, ownership exception, route change, stale evidence), on the consolidated planning package, immediately before you grant any Git lease (planning-package, component, repair, phase-gate, and phase-close commits) or run a distribution command, and at planning/phase close. Never grant a lease or close a stage past an open **Steward Hold**.
+- **Steward Challenge and Steward Hold.** The Steward may message a task agent directly with a Challenge (you are copied) and may Hold that engagement's next gate, commit, or distribution. It may also challenge your coordinator-authored breakdown for sizing, vertical slicing, runtime paths, or Technical Validation; answer in the Decisions Log. Record every Challenge outcome in the Decisions/Drift logs and every Hold in the state file's Steward section. You may dismiss a Challenge or clear a Hold only with a Decisions Log entry naming the standard set aside and why; a second overrule of the same standard within one stage goes to the user verbatim. Every Steward escalation appears verbatim in your next user report.
+- **Ledger.** The Steward owns `docs/steward-ledger.md` (fingerprint-excluded evidence). It never writes `docs/agent-team-state.md` or `docs/phase-progress.json`; you remain their sole writer.
+- Wherever this skill says "the Steward's verdict", obtain it — never skip it.
+
+**Assignment for this path:**
+
+- **Path:** light build · **Stage:** [planning | implementation — Phase X]
+- **Team state file:** `docs/agent-team-state.md`
+- **Workflow document set:** brief, solution design, technical research report(s), phase plan, the selected component breakdown, component overviews, phase test report, phase summary
+- **Delivery posture source:** `docs/project-profile.md` § Delivery posture, else `docs/brief.md` § Platform & Distribution
+- **Pace budget source:** `docs/project-profile.md` § Pace budgets, else `none: checkpoint pacing only`
+- **Stage events:** Gate 0 · exceptional reports · consolidated planning gate · pre-commit (every Git lease) · pre-distribution · planning/phase close
+- **Coherence focus:** spec ↔ overview ↔ evidence ↔ state, including the coordinator-authored breakdown
+
+Spawn it from `.claude/agents/steward.md` — load the full definition — with the assignment above as its *Your Assignment* block and the delegation contract's ownership/forbidden-path rules. On a fresh session, re-spawn it first and hand it the persisted `docs/steward-ledger.md`.
 
 ## Execute
 
 1. Parse arguments and run the resume/prerequisite check.
 2. Initialize or update the interoperable state artifacts.
-3. Execute `planning`, `implementation`, or `full` exactly as defined.
-4. Update state after every lifecycle, approval, lease, evidence, repair, and disposition change.
-5. At each close, run the event-driven Steward audit and send one Agent Report leading with delivered feature outcomes and the next human decision, if any.
+3. Spawn the Steward first (on a platform without a Steward thread, take up its duties yourself); forward it every delegation and report and wait for its verdict at gate events.
+4. Execute `planning`, `implementation`, or `full` exactly as defined.
+5. Update state after every lifecycle, approval, lease, evidence, repair, and disposition change.
+6. At each close, obtain and record the Steward's close audit, retire the Steward, and send one Agent Report leading with delivered feature outcomes and the next human decision, if any.

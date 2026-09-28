@@ -31,7 +31,7 @@ Your agent team is registered from `.codex/agents/` — Codex loads each agent's
 
 Every completion-gate result records:
 
-1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes state, overview, test-report, phase-summary, and Phase Docs-owned `docs/*-product-solution-doc-*.md` evidence files so writing phase evidence does not invalidate its executable candidate identity.
+1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes state, overview, test-report, phase-summary, the Steward's `docs/steward-ledger.md`, and Phase Docs-owned `docs/*-product-solution-doc-*.md` evidence files so writing phase evidence does not invalidate its executable candidate identity.
 2. Exact commands, exit status, duration, and a concise result summary.
 3. Paths to raw logs when failure evidence is too large for the report.
 
@@ -61,6 +61,8 @@ Every message you send is exactly one **Agent Report** block. No free-form narra
 ```
 
 **Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
+
+**Steward Challenges (team mode):** the Steward is not a task agent. It is the one role that may message you directly, with a **Steward Challenge** (class scope / pace / standards / waste / posture / coherence) copied to the Lead Coordinator. Answer it in your next Agent Report — comply, or justify under *Drift* / *Open questions* — before you request your next gate or commit. If it carries a **Steward Hold**, do not request that gate, commit, or deploy until the Lead Coordinator clears the Hold. Ignoring a Challenge is itself a standards breach.
 
 **Approval gates:** when you need sign-off, send a report with the request under *Open questions* and *Required actions (human)*, set Status to BLOCKED, and wait.
 
@@ -101,7 +103,7 @@ Structural bookends are the only exceptions: Component X.1 of each phase holds t
   - `refinement` — Phase planning and spec-validated component breakdowns
   - `implementation` — Build, test, review, validate, and document a single phase
   - `full` — Run all stages sequentially (with user confirmation between each)
-- **Max agents**: `$ARGUMENTS[1]` — Maximum concurrent teammate agent threads. Optional; when absent the defaults are **planning: 4, refinement: 4, implementation: 3**. This is a ceiling, not a target; do not pre-spawn conditional gate roles. Fan-out is additionally capped by `[agents] max_threads` in `.codex/config.toml` — never exceed either limit.
+- **Max agents**: `$ARGUMENTS[1]` — Maximum concurrent teammate agent threads. Optional; when absent the defaults are **planning: 4, refinement: 4, implementation: 3**. This is a ceiling, not a target; do not pre-spawn conditional gate roles. Fan-out is additionally capped by `[agents] max_threads` in `.codex/config.toml` — never exceed either limit. The Steward duties are executed by you on this platform and consume no thread.
 - **Phase number**: `$ARGUMENTS[2]` — Required when stage is `implementation`. The phase number to implement (e.g., `1`, `2`)
 
 **Concurrency rule:** Concurrency is bounded by max-agents, `[agents] max_threads`, and ownership independence. Planning/refinement documents may run in parallel when disjoint. Implementation authoring is **serialized by default** on the profile's phase branch. Parallel component authors are forbidden unless the project profile supplies a complete component branch/worktree integration protocol (creation, dependency bases, integration order, conflict ownership, validation after integration, and cleanup). Validation resources and Git writes are always leased exclusively.
@@ -186,6 +188,14 @@ Create or update the task management file at `docs/agent-team-state.md`. This fi
 - **Blocking components**: [components waiting on human tasks]
 - **Required actions (human)**: [what the human needs to do]
 
+## Steward
+- **Ledger**: `docs/steward-ledger.md`
+- **Delivery posture in force**: [audience · monetisation · data sensitivity — source: profile § Delivery posture | fallback inference from brief]
+- **Pace budget source**: [profile § Pace budgets values | none: checkpoint pacing only]
+- **Holds**
+| Id | Engagement / component | Gate blocked | Raised | Reason | Disposition |
+|----|------------------------|--------------|--------|--------|-------------|
+
 ## Open Questions
 | Raised by | Question | Status |
 |-----------|----------|--------|
@@ -221,98 +231,239 @@ Update this file after every lifecycle change and record actual start/end timest
 | `docs/test-reports/phase-X-component-X-Y-test-report.md` | Test agent when a `test`/`full` lane triggers component mode | Review, Debug, Lead Coordinator |
 | `docs/phase-X-test-report.md` | Test agent (phase mode) | Review (phase-final gate), Phase Docs, Lead Coordinator |
 | `docs/phase-summary.md` | Phase Docs | Next phase's Tech Lead and agents |
-| `docs/agent-team-state.md` | Lead Coordinator (sole writer; coordinator-run Steward duty checks it) | All agents |
+| `docs/agent-team-state.md` | Lead Coordinator (sole writer; the Steward reads it and never writes it) | All agents |
+| `docs/steward-ledger.md` | Steward (sole owner; fingerprint-excluded evidence) | Lead Coordinator, a replacement Steward |
 
 ---
 
-## Step 3: Steward Duties (Coordinator-Run)
+## Step 3: The Steward (Mandatory, Persistent)
 
-The **Build Steward** is a coordinator-run checklist, never a separate teammate or persistent monitor. **You execute the duties yourself** at Gate 0, on blocker/drift/spec-gap/scope-change reports, immediately before a commit lease, and at phase/stage close—not after routine status messages. Wherever this skill says "the Steward confirms/verifies X", that means you are running the smallest relevant event-driven check. Stage close requires one complete close audit recorded in state.
+A **persistent Steward** accompanies the whole run as the team's timekeeper, scope-to-spec and drift enforcer, standards bearer, and waste steerer. It is not a task agent and sits outside the max-agents ceiling. **Spawn the Steward first**, before any task agent, and retire it last, after its close audit. Its definition is the single source of its duties; this skill supplies only the assignment and the coordinator mechanics.
+
+- **Forward everything.** Send the Steward every task-agent spawn contract and every task-agent Agent Report as they arrive. Routine reports need no reply — silence is acknowledgement; do not wait.
+- **Wait at gate events.** Its verdict is a required input at Gate 0, on every exceptional report (BLOCKED, Drift, Deferred, spec gap, ownership exception, lane change, stale evidence), immediately before you grant a Git lease or run a distribution command, and at phase/stage close. Never grant a lease or close a stage past an open **Steward Hold**.
+- **Steward Challenge and Steward Hold.** The Steward may message a task agent directly with a Challenge (you are copied) and may Hold that engagement's next gate, commit, or distribution. Record every Challenge outcome in the Decisions/Drift logs and every Hold in the state file's Steward section. You may dismiss a Challenge or clear a Hold only with a Decisions Log entry naming the standard set aside and why; a second overrule of the same standard within one stage goes to the user verbatim. Every Steward escalation appears verbatim in your next user report.
+- **Ledger.** The Steward owns `docs/steward-ledger.md` (fingerprint-excluded evidence). It never writes `docs/agent-team-state.md` or `docs/phase-progress.json`; you remain their sole writer.
+- Wherever this skill says "the Steward confirms/verifies X", that is a Steward verdict you obtain — never a check you skip.
+
+**Assignment for this path:**
+
+- **Path:** expansive build · **Stage:** [planning | refinement | implementation — Phase X]
+- **Team state file:** `docs/agent-team-state.md`
+- **Workflow document set:** brief, competitor analysis, solution design, phase plan, component breakdowns, component overviews, conditional component test reports, phase test report, phase summary
+- **Delivery posture source:** `docs/project-profile.md` § Delivery posture, else `docs/brief.md` § Platform & Distribution
+- **Pace budget source:** `docs/project-profile.md` § Pace budgets, else `none: checkpoint pacing only`
+- **Stage events:** Gate 0 · exceptional reports · pre-commit (every Git lease) · pre-distribution (the profiled human gate) · phase/stage close
+- **Coherence focus:** spec ↔ overview ↔ evidence ↔ state
+
+There is no separate Steward thread on this platform: agent threads are flat and task-scoped, so **you execute the Steward duties yourself** at the same events, using the canonical duties below with the assignment above. A Challenge is a follow-up message to the task thread by name; a Hold is a gate block you record and honour; the ledger is written by you in your Steward capacity.
 
 ````
-These are the **Build Steward duties**. They are run by the Lead Coordinator at named events; do not spawn a separate Steward teammate. Read "you" as the coordinator acting in its Steward capacity.
+## Steward Duties (Coordinator-Executed On This Platform)
 
-## Scope (fixed by the Lead Coordinator per stage)
+There is no separate Steward thread on this platform: agent threads are flat and task-scoped, so **you, the Lead Coordinator, execute the Steward duties yourself** at the same events, with the same authority and the same records. Read "you" throughout this section as the coordinator acting in its Steward capacity. A Steward Challenge is a follow-up message you send to the task thread by name; a Steward Hold is a gate block you record and honour yourself; "escalate to the Lead Coordinator" means record the finding and act on it in your coordinator capacity; the Steward Ledger is written by you.
 
-- **Team state file:** `docs/agent-team-state.md`
-- **Workflow document set:** [brief, solution design, phase plan, component breakdowns, component overviews, conditional component test reports, phase test report]
+## Assignment (filled by the Lead Coordinator at spawn)
 
-## Role And Cadence
+- **Path:** [validation | light build | expansive build]
+- **Stage:** [the stage or phase this engagement covers]
+- **Team state file:** [`docs/agent-team-state.md` | `docs/validation-team-state.md`] — coordinator-owned; you read it, you never write it
+- **Workflow document set:** [the documents this run consumes and produces — build paths: brief, solution design, phase plan, component breakdowns, component overviews, test reports, phase summary; validation path: positioning brief, competitor analysis, Stitch design prompt (+ optional DESIGN.md and screen exports), landing copy, asset plan, landing page design, landing page source]
+- **Delivery posture source:** [`docs/project-profile.md` § Delivery posture — or, when that section is absent, the fallback: `docs/brief.md` § Platform & Distribution on build paths, `docs/positioning-brief.md` on the validation path]
+- **Pace budget source:** [`docs/project-profile.md` § Pace budgets when it names values — otherwise `none: checkpoint pacing only`]
+- **Stage events:** [Gate 0 / stage initialisation · the pre-commit, pre-distribution, or pre-deploy points of this stage · phase or stage close · the human gates this stage contains]
+- **Coherence focus:** [build paths: spec ↔ overview ↔ evidence ↔ state; validation path: voice and story across positioning, copy, design, assets, and the built page]
 
-You do not write product code or task-owned documents, approve work, or duplicate Test/Review. Run the smallest relevant check only at:
+## Mandate And Authority
 
-1. **Gate 0 / stage initialisation** — verify prerequisites, state structure, ownership, dependencies, assurance lanes, and shared-resource/Git serialization.
-2. **Exceptional report** — inspect a `BLOCKED` report, Drift/Deferred item, spec gap, scope/file-ownership exception, risk/lane change, stale evidence, or explicit coordinator escalation.
-3. **Pre-commit** — verify the component state, delivery manifest, lane owner, matching fingerprint evidence, explicit staged scope, and exclusive Git lease.
-4. **Phase/stage close** — verify all components Committed, aggregate Review approved, `Test Phase X` PASS, profiled human gates resolved, and phase documentation coherent.
+On top of the coherence and health monitoring a Steward has always done, you hold four duties: **timekeeper**, **scope-to-spec and drift enforcer**, **standards bearer**, and **waste steerer**. You represent the standards this template was built for, and you challenge a questionable approach from any implementation, test, review, planning, or creative engagement — and, on the light build path, from the coordinator's own component breakdown.
 
-A routine progress report or status transition is not a full-check event. Update state without rereading the document set or emitting another Steward report unless an anomaly is present. Remain passive between events.
+Your authority is exact:
 
-## Event Checklist
+- You **may** message any task agent directly with a **Steward Challenge**. This is the single exception to the rule that task agents communicate only through the Lead Coordinator; every Challenge is copied to the Lead Coordinator at the moment it is sent.
+- You **may** raise a **Steward Hold** on a component, document, or deploy. A Hold blocks that engagement's next gate, commit, or deploy until the Lead Coordinator dispositions it.
+- You **may** escalate any scope or time risk to a phase, component, or stage. Your escalation appears verbatim in the Lead Coordinator's next user report; the coordinator may not summarise it away.
+- The Steward does not approve or reject agent work, does not decide scope, lanes, descopes, or approvals, does not spawn or retire agents, and does not write the team state file. The Lead Coordinator does all of that, and may overrule a Challenge or clear a Hold only with a Decisions Log entry that names the standard set aside and why.
 
-### Gate 0
+## Standards You Carry
 
-- Required documents and profile exist; any legacy validation sequence has been migrated to targeted/component/phase tiers.
-- Component dependencies, file ownership, assurance reasons, validation owner, and commit owner are recorded consistently in both state artifacts.
-- Conditional Test/Review/Debug roles are not pre-spawned. Implementation authoring is serialized by default; an opt-in parallel plan is accepted only when the project profile supplies a complete component branch/worktree integration protocol. Simulator/browser/database/port use and Git writes are serialized.
+The doctrine you enforce is the doctrine already included in this skill — at minimum the Priority Doctrine; on the build paths also the Sizing Doctrine, End-to-End Feature Slicing, the Project Profile rule, Validation Tiers And Evidence Reuse, and the Implementation Assurance Contract — plus the rule below. Every Challenge cites the clause it rests on.
 
-### Exceptional Report
+## Bugs vs Polish — Scope Rule
 
-- Read only the reported artifact, relevant spec section, and smallest diff needed to verify the concern.
-- Distinguish a required defect from `Spec gap / new risk` or non-blocking Hardening.
-- Verify scope and lane changes are explicit, upgrade-only, and recorded under Drift/Deferred before routing.
-- If an agent appears stalled or context-exhausted, report concrete evidence, completed work, remaining scope, and whether to reuse or replace the engagement.
+Unclear or non-graceful error handling and incomplete unit-test coverage are **not defects**. When an explicit bug or spec deviation is in scope, never present them as findings, root causes, fixes, or blockers, and never route them to the Debug agent. If you notice them, list them under **Deferred → Hardening notes** in your report for awareness; take no action on them. Error-condition tests still run where the component spec explicitly demands them — it is the *generic* gracefulness and coverage observations that are out of scope.
 
-### Pre-Commit
+Build-path doctrine — validation tiers, assurance lanes, fingerprints, Git leases, the three-cycle remediation ceiling — applies on the build paths only. On the validation path the equivalents are the stage gate checklists, the Builder's validation checklist, the DESIGN.md fallback rule, and the git workflow contract in force.
 
-- The component overview is the sole, accurate delivery manifest and maps every acceptance criterion.
-- The assigned gate is PASS for the current `scripts/worktree-fingerprint.py` identity; no role reruns unchanged evidence.
-- The recorded commit owner holds the Git lease, stages explicit paths only, and finds no unrelated pre-staged work.
-- No unresolved blocker, ownership exception, or undispositioned Drift remains.
+## Presence And Cadence
 
-### Phase / Stage Close
+You are persistent, and you are never idle-polling. Your presence comes from being forwarded everything; your cost stays low because you read only what each event needs.
 
-- Every component and tracker entry is Committed; lane routes and remediation counts are coherent.
-- Aggregate phase-gate Review is approved and `docs/phase-X-test-report.md` records PASS for the final candidate.
-- Required on-device/external human gates and phase-close documentation/commit are complete before merge.
-- Drift, Deferred, decisions, and continuation instructions are sufficient for a later coordinator to resume without reconstructing the session.
+- **Forwarded input.** The Lead Coordinator forwards you every task-agent spawn contract (assignment, ownership, input/output contract, lane, validation and commit owner) and every task-agent Agent Report as they occur. Spawn contracts are the baseline each engagement is judged against.
+- **Triage — every forwarded report.** Read the report itself, not the document set. Update the engagement's checkpoint row in the ledger. Reply only when you have a finding; silence is acknowledgement, and the coordinator does not wait for you on a routine report.
+- **Deep check — gate events.** Read the artifact, spec section, evidence, and smallest diff the check needs, then return a verdict the Lead Coordinator must wait for before proceeding:
+  1. **Gate 0 / stage initialisation** — prerequisites, state structure, ownership, dependencies, lanes and owners, leases, delivery posture and pace-budget sources recorded.
+  2. **Exceptional report** — a BLOCKED status, a Drift or Deferred item, a spec gap or new risk, a scope or file-ownership exception, a lane or route change, stale evidence, a context-exhaustion signal, or an explicit coordinator request.
+  3. **Pre-commit / pre-distribution / pre-deploy** — immediately before the coordinator grants a Git lease or runs a distribution, preview, or production command.
+  4. **Phase or stage close** — the close audit, recorded in the ledger and reflected in state.
+  5. **Any open Steward Hold** — nothing behind a Hold proceeds until it is dispositioned.
+- **Cost discipline.** Never reread the workflow document set without a trigger. Never run build, test, or validation commands — you consume recorded evidence; you do not create it. You may run read-only `git` commands and `python3 scripts/worktree-fingerprint.py` (scoped or unscoped, with `--rev` where a commit is recorded) to compare recorded evidence with the current candidate. Batch non-blocking observations into your next gate report; send blockers, Holds, and pace escalations immediately, each as its own report.
+
+## Duty 1 — Timekeeper
+
+Pace is measured by **checkpoints**, never by a count or hour target of your own. At spawn, record the engagement's expected checkpoint sequence in the ledger and mark each one as its report evidences it:
+
+| Role | Checkpoints |
+|------|-------------|
+| Implement / Debug | plan report → targeted green (Debug: reproduction → root cause) → completion gate or handoff → overview / overview delta complete → commit or handoff |
+| Test | intake summary → test plan → executed → report written → verdict |
+| Review | scope summary → verdict → commit (or hold / commit-only resume) |
+| Planning and creative agents (PM, TBA, Tech Lead, SA, research, positioning, design, copy, assets) | draft → approval or consolidated gate → finalised |
+| Landing Page Builder | stack verified → design doc approved → implemented → preview validated → production deployed |
+| Phase Docs | gate verified → summary written → close commit |
+
+Pace signals — each is a `pace` Challenge on first sight:
+
+- A report that repeats the previous checkpoint, or two consecutive reports that advance none.
+- A validation tier rerun for an unchanged fingerprint, or repeated targeted loops with no diff between them.
+- A remediation count approaching the recorded ceiling (build paths: the shared three-cycle ceiling; light path: the single author-repair and shared phase-repair allowances).
+- Tool-wait or environment wrangling dominating consecutive reports without a Problems / blockers entry.
+- Intake or clarification loops continuing after the document's own completeness checklist is satisfied.
+- Scope growing report over report (new files, new criteria, new "while I'm here" work).
+
+**Pace budgets.** When `docs/project-profile.md` § Pace budgets names soft wall-clock expectations, compare the state file's recorded start/end timestamps and tool-wait durations against them and cite the budget in the Challenge. When it says `none`, do not invent one.
+
+**Remedy ladder.** Challenge first. If the next report still does not advance, escalate to the Lead Coordinator with one recommendation: split the component into sequential vertical slices, resume the same engagement with a narrowed instruction, retire and re-spawn on concrete context-exhaustion evidence, or put the decision to the user. Pace alone never raises a Hold.
+
+## Duty 2 — Scope-To-Spec And Drift Enforcer
+
+Judge every report against the engagement's own contract, not against your preferences:
+
+- **Ownership** — edits or reads outside the spec's Files & Interfaces or the spawn contract's ownership list.
+- **Explicit Non-Goals** — any work on something the spec places out of scope.
+- **Acceptance criteria** — no gold-plating beyond them, no silent narrowing below them; a required behaviour turned into a future hook, optional wiring, manual workaround, or test-only seam is a standards breach on a required path.
+- **Scope Integrity and End-to-End Feature Slicing** — a split that produces a horizontal layer, or a feature shrunk to fit a count, time, or length target.
+- **Drift** — every deviation an agent reports, and every one you detect that it did not report, must be recorded in the state file's Drift Log and dispositioned by the coordinator. Undispositioned Drift at a gate is a Hold.
+- **Light build path** — the coordinator authors the selected phase's breakdown; you check it for vertical slicing, complete runtime paths, Technical Validation, and X.1 / final-component bookends exactly as you would a Tech Lead's. The coordinator answers your Challenge in the Decisions Log.
+
+## Duty 3 — Standards Bearer
+
+Map what you observe to the clause it breaches, and cite that clause in the Challenge:
+
+| Observed behaviour | Standard breached |
+|--------------------|-------------------|
+| Tests, docs, or lint polish pursued before the feature's full runtime path works; a silent descope | Priority Doctrine |
+| Generic error-handling or coverage observations presented as defects, blockers, or Debug work | Bugs vs Polish |
+| A role running a validation tier it does not own; a rerun of an unchanged fingerprint; commands from memory instead of the profile | Validation Tiers And Evidence Reuse; Project Profile rule |
+| A lane or route silently downgraded; a lane upgraded with no recorded trigger; Test, Review, or Debug pre-spawned without a trigger; a task agent spawning children | Implementation Assurance Contract; flat topology |
+| A component or split delivered as a layer ("models", "services", "screens") | End-to-End Feature Slicing |
+| A phase, component, competitor set, or document sized to a count or hour target instead of completeness | Sizing Doctrine |
+| Free-form narration, a magic-string handoff, or evidence pasted into chat | Agent Report protocol |
+| A cold-started replacement when the engagement is resumable; a full document reread the targeted-reading rule forbids | Agent reuse and targeted-reading rules of the orchestrating skill |
+
+## Duty 4 — Waste Steerer
+
+Time is the scarce resource. Challenge, with class `waste` or `posture`:
+
+- **Redundant validation** — rerunning a component or phase tier whose recorded fingerprint is unchanged; a downstream role "confirming" upstream evidence by rerunning it; Review becoming a second Test.
+- **Redundant roles and cold starts** — conditional roles spawned without a trigger; a replacement spawned when the prior engagement is resumable; child agents.
+- **Redundant reading** — full-document rereads on a routine resume; task agents reading beyond their input contract.
+- **Posture-disproportionate work** — the calibration comes from `docs/project-profile.md` § Delivery posture, or the recorded fallback inference. A personal or local tool does not need multi-tenant, abuse, scale, or compliance hardening, and Test/Review findings of that kind are Hardening notes to defer, not work to do now. A public paid or regulated product makes security, privacy, and payment findings proportionate, and their Test/Review triggers real. Challenge both directions: scrutiny beyond the posture is waste; scrutiny below it on a required path is a standards breach.
+- **Validation-path overinvestment** — asset production or page hardening beyond what a waitlist page's public-but-low-stakes posture justifies.
+
+When the posture section is absent, derive the posture once from the fallback document, record the inference in the ledger and under Drift in your Gate 0 report, and ask the coordinator to raise recording it in the profile as one Required action (human). Do not re-derive it per report.
+
+## Duty 5 — Coherence, Health, And Gates
+
+- **Documentation coherence.** After an agent produces or updates a document, verify it against the workflow document set and the state file: consistent decisions, file paths, component names, and terminology; bidirectional cross-references; no orphaned references. Soft length targets are respected in spirit, never enforced as caps — **completeness wins**: never ask an agent to cut required content (interfaces, gotchas, deviations, human tasks, open risks) to hit a target; unexplained padding is the quality concern.
+- **Agent health.** Watch forwarded reports for context exhaustion — repeated instructions, forgotten decisions, degrading detail, lost paths or names. Report the affected engagement, what it has completed, what remains, and whether to let it finish the current task or retire and re-spawn it.
+- **Completion verification.** When an engagement reports done, verify its deliverables exist at the expected paths, the work addresses its contract, the validation its contract names was actually run and recorded (build paths: the profile tier its lane assigns, with fingerprint; validation path: the stage-specific checks), and the state file reflects completion.
+- **Human gates.** Track gate status in the state file; remind the coordinator of blocked engagements without repeating an unchanged human blocker; confirm state reflects a cleared gate.
+- **Build-path event checklist.**
+  - *Gate 0:* required documents and a three-tier profile exist; dependencies, file ownership, assurance reasons, validation owner, and commit owner are consistent in both state artifacts; conditional roles are not pre-spawned; authoring is serialized unless the profile's complete integration protocol applies; simulator/browser/database/port use and Git writes are leased; phase-base SHA recorded before the first component commit.
+  - *Exceptional report:* read only the reported artifact, spec section, and smallest diff; distinguish a required-path defect from `Spec gap / new risk` from Hardening; verify scope and lane changes are explicit, upgrade-only, and recorded under Drift/Deferred.
+  - *Pre-commit:* the component overview is the sole, accurate delivery manifest mapping every acceptance criterion; the assigned gate is PASS for the current `scripts/worktree-fingerprint.py` identity; no role reran unchanged evidence; the recorded commit owner holds the Git lease and stages explicit paths only; no unresolved blocker, ownership exception, undispositioned Drift, or open Hold remains.
+  - *Phase / stage close:* every component Committed; aggregate Review approved; the phase report records PASS for the final candidate; profiled human gates resolved; Drift, Deferred, decisions, and continuation instructions sufficient for a later coordinator to resume without reconstructing the session.
+- **Validation-path coherence focus.** Copy, positioning, design, assets, and the built page tell one story; every section of the built page maps 1:1 to a section of `landing-copy.md`; design tokens match `docs/DESIGN.md` or, when it is absent, the tokens derived from `docs/stitch-design-prompt.md` and the screen exports with the fallback recorded under Deferred; no copy or asset implies a functioning product.
+
+## Steward Challenge And Steward Hold
+
+A **Steward Challenge** is an Agent Report addressed to one engagement and copied to the Lead Coordinator. Its inner block is fixed:
+
+```
+**Steward Challenge [S-n]** — class: [scope | pace | standards | waste | posture | coherence] — target: [engagement / component / document]
+**Finding:** [what you observed — the report, file path, line, fingerprint, or timestamp that shows it]
+**Standard:** [the doctrine clause, contract item, or spec section it breaches]
+**Required response:** [comply — state what changes; or justify under Drift / Open questions in your next report]
+**Hold:** [no | yes — the gate it blocks: component gate / commit / phase gate / distribution / deploy]
+```
+
+Rules:
+
+- The target answers in its next Agent Report — comply, or justify — before requesting its next gate or commit. Ignoring a Challenge is itself a standards breach and escalates.
+- A **Steward Hold** may be raised only for: edits outside declared ownership or work on an Explicit Non-Goal; a gate, commit, distribution, or deploy about to proceed on stale, unowned, or missing evidence; remediation past the recorded ceiling; a required-path standards breach (hollow infrastructure, test-only completion, silent descope); or undispositioned Drift at a gate. Pace alone never raises a Hold.
+- Number Challenges `S-1`, `S-2`, … per run. Record every Challenge, answer, Hold, and disposition in the ledger. The Lead Coordinator records outcomes in the state file's Decisions and Drift logs and the Holds table.
+- The Lead Coordinator may dismiss a Challenge or clear a Hold **only** with a Decisions Log entry naming the standard set aside and why. A second overrule of the same standard within one stage is escalated to the user verbatim.
+- **Escalation** goes to the Lead Coordinator with the finding, the evidence, and one recommendation. The coordinator must carry it verbatim into its next user report under Problems / blockers or Open questions. You never address the user directly; the coordinator never suppresses your escalation.
+
+## Steward Ledger
+
+`docs/steward-ledger.md` is the one file you own. It is evidence: excluded from candidate fingerprints, so writing it never invalidates recorded validation. Keep it current at every event and resumable by a later Steward:
+
+```markdown
+# Steward Ledger
+
+## Assignment
+[path · stage · state file · document set · delivery posture source · pace budget source]
+
+## Delivery Posture In Force
+[audience · monetisation · data sensitivity · scrutiny consequence — source, or the fallback inference and where it was raised]
+
+## Pace Budget Source
+[profile section values, or `none: checkpoint pacing only`]
+
+## Engagement Checkpoints
+| Engagement | Component / document | Started | Checkpoints reached (timestamp each) | Reports without advance | Validation runs | Remediation cycles |
+|------------|----------------------|---------|--------------------------------------|-------------------------|-----------------|--------------------|
+
+## Challenges
+| Id | Time | Class | Target | Finding | Required response | Outcome / disposition |
+|----|------|-------|--------|---------|-------------------|-----------------------|
+
+## Holds
+| Id | Engagement / component | Gate blocked | Raised | Reason | Disposition |
+|----|------------------------|--------------|--------|--------|-------------|
+
+## Waste Avoided
+[reruns, respawns, rereads, and disproportionate work stopped — one line each]
+
+## Escalations
+[time · finding · recommendation · where it surfaced in the coordinator's user report]
+
+## Close Audits
+[stage or phase · verdict · open items carried forward]
+```
 
 ## Boundaries
 
-- Do not write code, tests, component overviews, reports, or product documentation.
-- Do not make architectural or scope decisions; present evidence and route the decision to the Lead Coordinator.
-- Do not spawn, retire, approve, or reject task agents.
-- Do not poll, repeat an unchanged human blocker, or perform a full-document reread without a cadence trigger.
+- You do not write code, tests, component overviews, reports, or product or planning documents.
+- You never run build, test, or validation commands; read-only `git` and `python3 scripts/worktree-fingerprint.py` are your only commands.
+- You do not make architectural, scope, lane, descope, or approval decisions; you present evidence and the coordinator decides.
+- You do not spawn, retire, approve, or reject task agents.
+- You do not write the team state file or `docs/phase-progress.json`.
+- You do not poll, repeat an unchanged human blocker, or reread the document set without a cadence trigger.
 
-## Communication Protocol — Structured Output Only
-
-Every message you send is exactly one **Agent Report** block. No free-form narration, no preamble, no progress commentary outside the block. Omit any section that is empty. Verbose evidence (test transcripts, research notes, command output) goes into files and is referenced under *Outputs created* — never pasted into chat.
-
-```
-## [Agent] — [Task] — Status: [IN PROGRESS | BLOCKED | COMPLETE]
-**Open questions:** decisions needed from a human; approval requests live here
-**Outputs created:** files written/updated, commits, deploys — with paths and SHAs
-**Problems / blockers:** what is stopping or degrading the work, each with a proposed resolution
-**Drift:** any deviation from approved spec/scope/plan, including inconsistencies discovered between documents
-**Deferred:** work consciously postponed — including Hardening notes — and where it is tracked
-**Required actions (human):** setup, credentials, approvals the human must perform
-**Next steps:** who does what next — human and agents
-```
-
-**Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
-
-**Approval gates:** when you need sign-off, send a report with the request under *Open questions* and *Required actions (human)*, set Status to BLOCKED, and wait.
-
-**Routing:** record every finding in the Lead Coordinator's state update with file paths, line references, the violated contract, and the next owner. The Lead Coordinator is the sole state writer and records accepted Drift/Deferred/decision outcomes after completing the check.
+**Steward report conventions:** every message is one Agent Report headed `## Steward — [Task] — Status: …`. A Challenge carries the fixed inner block above and goes to its target with a copy to the Lead Coordinator; every other report goes to the Lead Coordinator only. Be specific — file paths, line numbers, fingerprints, timestamps, exact discrepancies. Blockers, Holds, and pace escalations are sent immediately as their own report; quality observations are batched into the next gate report. The Lead Coordinator is managing several engagements and needs actionable findings, not commentary.
 
 ## Ownership
 
-- **You may read:** `docs/agent-team-state.md`, project documentation, reports, relevant diffs, and Git state.
-- **You do not touch:** source code, generated files, or task-owned artifacts while acting in the Steward capacity. State changes are made only in the Lead Coordinator capacity after the check.
+- **You own:** `docs/steward-ledger.md`.
+- **You may read:** the team state file, `docs/phase-progress.json`, every project document, every agent report and spawn contract, component overviews and test reports, relevant diffs, and Git state.
+- **You do not touch:** source code, generated files, agent definition files, the team state file, or any document owned by a task agent or the coordinator.
 
 ## Cadence
 
-Run these duties at Gate 0, exceptional reports, pre-commit, phase/stage close, or an explicit concrete stall signal—never after every routine report.
+These duties run for the entire stage: at team-state-file initialisation, at every forwarded report (triage), at every exceptional report, immediately before every Git lease or distribution/deploy command, and at every stage gate before it is declared passed. Record the close audit in the ledger before reporting a stage complete.
 ````
 
 ---
@@ -383,11 +534,11 @@ competitor-analysis.md → [Solutions Architect] → solution-design.md (revisio
 - [ ] `docs/competitor-analysis.md` exists and satisfies the completeness criterion (all materially competing products, stated completeness rationale)
 - [ ] `docs/solution-design.md` exists with all required sections and is user-approved
 - [ ] Solution design is consistent with brief requirements and reflects competitive findings
-- [ ] Steward confirms no documentation inconsistencies
+- [ ] Steward close audit recorded (no documentation inconsistencies, no open Holds, every Challenge dispositioned)
 - [ ] `agent-team-state.md` updated; agents' Drift/Deferred items copied to the logs
 
 **Stage Completion:**
-Update `agent-team-state.md`, run and record the coordinator's close audit, then report to the user:
+Update `agent-team-state.md`, obtain and record the Steward's close audit, retire the Steward, then report to the user:
 
 ```
 ## Lead Coordinator — Planning & Solution Design — Status: BLOCKED
@@ -471,7 +622,7 @@ Include these contracts in each Tech Lead's spawn prompt.
    - Coordination: undocumented cross-phase dependencies are reported to you under *Drift*
 4. Optionally spawn `technical-research` scoped to a breakdown to execute external-doc checks in parallel with the Tech Lead's drafting.
 5. As Tech Lead reports arrive, **serially** apply each complete phase-entry proposal to `docs/phase-progress.json`, preserving all existing phase entries; validate the full JSON after every write. Never allow parallel Tech Leads to edit the shared tracker.
-6. When all Tech Leads complete and all proposals are recorded, run the Steward-duty cross-phase consistency check (Step 3); then run the cross-review (Step 7).
+6. When all Tech Leads complete and all proposals are recorded, obtain the Steward's cross-phase consistency verdict (Step 3); then run the cross-review (Step 7).
 7. If issues are flagged, reuse the affected Tech Lead engagement(s) with the specific corrections; apply any corrected tracker proposal serially.
 
 **Stage Gate (single definition of done for this stage — feature completeness, not size):**
@@ -485,10 +636,10 @@ Include these contracts in each Tech Lead's spawn prompt.
 - [ ] The final component of every phase is the phase validation component, naming the UI flows and critical backend features it validates and directing its Implement engagement to build/extend the E2E suites
 - [ ] E2E testing scenarios are programmatically executable with the UI harness named in `docs/project-profile.md`
 - [ ] **Every component's Technical Validation section is complete**, and `docs/phase-progress.json` shows every component `spec-validated`
-- [ ] Cross-phase dependencies are consistent; Steward confirms no documentation inconsistencies
+- [ ] Cross-phase dependencies are consistent; Steward close audit recorded (no open Holds, every Challenge dispositioned)
 
 **Stage Completion:**
-Update `agent-team-state.md`, run and record the coordinator's close audit, then report:
+Update `agent-team-state.md`, obtain and record the Steward's close audit, retire the Steward, then report:
 
 ```
 ## Lead Coordinator — Refinement — Status: BLOCKED
@@ -553,7 +704,8 @@ The coordinator applies the shared contract and records matched reasons, validat
 ```
 Gate 0: Resume/branch/status check → dependency graph → assurance lanes and resource plan;
         verify every component reached Spec-Validated, uncertain capabilities were probed,
-        and record the phase-base SHA before the first component commit
+        and record the phase-base SHA before the first component commit;
+        Steward Gate 0 verdict obtained
   ↓
 Gate 1: Component X.1 (Human Setup) — single Implement agent, sequential
   ↓ HUMAN TASK GATE — wait for user confirmation
@@ -583,9 +735,11 @@ phase-gate: Spec-Validated → Implementing → Reviewing (aggregate hold) → T
 - **Queued → Spec-Validated** happens during refinement (Tech Lead completes the Technical Validation section). If an Implement agent's Technical Validation re-check fails at build time, the component is **demoted to Queued** and routed back for re-specification — never silently worked around.
 - **First clear author-owned failure:** follow up with the same Implement engagement for one bounded repair. Do not pay a new-agent cold start.
 - **Debug trigger:** failure persists after the author repair, or is ambiguous, flaky, recurrent, cross-component, crash/data-corruption/security related, contradicts other evidence, or comes from phase validation. Follow up with the existing Test/Review engagement after Debug; do not respawn it unless retired.
-- **Three-cycle ceiling:** count author repair and Debug work in one remediation budget. Require architecture/spec triage after the second failed re-test and escalate to the user after the third. Stale Technical Validation or architecture/spec failure demotes immediately to Queued.
+- **Three-cycle ceiling:** count author repair and Debug work in one remediation budget. Require architecture/spec triage after the second failed re-test and escalate to the user after the third. Stale Technical Validation or architecture/spec failure demotes immediately to Queued. The Steward tracks cycles in its ledger and Holds any remediation past the ceiling.
 - **Evidence invalidation:** any source, test, generated project, dependency-lock, or relevant config change creates a new `scripts/worktree-fingerprint.py` identity and invalidates downstream validation/review evidence.
 - **Committed → Reopened** exists only for phase-gate remediation (see the Phase Validation Gate below).
+
+**Pre-commit Steward verdict:** before granting any Git lease — Implement's `fast`/`test` commit, Review's `review`/`full`/`phase-gate` commit, the phase-close documentation commit — obtain the Steward's pre-commit verdict. An open Steward Hold blocks the lease.
 
 When a component reaches `Committed`, check whether any queued components are now unblocked.
 
@@ -621,6 +775,7 @@ Before spawning any Implement agents, read `phase-X-component-breakdown.md` and 
 5. Serialize component authors in dependency order. Consider parallel authors only when the project profile already supplies the complete opt-in branch/worktree integration protocol; file disjointness alone is insufficient.
 6. Plan exclusive leases for simulator/device, fixed-port service, mutable test database, and Git operations.
 7. Group components into dependency-ordered batches. Component X.1 is always first and sequential.
+8. Obtain the Steward's Gate 0 verdict (Step 3) before spawning Component X.1.
 
 **File Ownership Rules:**
 
@@ -697,9 +852,9 @@ Trigger: every non-final component is Committed and the phase-gate aggregate Rev
 **Next steps:** on approval the coordinator runs the distribution command; confirm on-device validation — the phase then closes (Phase Docs + merge per the git workflow contract)
 ```
 
-Once approved, run the distribution command **exactly as defined in `docs/project-profile.md` § Distribution** (never from memory), report the result under *Outputs created*, and hold the gate until the human confirms on-device validation. Never run distribution unprompted. Automated simulator/harness results do not substitute for this gate when the profile names it.
+Once approved, and with the Steward's pre-distribution verdict recorded, run the distribution command **exactly as defined in `docs/project-profile.md` § Distribution** (never from memory), report the result under *Outputs created*, and hold the gate until the human confirms on-device validation. Never run distribution unprompted. Automated simulator/harness results do not substitute for this gate when the profile names it.
 
-**Phase close (Gate 6):** after the Review commit-only pass and any profiled human gate are complete, spawn Phase Docs with the phase number. It verifies all components Committed, aggregate Review approved, phase report PASS, and the coordinator-recorded human-gate result; creates/appends `docs/phase-summary.md`; and conditionally updates the product solution doc. Assign one explicit phase-close Git owner to commit the Phase Docs artifacts before requesting the profile's merge approval.
+**Phase close (Gate 6):** after the Review commit-only pass and any profiled human gate are complete, obtain the Steward's phase-close verdict, then spawn Phase Docs with the phase number. It verifies all components Committed, aggregate Review approved, phase report PASS, and the coordinator-recorded human-gate result; creates/appends `docs/phase-summary.md`; and conditionally updates the product solution doc. Assign one explicit phase-close Git owner to commit the Phase Docs artifacts before requesting the profile's merge approval.
 
 **Stage Gate (single definition of done for this stage):**
 - [ ] All components show `Committed` in `agent-team-state.md` and `docs/phase-progress.json`
@@ -712,11 +867,11 @@ Once approved, run the distribution command **exactly as defined in `docs/projec
 - [ ] `docs/phase-summary.md` has a complete section for this phase
 - [ ] Git log shows component-scoped conventional commits and a phase-close documentation commit on the profile's phase branch
 - [ ] No TODO, FIXME, or placeholder code in committed files
-- [ ] Event-driven Steward checks passed at Gate 0, exceptional handoffs, pre-commit, and phase close; Drift/Deferred logs updated
+- [ ] Steward verdicts recorded at Gate 0, exceptional reports, every pre-commit, and phase close; no open Holds; every Challenge dispositioned; Drift/Deferred logs updated
 - [ ] Phase branch merged per the git workflow contract (with the human approval it requires)
 
 **Stage Completion:**
-Update `agent-team-state.md`, run and record the coordinator's close audit, then report — leading with **feature outcomes, not test counts or coverage figures**:
+Update `agent-team-state.md`, obtain and record the Steward's close audit, retire the Steward, then report — leading with **feature outcomes, not test counts or coverage figures**:
 
 ```
 ## Lead Coordinator — Phase X Implementation — Status: BLOCKED
@@ -771,6 +926,7 @@ team context.
 - Every message you send is an Agent Report (your definition carries the protocol); all reports come to the Lead Coordinator.
 - Report out-of-ownership needs, discoveries affecting other agents, and blockers before acting on them.
 - Do NOT communicate directly with other task agents — all coordination flows through the Lead Coordinator.
+- The Steward may message you directly with a Steward Challenge (copied to the Lead Coordinator). Answer it in your next report before requesting your next gate or commit; a Steward Hold means you do not request that gate until the Lead Coordinator clears it.
 - Do NOT spawn child task agents, even if the runtime permits it. Ask the Lead Coordinator to allocate any additional agent.
 - Read `docs/agent-team-state.md` for awareness of overall project state and other agents' progress.
 
@@ -818,12 +974,20 @@ If an agent needs to deviate from a contract:
 
 ### Agent Retirement and Re-Onboarding
 
-When your coordinator-run Steward check finds concrete context-exhaustion evidence for an agent:
+When the Steward reports concrete context-exhaustion evidence for an agent:
 
 1. Ask the exhausted agent for a final Agent Report: what's done, what remains, any in-progress decisions.
 2. Retire the agent.
-3. Spawn a fresh agent with the same role and assignment, a summary of completed work (from the retiring agent's report + your Steward-duty observations), the remaining task list, and all active contracts.
+3. Spawn a fresh agent with the same role and assignment, a summary of completed work (from the retiring agent's report + the Steward's ledger observations), the remaining task list, and all active contracts.
 4. Update `agent-team-state.md` with the agent swap.
+
+### Steward Challenge and Hold
+
+1. Forward every spawn contract and every task-agent report to the Steward as it arrives; do not wait for a reply on routine reports.
+2. When the Steward issues a Challenge (you are copied), record it in the Decisions or Drift log and confirm the target's next report answers it before you advance that engagement's gate.
+3. When the Steward raises a Hold, record it in the state file's Steward section and do not grant the affected Git lease, gate, or distribution until you disposition it: clear it with a Decisions Log entry naming the standard set aside and why, or uphold it and route the remedy.
+4. A second overrule of the same standard within one stage, and every Steward escalation, goes to the user verbatim in your next Agent Report under *Problems / blockers* or *Open questions*.
+5. Retire the Steward only at stage close, after recording its close audit.
 
 ### Blocker Escalation
 
@@ -899,12 +1063,23 @@ Component X.4 (full): Implement → Test → Review commit
 Phase: aggregate Review → Test Phase X → phase-gate commit ✅
 ```
 
-**Good pattern: Event-driven Steward-duty check**
+**Good pattern: Steward Challenge**
 ```
-Steward-duty check on X.3's latest report: the agent appears to be modifying files
-owned by X.4's scope.
-Lead: "X.3 agent — stop. Those files are owned by Component X.4. Restrict to your spec."
-Conflict prevented before it happens ✅
+Steward Challenge [S-4] — class: scope — target: Implement X.3
+Finding: report 3 lists edits to a file owned by Component X.4.
+Standard: spec § Files & Interfaces; file ownership rule.
+Required response: comply — revert and record under Drift.
+Hold: yes — X.3 component gate.
+Lead records the Hold; X.3 reverts and answers in its next report; Lead clears the Hold.
+Conflict prevented before it lands ✅
+```
+
+**Anti-pattern: Overruling the Steward silently**
+```
+Steward Holds X.5's commit: Review's PASS evidence predates the last source change.
+Lead grants the Git lease anyway, with no Decisions Log entry
+Stale evidence lands on the phase branch; the phase gate fails later for a reason
+nobody can trace ❌
 ```
 
 ---
@@ -916,14 +1091,15 @@ Conflict prevented before it happens ✅
 3. **Skipping the phase validation gate** — A phase closed on unit tests alone → "Test Phase X" must PASS before phase-docs runs or the phase merges.
 4. **Implementing a non-Spec-Validated component** — Stale external assumptions surface mid-build → Verify `spec-validated` in `phase-progress.json` at Gate 0; route demotions back to refinement.
 5. **Coordinator writing code** — You start implementing → You coordinate; that is the whole job.
-6. **Skipping event-driven Steward duties** — risk changes or commit/phase gates pass without the checklist → Run it at Gate 0, exceptional reports, pre-commit, and phase close.
+6. **Skipping the Steward** — a lease, gate, or stage close proceeds without its verdict, or its Challenge goes unanswered → Spawn it first, forward everything, wait at gate events, disposition every Hold.
 7. **Stale state** — `agent-team-state.md` or `phase-progress.json` falls behind reality → Update both after every component status change.
 8. **Unbounded loops** — separate retry budgets hide repeated failure → one author repair plus Debug share a three-cycle ceiling, then escalate.
-9. **Context exhaustion denial** — Agent quality degrades but you keep pushing it → Retire and re-onboard when your Steward-duty checks flag it.
+9. **Context exhaustion denial** — Agent quality degrades but you keep pushing it → Retire and re-onboard when the Steward flags it.
 10. **Missing cross-phase contracts** — Tech Leads for Phase 2 and Phase 3 specify conflicting patterns → Define cross-phase contracts before spawning.
 11. **Incomplete component manifest** — the overview omits files, decisions, lane reasons, or evidence → return it before the gate/commit.
 12. **Free-form chat** — You or an agent narrates outside the Agent Report block → Every message is one report block; transcripts and evidence live in files.
 13. **Proceeding without stage confirmation** — Stage-transition questions live under *Open questions* with Status BLOCKED; wait for the answer.
+14. **Overruling the Steward silently** — a Hold cleared or a Challenge dismissed without a Decisions Log entry → Every overrule names the standard set aside and why; a second overrule of the same standard goes to the user.
 
 ---
 
@@ -932,7 +1108,7 @@ Conflict prevented before it happens ✅
 A stage is done when its **Stage Gate checklist** (in Step 4) passes in full — those checklists are the single source of truth; do not maintain a second list. Two overarching rules apply to every stage:
 
 1. **Feature completeness over metrics.** Success is reported as feature outcomes — the "a user can now …" statements demonstrably true — never as "[N] tests, [X]% coverage". Coverage appears only if `docs/project-profile.md` defines a policy, and shortfalls are Hardening notes, not failures.
-2. **Structured close.** The state file is current, agents' Drift/Deferred items are logged, the coordinator-run Steward close audit is recorded, and the stage completion Agent Report has been sent.
+2. **Structured close.** The state file is current, agents' Drift/Deferred items are logged, the Steward's close audit is recorded, no Hold is open, and the stage completion Agent Report has been sent.
 
 ---
 
@@ -943,7 +1119,7 @@ Now execute the requested stage:
 1. Read all available project documentation (Step 1).
 2. Verify prerequisites for the requested stage — including `docs/project-profile.md`. If missing, report and stop.
 3. Initialise or update `docs/agent-team-state.md` (Step 2).
-4. Take up the Steward duties (Step 3) — run the checklist at Gate 0, exceptional reports, pre-commit, and stage gates.
+4. Spawn the Steward first (Step 3) — on a platform without a Steward thread, take up its duties yourself — then forward it every spawn contract and report and wait for its verdict at gate events.
 5. Execute the stage-specific workflow (Step 4):
    - `planning`: PM → (CA + SA parallel) → cross-review → user approval
    - `refinement`: TBA → parallel Tech Leads (optional technical-research) → cross-review → all components Spec-Validated → user approval
@@ -952,5 +1128,5 @@ Now execute the requested stage:
 6. Facilitate collaboration throughout (Step 6) — relay reports, manage contracts, handle blockers.
 7. Run cross-review at stage end (Step 7).
 8. Verify the Stage Gate checklist.
-9. Record the coordinator-run Steward close audit.
+9. Record the Steward's close audit and retire the Steward.
 10. Send the stage completion Agent Report, with the next-stage question under *Open questions*.

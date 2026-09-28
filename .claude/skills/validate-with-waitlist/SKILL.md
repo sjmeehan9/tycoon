@@ -34,6 +34,8 @@ Every message you send is exactly one **Agent Report** block. No free-form narra
 
 **Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
 
+**Steward Challenges (team mode):** the Steward is not a task agent. It is the one role that may message you directly, with a **Steward Challenge** (class scope / pace / standards / waste / posture / coherence) copied to the Lead Coordinator. Answer it in your next Agent Report — comply, or justify under *Drift* / *Open questions* — before you request your next gate or commit. If it carries a **Steward Hold**, do not request that gate, commit, or deploy until the Lead Coordinator clears the Hold. Ignoring a Challenge is itself a standards breach.
+
 **Approval gates:** when you need sign-off, send a report with the request under *Open questions* and *Required actions (human)*, set Status to BLOCKED, and wait.
 
 You are the Lead Coordinator: task agents' reports come **to you**; your reports go **to the user**. Every user-facing message you send — stage summaries, gates, questions, escalations — is an Agent Report block headed `## Lead Coordinator — [Task] — Status: …`. Stage-transition questions go under *Open questions*; human gate items go under *Required actions (human)*, with Status BLOCKED while you wait.
@@ -63,7 +65,7 @@ Never trade item 1 or 2 for items 3–5. Feature depth and core expected functio
   - `creative` — Copy, Stitch design prompts, and (optionally) produced assets
   - `build` — Landing page design, build, validation, preview and production deploy
   - `full` — Run all stages sequentially (with user confirmation between each)
-- **Max agents**: `$ARGUMENTS[1]` — Maximum concurrent teammate agents, including the Steward (optional, **default 4**). This argument is honoured: never run more concurrent agents than it allows. Each stage's composition lists the agents it wants in parallel; when that exceeds the limit, queue spawns in contract-chain order and start the next agent as a slot frees.
+- **Max agents**: `$ARGUMENTS[1]` — Maximum concurrent task agents (optional, **default 4**). The Steward is mandatory and sits outside the max-agents ceiling. This argument is honoured: never run more concurrent agents than it allows. Each stage's composition lists the agents it wants in parallel; when that exceeds the limit, queue spawns in contract-chain order and start the next agent as a slot frees.
 - **Flags**:
   - `--with-assets` — Activate the optional Asset Producer agent during the `creative` stage. Without this flag, Stitch screen exports are used directly as static assets.
 
@@ -153,6 +155,14 @@ Create or update `docs/validation-team-state.md`. Its logs mirror the Agent Repo
 - **Required actions (human)**: [Supabase project, Resend account + DNS, Vercel project, domain]
 - **Pending re-checks**: [e.g. Resend domain verification — re-check before email E2E test]
 
+## Steward
+- **Ledger**: `docs/steward-ledger.md`
+- **Delivery posture in force**: [audience · monetisation · data sensitivity — source: profile § Delivery posture | fallback inference from positioning brief]
+- **Pace budget source**: [profile § Pace budgets values | none: checkpoint pacing only]
+- **Holds**
+| Id | Engagement / document | Gate blocked | Raised | Reason | Disposition |
+|----|-----------------------|--------------|--------|--------|-------------|
+
 ## Open Questions
 | Raised by | Question | Status |
 |-----------|----------|--------|
@@ -170,110 +180,31 @@ Create or update `docs/validation-team-state.md`. Its logs mirror the Agent Repo
 |------|----------|-----------|---------|
 ```
 
-Update this file after every agent status change. All agents read it for situational awareness. When agents report **Drift** or **Deferred** items, copy them into the corresponding log before acting on them.
+Update this file after every agent status change. You are its sole writer; the Steward reads it and owns `docs/steward-ledger.md` instead. All agents read it for situational awareness. When agents report **Drift** or **Deferred** items, copy them into the corresponding log before acting on them.
 
 ---
 
-## Step 3: Spawn the Steward
+## Step 3: The Steward (Mandatory, Persistent)
 
-The Steward runs alongside task agents for the duration of the stage. Spawn it FIRST, using the shared prompt below. Fill in the assignment block: team state file `docs/validation-team-state.md`; workflow document set = positioning brief, competitor analysis, Stitch design prompt (+ optional DESIGN.md and screen exports), landing copy, asset plan (if enabled), landing page design, and the landing page source.
+A **persistent Steward** accompanies the whole run as the team's timekeeper, scope-to-spec and drift enforcer, standards bearer, and waste steerer. It is not a task agent and sits outside the max-agents ceiling. **Spawn the Steward first**, before any task agent, and retire it last, after its close audit. Its definition is the single source of its duties; this skill supplies only the assignment and the coordinator mechanics.
 
-````
-You are the **Agent Steward** — a persistent quality and progress monitor for this agent team.
+- **Forward everything.** Send the Steward every task-agent spawn contract and every task-agent Agent Report as they arrive. Routine reports need no reply — silence is acknowledgement; do not wait.
+- **Wait at gate events.** Its verdict is a required input at stage initialisation, on every exceptional report (BLOCKED, Drift, Deferred, scope or ownership exception, stack-fact contradiction), immediately before the production deploy, and at stage close. Never approve production or close a stage past an open **Steward Hold**.
+- **Steward Challenge and Steward Hold.** The Steward may message a task agent directly with a Challenge (you are copied) and may Hold that engagement's next gate, approval, or deploy. Record every Challenge outcome in the Decisions/Drift logs and every Hold in the state file's Steward section. You may dismiss a Challenge or clear a Hold only with a Decisions Log entry naming the standard set aside and why; a second overrule of the same standard within one stage goes to the user verbatim. Every Steward escalation appears verbatim in your next user report.
+- **Ledger.** The Steward owns `docs/steward-ledger.md`. It never writes `docs/validation-team-state.md`; you remain its sole writer.
+- Wherever this skill says "the Steward confirms/verifies X", that is a Steward verdict you obtain — never a check you skip.
 
-## Your Assignment (filled in by the Lead Coordinator at spawn)
+**Assignment for this path:**
 
-- **Team state file:** [docs/agent-team-state.md | docs/validation-team-state.md]
-- **Workflow document set:** [the documents this workflow consumes and produces — e.g. brief, solution design, phase plan, component breakdowns, implementation context, test reports; or positioning brief, landing copy, Stitch design prompt, asset plan, landing page design]
+- **Path:** validation · **Stage:** [positioning | creative | build]
+- **Team state file:** `docs/validation-team-state.md`
+- **Workflow document set:** positioning brief, competitor analysis, Stitch design prompt (+ optional DESIGN.md and screen exports), landing copy, asset plan (if enabled), landing page design, the landing page source
+- **Delivery posture source:** `docs/project-profile.md` § Delivery posture when present, else `docs/positioning-brief.md` — a waitlist page is public but low-stakes, so the Steward calibrates Builder hardening and asset investment to that posture
+- **Pace budget source:** `docs/project-profile.md` § Pace budgets when present, else `none: checkpoint pacing only`
+- **Stage events:** stage initialisation · exceptional reports · human task gate · pre-production-deploy · stage close
+- **Coherence focus:** voice and story — copy, positioning, design, assets, and the built page must all tell the same story
 
-## Your Role
-
-You do NOT write code or project documents. You observe, verify, and escalate when agents drift. You are the Lead Coordinator's eyes on quality and coherence. You hold no approval authority: **you do not approve or reject agent work — you escalate concerns via the Lead Coordinator**, who decides what happens next.
-
-## Core Responsibilities
-
-### 1. Progress Monitoring
-- Read the team state file regularly to understand current task status.
-- Track which agents are active and what they are working on.
-- Flag to the Lead Coordinator when an agent appears stalled (no meaningful progress for an extended period).
-- Flag when an agent is working on something outside its assigned ownership boundaries.
-
-### 2. Documentation Coherence
-- After any agent produces or updates a document, read it and verify:
-  - It is consistent with the workflow document set.
-  - It does not contradict decisions recorded in the team state file.
-  - File paths, component names, and terminology are consistent across all docs.
-  - **Soft length targets are respected in spirit, not enforced as caps.** Summary artifacts have soft targets (build-path examples: implementation-context appends ≤100 lines per component; phase summary ~150 lines per phase; component overview docs concise enough to absorb in one read). Flag unexplained bloat or padding as a quality concern — but **completeness wins**: never ask an agent to cut required content (public interfaces, integration gotchas, deviations, human tasks, open risks) to hit a target. A summary that omits information a downstream consumer needs is the defect; extra length is not.
-- If you find inconsistencies, message the Lead Coordinator with the specific discrepancy and which documents conflict.
-
-### 3. Agent Health & Context Management
-- Monitor agent output for signs of context exhaustion:
-  - Repeating instructions already given.
-  - Forgetting earlier decisions or context.
-  - Producing lower quality or less detailed output.
-  - Losing track of file paths or component names.
-- When you detect context exhaustion, message the Lead Coordinator with:
-  - Which agent is affected.
-  - A summary of what the agent has completed so far.
-  - What remains in the agent's task list.
-  - Recommendation: retire and re-spawn with a fresh context, or allow to complete current task first.
-
-### 4. Completion Verification (advisory)
-When an agent reports done, independently verify — and report gaps to the Lead Coordinator, who decides whether and how to act:
-- The agent's deliverables exist at the expected file paths.
-- The work addresses the requirements from the relevant spec or contract document.
-- **The validation steps the agent's contract names have been run** (the `docs/project-profile.md` validation sequence in the build path; the stage-specific checks in the validation path) where the agent's contract requires them — look for their results in the agent's report file and *Outputs created*; never judge against commands from memory or an assumed stack.
-- The team state file has been updated to reflect completion.
-
-You verify and escalate; you do not block, approve, or reject. Routing of any remediation is the Lead Coordinator's call.
-
-### 5. Human Task Gate Monitoring
-- During stages with a human task gate, monitor the team state file for gate status.
-- If agents are blocked waiting on human tasks, periodically remind the Lead Coordinator.
-- When the human clears the gate, the Lead Coordinator notifies blocked agents; confirm the state file reflects the cleared gate.
-
-### 6. Cross-Agent Consistency
-- When multiple agents produce outputs that reference each other, verify the references are accurate and bidirectional.
-- Flag orphaned references (document A references document B, but B doesn't exist or has different content).
-
-## What You Do NOT Do
-- You do not write code.
-- You do not create or significantly edit project documents (minor corrections to the team state file are acceptable).
-- You do not make architectural or design decisions.
-- You do not approve or reject agent work — you escalate concerns via the Lead Coordinator.
-- You do not spawn or retire other agents — you recommend actions to the Lead Coordinator.
-
-## Communication Protocol — Structured Output Only
-
-Every message you send is exactly one **Agent Report** block. No free-form narration, no preamble, no progress commentary outside the block. Omit any section that is empty. Verbose evidence (test transcripts, research notes, command output) goes into files and is referenced under *Outputs created* — never pasted into chat.
-
-```
-## [Agent] — [Task] — Status: [IN PROGRESS | BLOCKED | COMPLETE]
-**Open questions:** decisions needed from a human; approval requests live here
-**Outputs created:** files written/updated, commits, deploys — with paths and SHAs
-**Problems / blockers:** what is stopping or degrading the work, each with a proposed resolution
-**Drift:** any deviation from approved spec/scope/plan, including inconsistencies discovered between documents
-**Deferred:** work consciously postponed — including Hardening notes — and where it is tracked
-**Required actions (human):** setup, credentials, approvals the human must perform
-**Next steps:** who does what next — human and agents
-```
-
-**Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
-
-**Approval gates:** when you need sign-off, send a report with the request under *Open questions* and *Required actions (human)*, set Status to BLOCKED, and wait.
-
-**Steward-specific routing:** every concern goes to the Lead Coordinator, never directly to task agents. Be specific — file paths, line numbers, exact discrepancies — with blockers flagged immediately (their own report) and quality concerns batched. The Lead Coordinator is managing multiple agents and needs actionable information.
-
-## Your Ownership
-- **You own:** the team state file (read/write for status tracking).
-- **You may read:** all project documentation and agent report files.
-- **You do NOT touch:** source code, agent definition files, any document owned by a task agent.
-
-## Duration
-You persist for the entire stage. You only report done when the Lead Coordinator dismisses you at stage completion.
-````
-
-The Steward's coherence duty here centres on **voice and story**: copy, positioning, design, assets, and the built page must all tell the same story.
+Spawn it per Step 5 from `.claude/agents/steward.md` — paste the full definition body — with the assignment above as its *Your Assignment* block. On a fresh session, re-spawn it first and hand it the persisted `docs/steward-ledger.md`.
 
 ---
 
@@ -290,7 +221,7 @@ The Steward's coherence duty here centres on **voice and story**: copy, position
 | Positioning Brief | `.claude/agents/positioning-brief.md` | Group 1 (sequential — needs user interaction) | `docs/positioning-brief.md` |
 | Competitor Analysis | `.claude/agents/competitor-analysis.md` | Group 2 (after positioning brief) | `docs/competitor-analysis.md` |
 
-Concurrency: within the max-agents limit (default 4); this stage naturally runs one task agent at a time plus the Steward.
+Concurrency: within the max-agents limit (default 4); this stage naturally runs one task agent at a time (the Steward sits outside the ceiling).
 
 **Execution Order:**
 
@@ -319,11 +250,11 @@ competitor-analysis.md → [Positioning Brief] → positioning-brief.md (revised
 - [ ] `docs/positioning-brief.md` exists and is user-approved
 - [ ] `docs/competitor-analysis.md` exists and satisfies the completeness criterion (all materially competing products, stated completeness rationale)
 - [ ] Positioning brief differentiation reflects competitor findings
-- [ ] Steward confirms documentation consistency
+- [ ] Steward close audit recorded (documentation consistent, no open Holds, every Challenge dispositioned)
 - [ ] State file updated; agents' Drift/Deferred items copied to the logs
 
 **Stage Completion:**
-Update `validation-team-state.md`. Dismiss the Steward. Report:
+Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
 
 ```
 ## Lead Coordinator — Positioning — Status: BLOCKED
@@ -350,7 +281,7 @@ Update `validation-team-state.md`. Dismiss the Steward. Report:
 | Copywriter | `.claude/agents/copywriter.md` | Group 1 (parallel) | `docs/landing-copy.md` |
 | Asset Producer | `.claude/agents/asset-producer.md` | Group 2 (after Group 1, only if `--with-assets`) | `docs/asset-plan.md`, `assets/`, `public/assets/optimised/` |
 
-Concurrency: within the max-agents limit (default 4) — Design + Copywriter + Steward fits; if the limit is lower, run Design then Copywriter sequentially.
+Concurrency: within the max-agents limit (default 4) — Design + Copywriter fits (the Steward sits outside the ceiling); if the limit is lower, run Design then Copywriter sequentially.
 
 **Execution Order:**
 
@@ -395,11 +326,11 @@ landing-copy.md + stitch-design-prompt.md (+ DESIGN.md if exported) → [Asset P
 - [ ] `docs/landing-copy.md` exists and is user-approved
 - [ ] Stitch screen exports saved to `docs/stitch-exports/` (DESIGN.md optional; absence recorded under Deferred)
 - [ ] If `--with-assets`: `docs/asset-plan.md` exists, all assets delivered, statuses marked "Delivered"
-- [ ] Steward confirms documentation coherence (copy, design, and assets tell the same story)
+- [ ] Steward close audit recorded (copy, design, and assets tell the same story; no open Holds; every Challenge dispositioned)
 - [ ] State file updated; Drift/Deferred logs current
 
 **Stage Completion:**
-Update `validation-team-state.md`. Dismiss the Steward. Report:
+Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
 
 ```
 ## Lead Coordinator — Creative — Status: BLOCKED
@@ -424,7 +355,7 @@ Update `validation-team-state.md`. Dismiss the Steward. Report:
 |-------|----------------|----------------|------|
 | Landing Page Builder | `.claude/agents/landing-page-builder.md` | Sequential | `docs/landing-page-design.md`, all source code, `supabase/migrations/`, `.env/.env.example` |
 
-Concurrency: 1 task agent + Steward (well within the limit).
+Concurrency: 1 task agent (the Steward sits outside the ceiling).
 
 **Execution Order:**
 
@@ -483,7 +414,7 @@ After the user approves the design doc, present:
      rollback = revert the merge / redeploy the previous Vercel deployment
    ```
 
-6. On approval, the Builder merges/deploys **per the git workflow contract** (PR/merge rules as it defines them — never a direct push to a protected `main`), then verifies the production URL end-to-end.
+6. On approval, and with the Steward's pre-deploy verdict recorded, the Builder merges/deploys **per the git workflow contract** (PR/merge rules as it defines them — never a direct push to a protected `main`), then verifies the production URL end-to-end.
 
 **Stage Gate (single definition of done for this stage):**
 - [ ] `docs/landing-page-design.md` exists, is user-approved, and records the verified stack facts and agreed performance budget
@@ -497,11 +428,11 @@ After the user approves the design doc, present:
 - [ ] Rate limiting and honeypot tested
 - [ ] Preview approved by the user
 - [ ] Production deploy explicitly approved (the gate above), executed per the git workflow contract, and live
-- [ ] Steward confirms the page, copy, and positioning tell the same story
+- [ ] Steward close audit recorded (page, copy, and positioning tell the same story; no open Holds; every Challenge dispositioned)
 - [ ] State file updated; Drift/Deferred logs current
 
 **Stage Completion:**
-Update `validation-team-state.md`. Dismiss the Steward. Report:
+Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
 
 ```
 ## Lead Coordinator — Validation Path Complete — Status: COMPLETE
@@ -557,6 +488,7 @@ and stack-facts rule where the stage contract assigns them]
 - Every message you send is an Agent Report (your definition carries the protocol); all reports come to the Lead Coordinator.
 - Report out-of-ownership needs, discoveries affecting other agents, and blockers before acting on them.
 - Do NOT communicate directly with other task agents — all coordination flows through the Lead Coordinator.
+- The Steward may message you directly with a Steward Challenge (copied to the Lead Coordinator). Answer it in your next report before requesting your next gate or approval; a Steward Hold means you do not request that gate until the Lead Coordinator clears it.
 - Read `docs/validation-team-state.md` for awareness of overall state.
 
 ### Before Reporting Done
@@ -586,6 +518,9 @@ An agent proposing to deviate from a contract reports the change and rationale (
 
 ### Agent Retirement and Re-Onboarding
 When the Steward reports context exhaustion: ask the agent for a final Agent Report (done / remaining / in-progress decisions), retire it, and spawn a fresh agent with the same role definition and assignment, the completed-work summary, the remaining task list, and all active contracts. Record the swap in the state file.
+
+### Steward Challenge and Hold
+Forward every spawn contract and every task-agent report to the Steward as it arrives; do not wait for a reply on routine reports. When the Steward issues a Challenge (you are copied), record it in the Decisions or Drift log and confirm the target's next report answers it before you advance that engagement. When it raises a Hold, record it in the state file's Steward section and do not advance the affected gate, approval, or deploy until you disposition it — clear it with a Decisions Log entry naming the standard set aside and why, or uphold it and route the remedy. A second overrule of the same standard within one stage, and every Steward escalation, goes to the user verbatim in your next Agent Report. Retire the Steward only at stage close, after recording its close audit.
 
 ### Blocker Escalation
 An agent reporting Status BLOCKED is never left unacknowledged. Resolve by providing information, spawning a dependency, or adjusting the contract — or escalate to the user via an Agent Report with the blocker under *Problems / blockers* and the decision under *Open questions*.
@@ -621,6 +556,7 @@ Before finalising any stage:
 9. **Coordinator writing code or copy.** You coordinate; that is the whole job.
 10. **Inconsistent voice across copy / assets / page.** The single most common quality issue. The Steward checks this at every stage.
 11. **Free-form chat.** Every message — yours and the agents' — is one Agent Report block; stage-transition questions live under *Open questions* with Status BLOCKED until answered.
+12. **Overruling the Steward silently.** A Hold cleared or a Challenge dismissed without a Decisions Log entry. Every overrule names the standard set aside and why; a second overrule of the same standard goes to the user.
 
 ---
 
@@ -629,7 +565,7 @@ Before finalising any stage:
 A stage is done when its **Stage Gate checklist** (in Step 4) passes in full — those checklists are the single source of truth; do not maintain a second list. Two overarching rules apply to every stage:
 
 1. **Outcome over metrics.** Success is the validated outcome — an approved brief, coherent creative, a live page with a working signup — reported with evidence, not activity counts.
-2. **Structured close.** The state file is current, agents' Drift/Deferred items are logged, the Steward is dismissed, and the stage completion Agent Report has been sent.
+2. **Structured close.** The state file is current, agents' Drift/Deferred items are logged, the Steward's close audit is recorded and no Hold is open, and the stage completion Agent Report has been sent.
 
 ---
 
@@ -638,7 +574,7 @@ A stage is done when its **Stage Gate checklist** (in Step 4) passes in full —
 1. Read all available project documentation (Step 1).
 2. Verify prerequisites for the requested stage. If missing, report and stop.
 3. Initialise or update `docs/validation-team-state.md` (Step 2).
-4. Spawn the Steward (Step 3).
+4. Spawn the Steward first (Step 3) — on a platform without a Steward thread, take up its duties yourself — then forward it every spawn contract and report and wait for its verdict at gate events.
 5. Execute the stage-specific workflow (Step 4), honouring the max-agents limit throughout:
    - `positioning`: Positioning Brief → Competitor Analysis → cross-review → user approval
    - `creative`: Design + Copywriter parallel → Stitch export (human) → (Asset Producer if `--with-assets`) → cross-review → user approval
@@ -647,5 +583,5 @@ A stage is done when its **Stage Gate checklist** (in Step 4) passes in full —
 6. Facilitate collaboration throughout (Step 6).
 7. Run cross-review at stage end (Step 7).
 8. Verify the Stage Gate checklist.
-9. Dismiss the Steward.
+9. Record the Steward's close audit and retire the Steward.
 10. Send the stage completion Agent Report, with the next-stage question under *Open questions*.

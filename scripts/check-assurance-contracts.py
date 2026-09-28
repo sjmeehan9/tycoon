@@ -21,6 +21,17 @@ LIGHT_AGENT_ALLOWLIST = frozenset(
         "phase-docs",
     }
 )
+# Control-plane roles every skill spawns (or, on flat-thread platforms, executes as the
+# coordinator). They are not task agents and never count toward the light registry.
+CONTROL_ROLE_ALLOWLIST = frozenset({"steward"})
+STEWARD_CONTRACTS = (
+    "persistent Steward",
+    "Steward Challenge",
+    "Steward Hold",
+    "docs/steward-ledger.md",
+    "outside the max-agents ceiling",
+    "Spawn the Steward first",
+)
 
 
 def should_check_template_readme(
@@ -93,7 +104,7 @@ def check_light_agent_registry(relative: str) -> list[str]:
         r"(?im)^\s*(?:\d+\.\s*)?delegate\b[^\n]{0,100}\bto\s+`([a-z][a-z0-9-]*)`",
     ):
         explicit_delegations.update(re.findall(pattern, content))
-    unexpected = explicit_delegations - LIGHT_AGENT_ALLOWLIST
+    unexpected = explicit_delegations - LIGHT_AGENT_ALLOWLIST - CONTROL_ROLE_ALLOWLIST
     if unexpected:
         failures.append(
             f"{relative}: delegates outside the seven-agent allowlist: "
@@ -121,6 +132,11 @@ def main() -> int:
         ".agents/skills/build-with-agent-team-light/SKILL.md",
         ".claude/skills/build-with-agent-team-light/SKILL.md",
     )
+    validation_skills = (
+        ".agents/skills/validate-with-waitlist/SKILL.md",
+        ".claude/skills/validate-with-waitlist/SKILL.md",
+    )
+    steward_agents = (".claude/agents/steward.md",)
     implement_agents = (
         ".claude/agents/implement.md",
         ".claude/agents/implement-autonomous.md",
@@ -180,8 +196,7 @@ def main() -> int:
             "scripts/worktree-fingerprint.py",
             "Validation resources and Git writes are always leased exclusively",
             "Three-cycle ceiling",
-            "coordinator-run Steward",
-            "never a separate teammate",
+            *STEWARD_CONTRACTS,
             "serialized by default",
             "one active component-delivery engagement at a time",
             "phase-base SHA",
@@ -244,12 +259,43 @@ def main() -> int:
             "record the human gate as BLOCKED",
             "repeat aggregate Review, automated phase validation",
             "docs/*-product-solution-doc-*.md",
+            *STEWARD_CONTRACTS,
+            "control-plane role",
         )
         failures += check_light_agent_registry(relative)
         failures += prohibit_patterns(
             relative,
             r"(?im)^\s*(?:\d+\.\s*)?(?:delegate|spawn|resume)\s+`?(?:tech-lead|test|debug|competitor-analysis)\b",
             r"(?im)^\s*(?:\d+\.\s*)?delegate\s+(?:the\s+)?(?:Tech Lead|Test|Debug|Competitor Analysis)\b",
+        )
+
+    for relative in validation_skills:
+        failures += require(
+            relative,
+            *STEWARD_CONTRACTS,
+            "docs/validation-team-state.md",
+            "voice and story",
+        )
+        failures += prohibit(relative, "Dismiss the Steward")
+
+    for relative in steward_agents:
+        failures += require(
+            relative,
+            "Steward Challenge",
+            "Steward Hold",
+            "docs/steward-ledger.md",
+            "Delivery posture",
+            "Pace budgets",
+            "unchanged fingerprint",
+            "does not approve or reject",
+            "never run build, test, or validation commands",
+            "scripts/worktree-fingerprint.py",
+            "## Priority Doctrine",
+            "## Sizing Doctrine",
+            "## Bugs vs Polish",
+            "## Validation Tiers And Evidence Reuse",
+            "## Implementation Assurance Contract",
+            "Pace alone never raises a Hold",
         )
 
     for relative in implement_agents:
@@ -386,6 +432,8 @@ def main() -> int:
             "serialized by default",
             "one active component-delivery engagement at a time",
             "scoped fingerprint command",
+            "## Delivery posture",
+            "## Pace budgets",
         )
         failures += prohibit_patterns(
             relative,
@@ -417,6 +465,7 @@ def main() -> int:
         "build-with-agent-team-light",
         "This exception grants no phase-validation authority when that exact mode is absent.",
         "docs/*-product-solution-doc-*.md",
+        "docs/steward-ledger.md",
     )
     failures += require(
         "agents-src/shared/implementation-assurance.md",
@@ -435,7 +484,8 @@ def main() -> int:
         "one active component-delivery engagement at a time",
         "phase-base SHA",
         "phase-progress entry proposal",
-        "never a separate teammate",
+        "persistent Steward",
+        "docs/steward-ledger.md",
         "Git-leased planning-package commit",
         "globally owned candidate",
         "Light `implementation` accepts the phase as its lone trailing value",
@@ -447,6 +497,7 @@ def main() -> int:
             "Test Phase X",
             "serialized by default",
             "Missing executable proof",
+            "persistent Steward",
         )
     for relative in ("templates/AGENTS.md.template", "templates/CLAUDE.md.template"):
         failures += require(
@@ -458,6 +509,8 @@ def main() -> int:
     live_contracts = (
         *build_skills,
         *light_build_skills,
+        *validation_skills,
+        *steward_agents,
         *implement_agents,
         *test_agents,
         *review_agents,
@@ -479,6 +532,11 @@ def main() -> int:
         "explicit sample",
         "Parallel code authors require isolated worktrees/branches",
         "code authors run concurrently only when file ownership permits",
+        "never a separate teammate",
+        "coordinator-run Steward duty",
+        "never spawn a Steward",
+        "steward-prompt.md",
+        "build-steward-prompt.md",
     )
     for relative in live_contracts:
         failures += prohibit(relative, *obsolete_contracts)
@@ -491,7 +549,7 @@ def main() -> int:
 
     print(
         "OK: risk-tiered implementation contracts are coherent across "
-        "Claude, Codex, GitHub Copilot, project profiles, and build documentation."
+        "Claude, Codex, GitHub Copilot, the Steward, project profiles, and build documentation."
     )
     return 0
 

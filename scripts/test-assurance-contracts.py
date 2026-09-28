@@ -104,6 +104,8 @@ class LightAssuranceContractMutationTests(unittest.TestCase):
         self,
         relative: str,
         mutate: Callable[[str], str],
+        *,
+        github_repository: str = "sjmeehan9/project-template",
     ) -> tuple[int, str]:
         original = ORIGINAL_READ(relative)
 
@@ -118,7 +120,7 @@ class LightAssuranceContractMutationTests(unittest.TestCase):
                 os.environ,
                 {
                     "GITHUB_ACTIONS": "true",
-                    "GITHUB_REPOSITORY": "sjmeehan9/project-template",
+                    "GITHUB_REPOSITORY": github_repository,
                 },
                 clear=True,
             ),
@@ -176,6 +178,53 @@ class LightAssuranceContractMutationTests(unittest.TestCase):
             "'any standard route that would have been `test` or `full` maps to `review`'",
             output,
         )
+
+    def test_build_skill_rejects_separate_teammate_prohibition(self) -> None:
+        relative = ".claude/skills/build-with-agent-team/SKILL.md"
+        result, output = self.run_mutated_check(
+            relative,
+            lambda content: content + "\nThe Steward is never a separate teammate.\n",
+        )
+
+        self.assertEqual(1, result)
+        self.assertIn(
+            f"{relative}: contains obsolete contract 'never a separate teammate'",
+            output,
+        )
+
+    def test_light_skill_requires_steward_hold(self) -> None:
+        relative = ".agents/skills/build-with-agent-team-light/SKILL.md"
+        result, output = self.run_mutated_check(
+            relative,
+            lambda content: content.replace("Steward Hold", "Steward pause"),
+        )
+
+        self.assertEqual(1, result)
+        self.assertIn(f"{relative}: missing 'Steward Hold'", output)
+
+    def test_light_skill_accepts_steward_as_control_role(self) -> None:
+        # Downstream identity: generated repos own their README (.templatesyncignore),
+        # so a clean exit is only meaningful with the template-README contract skipped.
+        relative = ".claude/skills/build-with-agent-team-light/SKILL.md"
+        result, output = self.run_mutated_check(
+            relative,
+            lambda content: content + "\nSpawn `steward` before any task agent.\n",
+            github_repository="example/my-app",
+        )
+
+        self.assertEqual(0, result)
+        self.assertNotIn("delegates outside the seven-agent allowlist", output)
+        self.assertNotIn("light-agent registry must be exactly", output)
+
+    def test_steward_agent_requires_ledger(self) -> None:
+        relative = ".claude/agents/steward.md"
+        result, output = self.run_mutated_check(
+            relative,
+            lambda content: content.replace("docs/steward-ledger.md", "docs/ledger.md"),
+        )
+
+        self.assertEqual(1, result)
+        self.assertIn(f"{relative}: missing 'docs/steward-ledger.md'", output)
 
     def test_review_requires_standard_mode_preservation(self) -> None:
         relative = ".codex/agents/review.toml"

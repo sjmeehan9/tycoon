@@ -12,6 +12,15 @@ test.describe('original presentation and local audio', () => {
         (image: HTMLImageElement) => image.complete && image.naturalWidth === 1_600,
       ),
     ).toBe(true);
+    await page.waitForLoadState('networkidle');
+    expect(
+      await page.evaluate(() =>
+        performance
+          .getEntriesByType('resource')
+          .map(({ name }) => new URL(name).pathname)
+          .filter((pathname) => pathname.includes('/assets/audio/')),
+      ),
+    ).toEqual([]);
 
     await page.getByRole('button', { name: 'Start new campaign' }).click();
     await page.getByRole('button', { name: 'Show current step' }).click();

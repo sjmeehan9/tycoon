@@ -185,6 +185,13 @@ async function importEnvelope(
     page.getByText(`Imported Day ${String(envelope.activeRun?.day ?? 1)} safely.`),
   ).toBeVisible();
   await closeGameMenu(page, touch);
+  // An imported event owns the modal interaction until the player chooses.
+  // Leave background notices alone so the dialog remains the only actionable layer.
+  if ((await page.getByRole('dialog').count()) > 0) return;
+  const dismissPwa = page.getByRole('button', { name: 'Got it' });
+  if (await dismissPwa.isVisible()) await activate(dismissPwa, touch);
+  const dismissMessage = page.getByRole('button', { name: 'Dismiss message' });
+  if (await dismissMessage.isVisible()) await activate(dismissMessage, touch);
 }
 
 async function openGameMenu(page: Page, touch: boolean): Promise<void> {
@@ -249,9 +256,11 @@ async function expectMobileViewportComposition(page: Page): Promise<void> {
     const dashboard = bounds('[data-service-section="dashboard"]');
     const activity = bounds('[data-service-section="activity"]');
     const stock = bounds('[data-service-section="stock"]');
+    const header = bounds('.app-shell.is-service .game-header');
     return {
       activityTop: activity.top,
       dashboardBottom: dashboard.bottom,
+      dashboardHeight: dashboard.height,
       dashboardTop: dashboard.top,
       fieldBounds: fields.map((field) => {
         const fieldBounds = bounds(`[data-dashboard-field="${field}"]`);
@@ -264,6 +273,8 @@ async function expectMobileViewportComposition(page: Page): Promise<void> {
       }),
       innerHeight: window.innerHeight,
       innerWidth: window.innerWidth,
+      headerBottom: header.bottom,
+      headerHeight: header.height,
       sceneBottom: scene.bottom,
       sceneHeight: scene.height,
       sceneTop: scene.top,
@@ -275,10 +286,16 @@ async function expectMobileViewportComposition(page: Page): Promise<void> {
   expect(geometry.innerWidth).toBe(360);
   expect(geometry.innerHeight).toBe(780);
   expect(geometry.scrollY).toBe(0);
+  expect(geometry.headerHeight).toBeLessThanOrEqual(60);
   expect(geometry.sceneTop).toBeGreaterThanOrEqual(0);
   expect(geometry.sceneHeight).toBeGreaterThanOrEqual(150);
-  expect(geometry.sceneBottom).toBeLessThanOrEqual(geometry.dashboardTop + 8);
-  expect(geometry.dashboardBottom).toBeLessThanOrEqual(geometry.innerHeight);
+  expect(geometry.sceneHeight).toBeLessThanOrEqual(180);
+  expect(geometry.sceneTop - geometry.headerBottom).toBeGreaterThanOrEqual(0);
+  expect(geometry.sceneTop - geometry.headerBottom).toBeLessThanOrEqual(6);
+  expect(geometry.dashboardTop - geometry.sceneBottom).toBeGreaterThanOrEqual(0);
+  expect(geometry.dashboardTop - geometry.sceneBottom).toBeLessThanOrEqual(7);
+  expect(geometry.dashboardHeight).toBeLessThanOrEqual(500);
+  expect(geometry.dashboardBottom).toBeLessThanOrEqual(760);
   expect(geometry.activityTop).toBeGreaterThanOrEqual(geometry.dashboardBottom);
   expect(geometry.stockTop).toBeGreaterThan(geometry.activityTop);
   for (const field of geometry.fieldBounds) {

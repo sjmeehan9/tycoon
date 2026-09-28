@@ -51,22 +51,48 @@ outside a restricted process sandbox.
 ## Deterministic engine
 
 - One engine tick is 250ms of simulated time; a rush is 300 ticks.
-- A saved game contains the PRNG state, queue, active service, event, and tick.
+- A saved game contains the PRNG state, normal/express queues, canonical service
+  jobs by station, event, and tick.
 - Display speed changes how often the controller dispatches a tick, not the
   calculation performed by a tick.
 - Tests and other consumers import public contracts from `src/game/index.ts`.
 - Campaign creation locks `standard` or `hard` difficulty independently from
   scenario. `demandInfluences.ts` is the sole difficulty-policy authority:
   Standard applies 1.225 to both price-response slopes only, while Hard applies
-  1.675 directly to every registered baseline deviation without compounding.
-- The campaign closes on Day 30. Victory requires the cafe, $300 cash, and 65
-  reputation; bankruptcy is checked after settlement only below −$100.
+  1.70 directly to every registered baseline deviation without compounding.
+- The campaign closes on Day 40. Victory requires the department-store hall,
+  $350 cash, and 65 reputation; bankruptcy is checked after settlement only
+  below −$100.
 - Balance maintenance belongs in `tests/unit/campaign.test.ts`: keep at least
   two complete viable strategies and one complete bankruptcy path using public
   commands. Never introduce seed- or test-specific production logic.
 - `tests/fixtures/campaignFixtures.ts` contains validated near-outcome and
   growth snapshots for production import UI journeys. If the schema or balance
   changes, update these fixtures and their full-campaign proof together.
+
+## Department workforce and parallel service
+
+- `VENUE_WORKFORCE_CAPACITY` is the sole roster/schedule authority: cart,
+  kiosk, and cafe retain schedules of two, three, and five; the department
+  roster holds twelve and schedules at most ten.
+- `STAFF_ROLES` is exhaustive across Barista, Front of house, Manager, and
+  Runner. Manager/Runner are department-only; their bounded workload reductions
+  are applied exactly once by the engine and never by animation.
+- `STATION_IDS` fixes service order as espresso, brew, then cold;
+  `LANE_IDS` fixes normal before express. Department plans assign every
+  scheduled person exactly once and select zero to three unique eligible
+  express drinks.
+- Ingredients are consumed irrevocably when a canonical job starts. Completion
+  must never consume them again. Fixed station order, persisted job IDs, and
+  report aggregates protect exact-once stock, cash, satisfaction, activity, and
+  settlement across pause, speed, reload, and rush end.
+- Cart, kiosk, and cafe use the same generalized contracts with one espresso
+  station and one normal lane. Do not reintroduce singular `queue` or
+  `activeService` authorities.
+- Run `tests/unit/engine.test.ts`, `tests/unit/operations.test.ts`,
+  `tests/unit/persistence.test.ts`, `tests/e2e/department-workforce.spec.ts`,
+  and `tests/e2e/parallel-service.spec.ts` after any workforce, station, lane,
+  queue, service-job, inventory, settlement, or report change.
 
 ## Planner controls and sale-price tracing
 
@@ -100,13 +126,15 @@ outside a restricted process sandbox.
   with the actual engine-recorded charge. At closing, active service precedes
   queued customers in rush-ended order.
 - `createRenderSnapshot` is the sole service-render boundary. It detaches and
-  deeply freezes exact identity/statistics plus at most 12 visible customers,
-  12 activity rows, and 10 scheduled staff. It carries no command, store,
-  persistence, random-number, tick, inventory-write, or accounting authority.
+  deeply freezes exact identity/statistics plus at most 12 queued, three active,
+  and three recent terminal customers, 12 activity rows, and 10 scheduled
+  staff. It carries no command, store, persistence, random-number, tick,
+  inventory-write, or accounting authority.
 - `ServiceWorld` is dynamically imported only during `rush`/`event` and
-  exhaustively dispatches cart, kiosk, and cafe. Every production service route
-  is WebGL2-only; unsupported capability, context loss, or renderer failure
-  produces semantic save-safe recovery and never a Canvas/DOM gameplay path.
+  exhaustively dispatches cart, kiosk, cafe, and department store. Every
+  production service route is WebGL2-only; unsupported capability, context
+  loss, or renderer failure produces semantic save-safe recovery and never a
+  Canvas/DOM gameplay path.
 - The camera remains fixed-isometric and orthographic. Device pixel ratio is
   capped at 1.5; repeated crowds/furnishings/weather use bounded instancing;
   global lighting remains two lights with one shadow-caster. `useFrame` may
@@ -209,31 +237,37 @@ local-storage payloads.
   `tests/e2e/report-history.spec.ts` after any report, settlement, history,
   persistence, transfer, or responsive disclosure change.
 
-## Released Phase 6 baseline and Phase 7 merge gate
+## Phase 8 cumulative and release gate
 
-`docs/phase-6-test-report.md` and `docs/phase-6-release-evidence.md` record the
-approved release as **HOSTED PASS**. Reviewed feature head `c14bd24` merged
-normally through PR #3 at `2ddf899`; Pages deployment `5505254011` serves the
-verified release at `https://sjmeehan9.github.io/tycoon/`.
+The last deployed baseline is the repaired Phase 7 `main` head
+`d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`, workflow run `31246227689`, and
+Pages deployment `5806728203` at
+`https://sjmeehan9.github.io/tycoon/`. That identity is dependency evidence,
+not a verdict for Phase 8.
 
-For a later release, do not inherit this verdict by branch ancestry alone.
-Repeat the exact local sequence, obtain explicit publication approval, record
-the new PR/merge/workflow/deployment identity, then verify the public direct
-load and hard refresh, assets/installability, desktop and 360px gameplay,
-staff/migration/autosave, active worker/update behavior, offline continuation,
-and runtime health. The Phase 6 evidence also records non-blocking action-runtime
-and upload-input warnings that should be rechecked when workflow pins change.
+After every fingerprint-included source, test, configuration, and contract
+document is stable, record the unscoped global fingerprint with
+`python3 scripts/worktree-fingerprint.py` and run this exact Tier 3 sequence
+once against it:
 
-Phase 7 first produces an automated local merge candidate. After all
-fingerprinted source, test, configuration, and contract-document files are
-stable, record the global fingerprint with
-`python3 scripts/worktree-fingerprint.py`, run the exact Tier 3 sequence once,
-and map every named automated target in `docs/phase-7-test-report.md`. Tier 3
-covers desktop Chromium and the exact 360×780 touch-browser project. Record the
-physical fields—model/OS, browser/WebGL identity, viewport/DPR, dense scene and
-sampling method, frame range, orientation, all venues, reduced motion, visual
-findings, and 30fps disposition—as pending/unclaimed. Agents do not access a
-device. After automated PASS, request explicit merge/publication direction; if
-approved, publish only that exact candidate at the existing public game URL so
-the owner can perform the physical check. Never publish an intermediate or
-unvalidated build.
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm lint
+pnpm test
+pnpm test:e2e
+```
+
+`docs/phase-8-test-report.md` maps every Phase 8 target and every enduring
+Phase 1–7 journey to that immutable candidate. Lighthouse, dependency/license,
+title-hash, and static/runtime-network checks are supplemental named-target
+commands on the same fingerprint; they do not replace Tier 3.
+
+A local PASS authorizes neither merge nor publication. The repository owner
+decides the exact merge first and Pages publication separately afterward.
+Automated workflow/deployment identity and owner-hosted browser findings are
+recorded as separate evidence classes. Optional physical fields—model/OS,
+browser/WebGL identity, viewport/DPR, dense scene and sampling method, frame
+range, orientation, all venues, reduced motion, visual findings, and 30fps
+disposition—remain pending/unclaimed unless the owner supplies them. Agents do
+not access a device. Never publish an intermediate or unvalidated build.

@@ -1,13 +1,15 @@
 # Laneway Tycoon
 
 Laneway Tycoon is a free, browser-based, old-school business game about growing
-a Melbourne coffee cart into a specialty cafe. Plan a focused Australian cafe
-menu, price drinks, choose beans and recipes, stock the morning, hire a small
-team, handle the rush, and learn from a causal end-of-day report.
+a Melbourne coffee cart through a kiosk and specialty cafe into a landmark
+department-store coffee hall. Plan an Australian cafe menu, price drinks,
+choose beans and recipes, stock the morning, build a department-scale team,
+handle the rush, and learn from a causal end-of-day report.
 
-Service plays out in warm, fixed-isometric 3D worlds for the cart, kiosk, and
-cafe. The WebGL scene is presentation only: the deterministic engine remains
-the authority for every customer, sale, stock movement, and outcome.
+Service plays out in warm, fixed-isometric 3D worlds for the cart, kiosk, cafe,
+and Merriweather Department Store Coffee Hall. The WebGL scene is presentation
+only: the deterministic engine remains the authority for every customer,
+station, lane, sale, stock movement, and outcome.
 
 The game is deterministic, local-first, installable, and designed for desktop
 and mobile browsers. There are no accounts, ads, analytics, payments, or runtime
@@ -20,9 +22,10 @@ selection remains independent from difficulty.
 
 ## Play
 
-The public release will be available at
-<https://sjmeehan9.github.io/tycoon/> after the repository owner completes the
-release gate. Until then, run it locally:
+Public releases are served at <https://sjmeehan9.github.io/tycoon/>. A branch
+candidate reaches that URL only after its local gate, reviewed merge, separate
+publication approval, and successful Pages workflow. To run the current
+checkout locally:
 
 ```bash
 corepack enable
@@ -42,24 +45,26 @@ The production preview lives under `/tycoon/`, matching GitHub Pages.
 
 ## How a day works
 
-1. Plan the menu, prices, bean profile, recipe emphasis, dial-in, supplies, and
-   scheduled staff.
+1. Plan the menu, prices, bean profile, recipe emphasis, dial-in, supplies,
+   scheduled staff, station assignments, and up to three eligible express
+   drinks. Morning planning has no animation preview.
 2. Open service. Drinks are made automatically while you pause, change speed,
    and make one-off rush decisions.
 3. Read the compact day result. Open the complete arrivals, serves, waits,
    satisfaction, stock, revenue, cost, wages, and bottleneck report only when
    wanted; reopen settled reports later from **Game menu → Reports**.
-4. Reinvest in equipment, promote cart → kiosk → cafe, and try to finish the
-   30-day campaign target. Victory unlocks endless play; bankruptcy and a missed
-   target retain records and a clean restart path.
+4. Reinvest through three equipment tiers, promote cart → kiosk → cafe →
+   department store, and try to finish the Day-40 campaign target. Victory
+   unlocks endless play; bankruptcy and a missed target retain records and a
+   clean restart path.
 
 Coffee content follows a recognisable Australian specialty menu: espresso,
-short and long black, flat white, latte, cappuccino, piccolo, mocha, filter, and
-iced drinks, including common milk options and modifiers.
+long black, flat white, latte, cappuccino, piccolo, mocha, batch brew, iced
+latte, and cold brew, including common milk options and modifiers.
 
-The current Phase 8 runtime uses schema-v4 saves and immutable Standard/Hard
-modes. It intentionally still has the 30-day cart → kiosk → cafe campaign; the
-later Phase 8 components add the 40-day target and department-store operation.
+The Phase 8 runtime uses schema-v4 saves, immutable Standard/Hard campaigns, a
+40-day target, four venues, four staff roles, three-tier equipment, and
+department service across three stations and normal/express lanes.
 
 ## Controls and accessibility
 
@@ -147,12 +152,14 @@ Chromium binary once if required with `pnpm exec playwright install chromium`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development contract. GitHub Pages
 deployment is defined in `.github/workflows/deploy-pages.yml`: it validates the
-release, uploads only `dist/`, and deploys only from protected `main` with the
-standard Pages token permissions. No repository secret is required.
+release, uploads only `dist/`, and deploys from `main` through the normal
+pull-request/check workflow with the standard Pages token permissions. No
+repository secret is required.
 
-The owner must make the repository public, select **GitHub Actions** in
-Settings → Pages, approve the phase merge, and verify the hosted URL. The full
-gate is in [docs/public-release-checklist.md](docs/public-release-checklist.md).
+The owner must keep the repository and Pages channel appropriately configured,
+approve the phase merge and publication separately, and verify the hosted URL.
+The full gate is in
+[docs/public-release-checklist.md](docs/public-release-checklist.md).
 
 ## License
 

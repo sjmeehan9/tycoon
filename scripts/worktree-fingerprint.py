@@ -20,6 +20,7 @@ EVIDENCE_PATHS = (
     "docs/test-reports/**",
     "docs/phase-*-test-report.md",
     "docs/phase-summary.md",
+    "docs/steward-ledger.md",
     "docs/*-product-solution-doc-*.md",
 )
 

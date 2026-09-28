@@ -3,9 +3,13 @@
 ## Entry status
 
 Phase 8 started on 2026-08-08 from the final repaired and published Phase 7
-main head. Component 8.1 is documentary setup only. It changes no application
-runtime, package, dependency, deployment configuration, repository visibility,
-or public release, and it stops before Component 8.2.
+main head. Components 8.1–8.8 are committed in dependency order: the runtime is
+now the complete schema-v4, Standard/Hard, 40-day, four-venue department-store
+campaign and its release-ready PWA. Component 8.9 owns cumulative validation,
+documentation reconciliation, candidate evidence, and the handoff to the
+separate merge/publication/owner-hosted gates. It introduces no planned feature
+scope; bounded source or test repairs are permitted only when the cumulative
+gate exposes a reproduced release defect.
 
 One sequential Implement engagement owns Components 8.1–8.9 under the approved
 lean TBA + Implement contract. Each component must complete its assigned gate
@@ -25,7 +29,7 @@ The verified commit chain is:
    `4b54d3f0ba34d10ce06ca6286af5716e58d4e8e2`
 5. Final stabilization PR #9 merge and current `main`:
    `d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`
-6. `phase-8` base/current entry head:
+6. `phase-8` base/entry head:
    `d3ef6d9e93be4bcded51e65a0de3e2fd9f2b7752`
 
 Read-only `git merge-base --is-ancestor` checks passed for every adjacent link.
@@ -84,35 +88,36 @@ device-check statement:
   evidence is never described as physical-device proof;
 - any physical Safari/mobile-GPU/orientation/DPR/FPS check is optional and may
   be performed only by the repository owner against the exact final published
-  Phase 8 candidate after separate merge and publication approval; and
+  Phase 8 candidate after the authorized publication produces an exact
+  deployment identity; and
 - every physical field remains **PENDING / UNCLAIMED** until the owner supplies
   evidence. No private device identifier is stored.
 
-The repository owner will validate the public game only when the final Phase 8
-candidate is complete. Component 8.1 performs no hosted browser check.
+The repository owner will validate the public game only after the final Phase 8
+candidate is deployed. Component 8.1 performs no hosted browser check.
 
-## Reserved post-8.9 human decisions
+## Received Phase 8 release authorities
 
-Component 8.9 local Tier 3 PASS grants no release authority. Two separate human
-decisions remain reserved and cannot be inferred from Phase 7 approval or Phase
-8 implementation approval:
+The root conversation supplies both distinct human authorities:
 
-1. approve or reject merging the exact validated Phase 8 head; then
-2. after that decision, separately approve or reject final Pages publication
-   and owner-hosted verification.
+1. the user's implementation and merge direction authorizes the normal
+   protected merge path; and
+2. the user's instruction to publish the game over the existing web link
+   authorizes final Pages publication.
 
-If either decision is absent or rejected, no merge/publication action occurs.
-If both are approved, automated GitHub workflow/API identity and owner-supplied
-public-game findings are recorded separately. Optional physical findings remain
-a third, distinct owner-only record.
+No repeat approval request is required. Authority does not itself prove
+execution: commit/PR/merge state, automated workflow/deployment identity,
+owner-supplied public-game findings, and optional owner-only physical evidence
+remain separately recorded dispositions.
 
 ## Downstream implementation boundaries
 
-- Component 8.2 owns the one-time v4 reset and immutable Standard/Hard campaign
-  choice. Component 8.1 starts none of that runtime behavior.
-- Phase 8 remains additive to the final Phase 7 WebGL/report baseline until the
-  explicit v4 boundary is implemented and validated.
-- Intermediate component heads remain internally playable and must not infer a
+- Component 8.2 established the one-time v4 reset and immutable Standard/Hard
+  campaign choice before later slices extended its public contracts.
+- Components 8.3–8.8 preserve the final Phase 7 WebGL/report baseline while
+  completing progression, workforce, parallel service, dense presentation,
+  content/history, and release readiness in dependency order.
+- Every intermediate component head remains evidence only and must not infer a
   final release decision.
 - Agents may use profiled desktop Chromium and exact touch-mobile automation,
   but never physical-device access.
@@ -177,29 +182,23 @@ autosave, and exact reload identity.
 `src/game/demandInfluences.ts` is the single difficulty-policy authority for the
 complete registered arrival and order-choice factor set. Standard applies a
 1.225 multiplier to both current price-response slopes and preserves every
-non-price baseline. Hard applies a 1.675 multiplier directly to every supported
+non-price baseline. Hard applies a 1.70 multiplier directly to every supported
 baseline deviation from its declared neutral, including both price paths, with
 domain-aware clamps and no Standard compounding. The engine exposes its consumed
 factor identities so tests fail if the engine and registry diverge.
 
-Because later Phase 8 venue/equipment, workforce, and parallel-service slices
+Because the completed venue/equipment, workforce, and parallel-service slices
 change the registered venue, scheduled-team/equipment, queue/wait, and
 availability ranges, Components 8.3–8.5 explicitly co-own
 `demandInfluences.ts` and `tests/unit/demand.test.ts`. Their gates must update
 registry metadata/bounds and preserve exhaustive Standard/Hard proofs rather
 than bypassing the Component 8.2 authority.
 
-`README.md` and `docs/agent-runbook.md` now describe the current intermediate
-runtime accurately: schema v4 and immutable Standard/Hard are live, while three
-venues and the 30-day target remain until later components. They also document
-the preferences-only legacy reset, v4 save keys, current unique-name validation,
-and honest read-only v4 reports without charge groups.
-
-This component intentionally does not introduce the fourth venue, third
-equipment tiers, expanded workforce, multi-station service, dense department-
-store world, or forty-day content. Those remain sequential Components 8.3–8.7.
-Automated desktop Chromium and touch-mobile checks are browser evidence only;
-no physical device was accessed or claimed.
+At this boundary the public documentation first adopted schema v4, immutable
+difficulty, the preferences-only reset, current unique-name validation, and
+honest read-only v4 reports without charge groups. Component 8.9 reconciles
+those documents again against the completed Phase 8 runtime rather than leaving
+an intermediate product description in release-facing files.
 
 ## Component 8.3 fourth venue and commercial equipment boundary
 
@@ -249,11 +248,12 @@ retaining its older-report detail assertions. Service-layout coverage now
 iterates canonical `VENUE_IDS`, so scene-free planning and desktop/touch service
 composition automatically cover all four venues.
 
-An exhaustive current-v4 E2E source audit found no other genuine `/30`, Day
-30/31, cafe-final, or hard-coded all-three-venue contract. The deliberately
-scoped kiosk/cafe recovery case remains a kiosk/cafe case, and legacy schema
-fixtures/docs remain historical evidence. No Canvas route, runtime behavior,
-fixture migration, dependency, or later Component 8.4 behavior was added.
+An exhaustive current-v4 E2E source audit found no other hard-coded legacy
+campaign length, cafe-final, or pre-expansion venue-cardinality contract. The
+deliberately scoped kiosk/cafe recovery case remains a kiosk/cafe case, and
+legacy schema fixtures/docs remain historical evidence. No Canvas route,
+runtime behavior, fixture migration, dependency, or Component 8.4 behavior was
+added at that boundary.
 
 ## Component 8.4 department workforce and operational roles boundary
 
@@ -289,13 +289,13 @@ exact payroll, and applied Manager/Runner reductions; an eleventh checkbox is
 disabled with a visible live capacity explanation. Day reports preserve exact
 payroll and add the applied role counts, reductions, remaining delays, and
 equipment-reliability contribution to the optional causal explanation list.
-The scene snapshot still carries one bounded list of ten scheduled roles into
-one queue and one active service. Stations, express priority, and parallel
-settlement remain exclusively Component 8.5.
+At the 8.4 boundary, the scene snapshot still used its inherited service
+projection. Component 8.5 subsequently replaced runtime service authority with
+canonical station, lane, queue, and job contracts.
 
 The registered team/equipment demand boundary now covers ten scheduled
 people-person traits plus commercial POS: Standard preserves the exact
-`1.05^10 × 1.07` baseline, while Hard applies the one direct configured `1.675`
+`1.05^10 × 1.07` baseline, while Hard applies the one direct configured `1.70`
 deviation inside the updated `2.3` clamp. No role code applies difficulty a
 second time.
 
@@ -309,8 +309,8 @@ reload, segment, walkaway, Canvas-removal, and WebGL check. Existing staff-name
 and report-history browser files required no mutation and passed unchanged.
 
 No schema/key bump, dependency, station, express lane, parallel service,
-physical-device access, Git mutation, merge, deployment, or publication belongs
-to this component. The approved title art remains byte-identical at SHA-256
+physical-device access, Git mutation, merge, deployment, or publication belonged
+to this component boundary. The approved title art remains byte-identical at SHA-256
 `5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
 
 ## Component 8.5 three-station and exact parallel-service boundary
@@ -337,15 +337,6 @@ records a job-linked rush-end walkaway, and creates no sale. Each completed job
 appears once in one of six ordered station/lane aggregate buckets with the
 rush-start staff and installed-equipment context.
 
-During an active rush or event, strict v4 validation reconciles every ingredient
-against opening plus purchased minus consumed stock. When canonical charge
-groups are present, as they are for every newly created rush, it also derives
-exact completed-order consumption and cost from the immutable plan and adds each
-active job's already-consumed order. This rejects even a coherently forged
-inventory/consumed pair. The optional pre-charge-capture v4 shape cannot prove
-completed recipes after its bounded activity tail truncates, so it retains the
-weaker aggregate conservation check rather than inventing historical evidence.
-
 Current v4 saves predating this component are canonicalized idempotently before
 strict load, recovery, import, export, or write. Singular queue/service fields
 are removed, live customer/activity routes are reconstructed from canonical
@@ -356,8 +347,14 @@ preferences-only reset policy is unchanged.
 Strict active rush/event import also reconciles every current inventory total
 to opening stock plus purchases minus canonical consumed totals. This check
 runs before post-rush expiry and fails closed if either stock or consumption was
-altered independently. Current-day customer identities start at `c1`; service
-job identities deliberately start at `j0`.
+altered independently. Retained queued and active-job orders must still belong
+to the validated morning menu, so a coherent stock forgery cannot smuggle an
+off-menu order through canonical consumption evidence. Current-day customer
+identities start at `c1`; service job identities deliberately start at `j0`.
+
+Rush-start coverage metadata is populated only for station/lane pairs active at
+the venue. Legacy one-station venues therefore retain staff and equipment on
+espresso/normal only; their inactive station and express buckets remain empty.
 
 The semantic service hierarchy is scene, dashboard, activity, then stock. The
 dashboard reports combined and per-lane waits, all active jobs, and a
@@ -366,15 +363,307 @@ scene and complete compact dashboard within the initial viewport. Existing 3D
 adapters intentionally project combined waiting and only the first fixed-order
 active job until Component 8.6 delivers the dense multi-customer heritage hall.
 
-Coverage metadata is populated only when both its station and lane are active.
-Legacy venues therefore retain staff/equipment evidence on espresso/normal and
-leave every inactive station or express bucket honestly empty. Accepted
-scheduled-staff and express-selection arrays are cloned at the planning command
-boundary, so caller mutation cannot alter validated state.
-
 Queue/wait demand reads the two canonical waiting queues exactly once; active
 jobs are not counted again. Availability reads the one shared post-consumption
 inventory. Standard/Hard registry authority, presentation speed independence,
 the one-time v4 boundary, and the title art hash remain unchanged. No new
 dependency, physical-device access, hosted release, deployment, or publication
 belongs to this component.
+
+## Component 8.6 dense multi-customer heritage hall boundary
+
+The department-store service world now reconciles one immutable presentation
+snapshot to up to three active jobs, a fair twelve-customer sample of every
+non-empty station/lane queue, the newest three terminal customers, and all ten
+scheduled staff. Stable `customer:<id>` and `staff:<id>` identities carry
+canonical route, job, activity, status, pose, destination, and progress data.
+Exact normal, express, omitted, and per-station/lane counts remain independent
+of the visual cap and are exposed through accessible text and the semantic
+dashboard.
+
+Lifecycle is simulation-tick-derived. Arrivals approach only on their canonical
+arrival tick; sales move through handoff, payment, then exit; stockouts and
+other abandonments remain explicit before exit. Frame time adds only bounded
+pose movement, never advances status, applies speed, mutates queues, consumes
+stock, settles accounts, or persists state. Pause and reduced motion freeze
+local movement while preserving the full hall and textual parity.
+
+The new warm low-poly hall visibly implements patterned heritage tiles, timber
+panelling and counters, brass rails and details, escalators, and three distinct
+service bays. It renders every installed commercial equipment category and
+four physical-upgrade anchor plaques. People, repeated furnishings, and effects
+are instanced. Full and compact detail tiers retain the same entity/equipment
+truth under explicit call, triangle, DPR, shadow, light, and furnishing caps.
+Actual settled renderer call and triangle counts are browser-inspectable without
+per-frame React state writes.
+
+At the exact 360×780 touch target, the scaled scene and all dashboard fields
+fit in the initial viewport; activity and stock follow in the approved semantic
+order. Existing cart, kiosk, and cafe worlds retain their established camera and
+compatibility projections. Context retry and reload preserve snapshot identity,
+customer/staff identities, and the accessible scene description.
+
+No engine, demand, routing, inventory, accounting, persistence schema,
+dependency, external asset, physical-device, hosted release, deployment, or
+publication change belongs to this component. Automated Chromium/touch-mobile
+results remain browser evidence only. The title art remains byte-identical at
+SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.7 complete content, balance, and history boundary
+
+The campaign is now a complete 40-day Standard or Hard experience. Standard
+keeps every non-price influence at baseline and applies 1.225 to the separate
+arrival and order-choice price paths. Hard applies 1.70 once to every registered
+domain-supported deviation from neutral, including both price paths. Typed
+bounds cover every final economy value and the engine-to-registry
+exhaustiveness contract remains executable.
+
+The department tier adds six uniquely identified service events, four visible
+operational hall improvements, three presentation-only cosmetics, and two
+shared non-power milestones while retaining exactly the established ten drinks
+and nine ingredients. Event selection remains deterministic, bounded to zero
+through two non-repeating choices per rush, and persists resolved copy and
+effects so later content cannot silently rewrite history.
+
+Every settled report may carry an immutable causal snapshot of its difficulty,
+venue, menu prices, dial-in, beans, express selection, staff roles/stations and
+wages, equipment, improvements, event result, queue/wait evidence, and operating
+cost. Historical UI consumes only that selected report and never recomputes it
+from the current plan or catalogue. Earlier current-v4 reports without captured
+causes retain an honest `null` value and accessible unavailable explanation.
+
+The deterministic balance harness uses public commands over twenty fixed seeds
+for each difficulty and each of two materially different strategies. Across 80
+managed campaigns, every run reached the department hall and retained all 40
+causal reports; each cohort produced at least 17 victories, while both
+20-campaign mismanagement cohorts reached bankruptcy. Day-40 equality,
+department ownership, bankruptcy ordering, and Day-41 endless continuation are
+separately proved.
+
+No new dependency, backend, API, remote asset, food, drink, ingredient,
+physical-device action, merge, deployment, or publication belongs to this
+component. The title artwork remains byte-identical at SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.8 offline, update, performance, and release boundary
+
+The production PWA now precaches one canonical copy of the complete generated
+runtime graph after a successful online load. The Workbox runtime is inlined,
+the separately copied manifest/icon duplicates are ignored in favor of their
+generated URLs, and the one-megabyte per-file ceiling remains enforced. Browser
+evidence owns installability, `/tycoon/` routing, every-precache-entry offline
+fetch, warm and cold offline reload, and an entirely offline dense department
+service through exact settlement and next-day continuation.
+
+The title screen, PWA registration, Planner, onboarding, and active rush controls
+remain on the immediate application path. Other non-title gameplay panels,
+audio/announcement directors, and game tools load in bounded lazy chunks with
+accessible status fallbacks. This reduces the initial entry cost that gates the
+title heading while retaining complete offline play: every lazy chunk is part of
+the canonical precache and browser-tested offline.
+
+A waiting worker cannot activate or reload while the game is in a rush or
+service event. The prompt explains the active-service boundary and disables its
+primary action. Dismissal remains dismissal only; it does not queue activation.
+When service ends, the player must make a new explicit **Save and update** choice.
+The current schema-v4 payload is then written, read back, structurally verified,
+and given a monotonically refreshed top-level `savedAt` before `SKIP_WAITING`;
+control transition and reload restore all persisted gameplay, preferences, and
+meta content exactly without duplicate settlement.
+
+The dense department renderer retains canonical simulation and snapshot truth
+while reducing redundant GPU work. Full desktop detail uses a 0.9 internal
+render scale and no multisample antialiasing over the existing capped DPR;
+compact detail retains scale 1. Static instance colors upload only when the
+immutable snapshot/layout changes. Shadows render on creation and snapshot
+change instead of every display frame. Transform animation still uses the one
+React Three Fiber render loop, and pause/reduced motion remain intact.
+
+Renderer cadence is measured after thirty warm-up callbacks over 120 rendered
+frame deltas. Automated desktop Chromium at 1280×800 must sustain at least 55
+FPS with p95 at most 34 ms; emulated DPR-2 touch Chromium at 360×780 must sustain
+at least 30 FPS with p95 at most 50 ms. The evidence records browser/version,
+viewport, browser or emulated DPR, actual canvas DPR, WebGL renderer, LOD, scene
+state, and method. It is explicitly not physical-device evidence. The optional
+physical 30 FPS check remains owner-only, hosted, pending, and unclaimed.
+
+The production dependency graph remains unchanged. Its current audit reports no
+known vulnerability and its runtime licenses are MIT or BSD-3-Clause. Source,
+built-output, and browser-request audits own proof that there is no runtime
+external API, remote asset, analytics, telemetry, advertising, secret, or
+personal-data path. Lighthouse 13.4.1 owns mobile Performance, Accessibility,
+and Best Practices; the installed version exposes no PWA category, so the
+manifest/installability/service-worker/offline browser suite owns that proof.
+
+Release instructions now cover the forty-day, four-venue Standard/Hard
+candidate; separate human merge and publication decisions; consent-safe hosted
+updates; and schema-v4-compatible superseding-build recovery. Component 8.8 does
+not merge, publish, deploy, alter repository settings, or claim hosted or
+physical-device evidence. The title artwork remains byte-identical at SHA-256
+`5669f4b6245942b396fb73983905cb4cc033deee0b24c6fd3c5e44f262cc2c37`.
+
+## Component 8.9 cumulative candidate and evidence boundary
+
+Component 8.9 first audits every committed 8.1–8.8 manifest and historical
+scoped fingerprint, then reconciles release-facing documentation to the final
+runtime. Existing deterministic, component, browser, simulation, PWA, bundle,
+performance, accessibility, migration, security, and release checks already
+cover every named Phase 8 target; no new runtime or test path is introduced
+unless the cumulative gate exposes a real defect.
+
+The cumulative gate exposed stale synchronous browser assertions around
+post-import planner/service rendering and one genuine title-load performance
+defect. Browser evidence now uses Playwright auto-retrying locators and the
+existing 620px responsive contract instead of reading lazy sections or hidden
+mobile tabs synchronously. `AudioDirector` now creates its local
+`BrowserAudioManager` only after the first pointer or keyboard interaction, so
+the title route requests no WAV resource before interaction while retaining the
+same saved sound/ambience preferences, venue levels, transition cues, cleanup,
+local-only assets, and complete offline cache.
+
+The accepted local candidate was committed as `b3b5320` and merged to exact
+main `c28ad429`. Merge-triggered Pages run `31273149320` passed frozen install,
+production build, and lint, then completed 219 other Vitest cases before the
+120-campaign deterministic balance proof exceeded its explicit 15-second outer
+timeout at 19.632 seconds on Linux. Browser, artifact upload, and deployment
+were skipped, so this run supplies no deployment identity or hosted verdict.
+
+Post-merge stabilization retains every seed, strategy, difficulty,
+mismanagement simulation, and assertion. That test's explicit outer
+hang-protection budget increases to 45 seconds, with a comment rejecting its
+use as a runtime performance target. Three focused executions completed the
+same 120 deterministic campaigns in 5.64, 5.52, and 5.45 seconds.
+
+The first uninterrupted stabilization Tier 3 run then passed install, build,
+lint, all 220 Vitest cases, and 87 applicable browser cases with eight
+intentional project-routing skips. Its only failure was a genuine dense-hall
+desktop rendering-margin defect: the unchanged 55 FPS threshold received
+52.72 FPS while median frame time (18.5 ms), p95 frame time (22.8 ms), all
+scene registries, renderer budgets, and every functional assertion passed. A
+predeclared five-sample untouched diagnosis reproduced 52.11, 51.85, 52.40,
+50.24, and 51.56 FPS (median 51.85), so no best-run selection, threshold
+reduction, or blind rerun could resolve it.
+
+The production repair uses the lower-cost Lambert lighting model for the dense
+hall's repeated instanced decorations, people bodies/heads, and bounded
+activity cues. This matches the warm low-poly tycoon presentation while
+preserving every geometry, transform, colour, opacity, shadow, entity/count,
+animation, full-LOD, 0.9 render-scale, 55 FPS, and p95 contract. Five fresh
+sequential samples passed at 58.80, 59.91, 57.05, 58.32, and 58.52 FPS (median
+58.52; p95 19.2–21.0 ms). Global timeouts, Playwright workers/retries/skips,
+performance thresholds, and gameplay assertions remain unchanged.
+
+That repair became global fingerprint
+`280caa0bd772d94b893718b6300952263cb01bd16b717b7b6f71faf6079e32e1`.
+The exact Tier 3 sequence passed with 220 Vitest cases, 88 applicable Playwright
+cases, and eight intentional project-routing skips; the candidate-bound
+Lighthouse median was 93 and its security, license, title, bundle, network, and
+runtime-identity supplements also passed. The coordinator committed it as
+`b7aba4df943a190943a9fb627bbb6c0fb679558f` and the protected merge produced
+exact main `864c1703c0ed08a259bdae13074450bac7ce12d0`.
+
+Merge-triggered Pages run `31289567300` passed frozen install, production
+build, lint, and every unit/component case, then exposed two Linux-runner
+browser conditions before upload or deployment. Desktop Chromium 149 reported
+`SwiftShader Device (Subzero)`, a CPU-only software WebGL backend distinct from
+the locally calibrated SwiftShader LLVM backend. Its three complete cadence
+samples measured 17.28, 17.50, and 17.57 FPS with 55.5–56.9 ms medians and
+65.4–66.7 ms p95 values. The stock-lifecycle desktop and touch journeys also
+observed 8,280 ml instead of the time-zero 8,500 ml because the slower runner
+allowed one coherent 220 ml service start before the initial-stock assertion.
+The run finished with 85 applicable cases passed, eight intentional skips, and
+three failed cases; artifact upload and deployment were skipped.
+
+The Pages workflow now declares
+`TYCOON_RENDERER_GATE_MODE=software-observation-subzero` only for its E2E step.
+That mode fails closed unless `GITHUB_ACTIONS` is exactly `true` and the actual
+desktop renderer contains the exact Subzero signature. It still executes the
+full 30-warm-up/120-sample measurement and retains raw FPS, median, p95,
+duration, full-LOD, 0.9-scale, entity, registry, draw-call, triangle, and page
+budget-state evidence against the unchanged 55 FPS/34 ms constants, but records
+the desktop result as non-authoritative software observation. Default desktop
+mode and every touch run remain calibrated authorities and still require the
+page PASS plus their exact 55/34 and 30/50 thresholds. Unknown modes, local
+attempts to opt into observation, and renderer-signature mismatches fail.
+
+The stock journey installs Playwright's clock before navigation and freezes it
+only across the planning-to-service boundary. It activates the real Pause
+control before a 250 ms engine interval can advance, proves Resume state,
+tick-zero progress, and an empty activity feed, resumes browser time for normal
+lazy rendering while the engine remains paused, and asserts the exact 8,500 ml
+live/500 ml expiry state. It then selects 4× and activates the real Resume
+control before retaining every later depletion, reload, expiry, charge, and
+reconciliation assertion. Three consecutive desktop and touch repetitions
+passed without force, sleep, retry, timeout, or accounting relaxation.
+
+The first predeclared five-sample default calibrated diagnosis on that
+architecture passed at 57.74 FPS once, then failed at 48.12, 45.77, 47.98, and
+49.86 FPS; all five retained their p95 margin at 21.8–31.2 ms. The bounded
+production optimization therefore replaces the department hall's remaining
+per-fragment Standard materials: opaque masonry, timber, trim, and general
+surfaces use Lambert lighting, while brass and equipment surfaces use Phong
+lighting with equivalent highlights. It changes no other scene and preserves
+colours, emissive/opacity/transparent cues, geometry, transforms, shadows,
+lights, entity/count truth, animation, full LOD, 0.9 scale, and gameplay.
+
+Five fresh consecutive default calibrated samples then all passed individually
+at 59.02, 55.70, 60.13, 59.98, and 60.22 FPS, with p95 values of 20.1, 24.5,
+18.4, 19.6, and 18.9 ms. Every sample retained 30 warm-up callbacks, 120
+measured callbacks, full LOD, 0.9 render scale, and the exact 55 FPS/34 ms
+contracts. The title artwork and canonical game/economy state remain
+byte-identical; only the bounded department renderer implementation changes.
+
+That architecture and mixed Lambert/Phong repair froze as global fingerprint
+`841466d8b79404b409ef4d90445e4d74edc3f1d6b431e6a554ae4c37962032b1`.
+Its exact Tier 3 install, build, lint, and all 220 Vitest cases passed. The first
+calibrated dense-hall case then measured 54.59 FPS against 55, while its 16.6 ms
+median, 25.1 ms p95, renderer budgets, full LOD, 0.9 scale, and functional
+assertions passed. The matrix was terminated immediately after that genuine
+0.41 FPS miss; seven earlier cases had passed, two project-routing cases had
+skipped, the next case was interrupted only by termination, and 85 cases did
+not run. No rerun or selective acceptance occurred.
+
+The final bounded production optimization replaces the department hall's nine
+remaining Phong materials with Lambert. The low-poly tycoon presentation does
+not require per-fragment specular, while the retained base colours preserve the
+normal/bright-brass and equipment distinctions. The glowing canopy also keeps
+its exact colour, emissive colour/intensity, opacity, and transparency. No
+geometry, transform, count/entity truth, shadow, light, LOD, 0.9 scale,
+animation, threshold, gameplay, workflow, test, or other scene changes.
+
+Five fresh consecutive default calibrated samples all passed individually at
+57.70, 60.12, 60.17, 60.08, and 60.10 FPS, with p95 values of 18.6, 18.6,
+18.6, 18.4, and 18.5 ms. Every sample retained SwiftShader LLVM, full LOD,
+0.9 render scale, 30 warm-up callbacks, 120 measured callbacks, and the exact
+55 FPS/34 ms contracts. The minimum FPS margin is 2.70 and the maximum p95 uses
+only 18.6 ms of the 34 ms budget.
+
+Because executable candidate identity changes again, this all-Lambert
+stabilization fingerprint must pass the complete Tier 3 sequence and all
+candidate-bound Lighthouse/security/license/title/network supplements before
+release execution resumes. The title artwork and canonical game/economy state
+remain byte-identical.
+
+After every fingerprint-included source, test, configuration, workflow, and
+contract-document path is stable, the Implement engagement records one
+unscoped global fingerprint and runs the exact Tier 3 sequence once under the
+profile-compatible Node runtime. Lighthouse, production dependency/license,
+title-hash, and network/static-output checks are supplemental named-target
+proof on the same immutable candidate. The mutable command outcomes and target
+map belong in the fingerprint-excluded `docs/phase-8-test-report.md`; this
+context file is not edited after candidate freeze.
+
+Lighthouse variability is governed before sampling: five sequential isolated
+Lighthouse 13.4.1 reports are retained, median Performance must be at least 90,
+every Accessibility and Best Practices score must be at least 90, and every
+sample must be free of runtime and console-error audit failures. A selected
+best run cannot satisfy the target.
+
+Local automated PASS, deployment identity, owner-hosted gameplay verification,
+and optional owner-only physical evidence are four distinct dispositions. A
+local PASS does not claim commit, merge, workflow, publication, or hosted
+execution. Merge and publication authorities are already received; the
+coordinator executes the normal Git/release path, the repository owner performs
+the hosted gameplay checks, and physical evidence remains pending/unclaimed
+unless the owner elects to supply it.

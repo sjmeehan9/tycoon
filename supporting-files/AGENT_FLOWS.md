@@ -6,7 +6,7 @@ A visual map of every intended path through the agent suite. Every agent in `.cl
 
 ## Repo architecture
 
-This repository is a **GitHub template repo**. Agent and skill definitions are written once — `agents-src/<role>.src.md` per agent, `skills-src/<skill>.src.md` per skill — and rendered by `scripts/build-agents.py` into `.claude/agents/*.md`, `.github/agents/*.agent.md`, `.codex/agents/*.toml`, `.claude/skills/*/SKILL.md`, and `.agents/skills/*/SKILL.md`. Shared doctrine (Agent Report format, priority/sizing doctrines, feature-vertical slicing, bugs-vs-polish rule, profile reference, Steward prompt) lives in `agents-src/shared/*.md` and is spliced in with `%%% include`, so it stays byte-identical across every agent on all three platforms. **Never edit rendered files** — the `agents-drift-check` CI workflow runs `build-agents.py --check` and fails any PR where rendered files don't match source. See [`agents-src/FORMAT.md`](../agents-src/FORMAT.md).
+This repository is a **GitHub template repo**. Agent and skill definitions are written once — `agents-src/<role>.src.md` per agent, `skills-src/<skill>.src.md` per skill — and rendered by `scripts/build-agents.py` into `.claude/agents/*.md`, `.github/agents/*.agent.md`, `.codex/agents/*.toml`, `.claude/skills/*/SKILL.md`, and `.agents/skills/*/SKILL.md`. Shared doctrine (Agent Report format, priority/sizing doctrines, feature-vertical slicing, bugs-vs-polish rule, profile reference, the Steward body) lives in `agents-src/shared/*.md` and is spliced in with `%%% include`, so it stays byte-identical across every agent on all three platforms. **Never edit rendered files** — the `agents-drift-check` CI workflow runs `build-agents.py --check` and fails any PR where rendered files don't match source. See [`agents-src/FORMAT.md`](../agents-src/FORMAT.md).
 
 ```mermaid
 flowchart LR
@@ -50,6 +50,7 @@ Agent files are **never customised downstream** — all per-project variability 
 - **Communication:** every message from every agent — including the Lead Coordinator itself — is exactly one concise structured **Agent Report** block (`Status` line + only the applicable Open questions / Outputs created / Problems / Drift / Deferred / Required actions (human) / Next steps sections). Chat contains outcomes, decisions, blockers, artifact paths, and the next owner; transcripts and detailed evidence live in artifacts. Approval gates are Open questions + Required actions with Status BLOCKED.
 - **Routing:** in **team mode** (spawned by a skill) all reports go to the Lead Coordinator; in **solo mode** (invoked directly) they go to the user. Task agents never message each other directly.
 - **Flat topology:** only the Lead Coordinator spawns task agents. Task agents never spawn children; reuse/follow up with the existing role engagement through its remediation budget.
+- **Steward:** every skill run has a mandatory, **persistent Steward** (`.claude/agents/steward.md`, spawned first and retired last; on Codex the Lead Coordinator executes the same duties itself). It is the timekeeper (checkpoint pacing, optional profile *Pace budgets*), scope-to-spec and drift enforcer, standards bearer, and waste steerer (no reruns of an unchanged fingerprint, no scrutiny disproportionate to the profile's *Delivery posture*). It may send a **Steward Challenge** directly to a task agent — the one exception to peer-messaging — and raise a **Steward Hold** that blocks the next gate, commit, or deploy until the coordinator dispositions it. It owns `docs/steward-ledger.md` (fingerprint-excluded), never approves or rejects work, never runs validation, sits outside the max-agents ceiling, and its escalations reach the user verbatim; the coordinator may overrule it only with a logged decision.
 - **Stack contract:** `docs/project-profile.md` (written by `bootstrap.sh`) is the single source of truth for platform, targeted/component/phase validation tiers, test frameworks and UI/E2E harness, shared-resource locks, coverage policy, project layout, run instructions, git workflow contract, external services / human tasks, and performance budgets. An agent that finds the profile missing or still carrying only the legacy single validation sequence stops and raises profile migration as a blocker; it never guesses commands.
 - **Evidence reuse:** every component gate records commands, duration, result, and a scoped `python3 scripts/worktree-fingerprint.py -- [component paths]` identity; the phase gate records the global identity. Scoped identities are commit-stable and are verified historically with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same component paths]` (`--rev` must precede the path delimiter). State, overview, test-report, phase-summary, and Phase Docs-owned product-solution updates are evidence paths excluded from executable identity. Downstream roles trust passing evidence while its scope is unchanged; a role handoff or unrelated later component never causes a rerun.
 - **Serialized shared state:** implementation authoring is serialized by default on the phase branch, with one active component-delivery engagement at a time through its gate and commit. Parallel component authors are opt-in only when the project profile defines a complete branch/worktree integration protocol; isolated worktrees and disjoint files alone do not authorize it. The coordinator leases shared simulators, browsers, mutable test services/databases, and ports one operation at a time. Every Git index, commit, push, and branch-integrating write also passes through one serial lane.
@@ -90,7 +91,7 @@ flowchart LR
     style Product fill:#fef3c7,stroke:#a16207,color:#713f12
 ```
 
-All three skills use the **Steward** checklist as a quality/coherence monitor with no approval authority. The validation skill keeps a persistent Steward; both build skills make Steward an event-driven **Lead Coordinator duty** at Gate 0, exceptional reports, pre-commit, and stage close—never a separate teammate. Both build skills require `docs/project-profile.md`; the validation path uses it when it applies to the Builder.
+All three skills spawn the same **persistent Steward** first and retire it last (see *Cross-cutting rules*). It triages every forwarded report, deep-checks at Gate 0 / stage initialisation, exceptional reports, every pre-commit / pre-deploy point, and stage close, and holds no approval authority of its own — it challenges, holds, and escalates while the Lead Coordinator decides. Both build skills require `docs/project-profile.md`; the validation path uses it when it applies to the Builder, and all three read its *Delivery posture* section when present.
 
 ---
 
@@ -148,6 +149,12 @@ flowchart TD
     StitchGate --> LPB
     AssetOut -.-> LPB
 
+    Steward["steward<br/>(persistent · Challenge / Hold · ledger)"]
+    Steward -.-> Positioning
+    Steward -.-> Creative
+    Steward -.-> Build
+
+    style Steward fill:#f3e8ff,stroke:#6b21a8,color:#3b0764
     style Asset stroke-dasharray: 5 5
     style AssetOut stroke-dasharray: 5 5
     style StitchGate fill:#fef9c3,stroke:#a16207
@@ -169,6 +176,7 @@ flowchart TD
 | Creative | `copywriter` | `docs/landing-copy.md` |
 | Creative (optional) | `asset-producer` | `docs/asset-plan.md`, `assets/`, `public/assets/optimised/` |
 | Build | `landing-page-builder` | `docs/landing-page-design.md`, all source code, `supabase/migrations/`, `.env`/`.env.example` |
+| (all stages) | `steward` | `docs/steward-ledger.md` — control-plane role, spawned first: checkpoints, Challenges, Holds, close audits |
 
 ### Validation path stage gates
 
@@ -237,6 +245,11 @@ flowchart TD
     SDOut --> TBA
     TRDoc -.-> TBA
 
+    StewardB["steward<br/>(persistent · Challenge / Hold · ledger)"]
+    StewardB -.-> Planning
+    StewardB -.-> Refinement
+
+    style StewardB fill:#f3e8ff,stroke:#6b21a8,color:#3b0764
     style TRD stroke-dasharray: 5 5
     style TRC stroke-dasharray: 5 5
 ```
@@ -280,6 +293,12 @@ flowchart TD
     PD --> Summary[/"docs/phase-summary.md"/]
     Summary --> Merge([Phase branch merged<br/>per git workflow contract])
 
+    StewardI["steward<br/>(persistent · Challenge / Hold · ledger)"]
+    StewardI -.->|Gate 0 verdict| G0
+    StewardI -.->|pre-commit verdict| CommitLane
+    StewardI -.->|phase-close verdict| PD
+
+    style StewardI fill:#f3e8ff,stroke:#6b21a8,color:#3b0764
     style HTG fill:#fef9c3,stroke:#a16207
     style OnDevice fill:#fef9c3,stroke:#a16207
     style PVG fill:#fee2e2,stroke:#b91c1c
@@ -353,6 +372,7 @@ flowchart LR
 | Implementation | `debug` | Escalated component diagnosis/fix after one owner remediation fails or for ambiguous/flaky/systemic failures; immediate owner of phase-test failures |
 | Implementation | `review` | Conditional component audit + serialized commit in `review`/`full` · mandatory aggregate phase audit + phase-final commit in `phase-gate`; never reruns valid unchanged-tree evidence |
 | Implementation | `phase-docs` | `docs/phase-summary.md` |
+| (all stages) | `steward` | `docs/steward-ledger.md` — control-plane role, spawned first: checkpoints, Challenges, Holds, close audits |
 
 ### Build path stage gates
 
@@ -413,6 +433,12 @@ flowchart TD
     GateL -->|approved| FinalizeL["PM + SA + TBA finalize Approval sections<br/>coordinator recomputes final identities<br/>and marks components Spec-Validated"]
     FinalizeL --> PersistL["Git-leased planning-package commit<br/>on the profile phase branch"]
 
+    StewardLP["steward<br/>(persistent · Challenge / Hold · ledger)"]
+    StewardLP -.->|challenges the breakdown| CoordL
+    StewardLP -.->|package verdict| GateL
+    StewardLP -.->|pre-commit verdict| PersistL
+
+    style StewardLP fill:#f3e8ff,stroke:#6b21a8,color:#3b0764
     style GateL fill:#fef9c3,stroke:#a16207
     style FinalizeL fill:#dcfce7,stroke:#166534
     style PersistL fill:#dcfce7,stroke:#166534
@@ -468,6 +494,13 @@ flowchart TD
     DeviceL -->|"defect after allowance<br/>or spec gap"| EscalateL
     DocsL --> SummaryL[/"docs/phase-summary.md"/]
 
+    StewardLI["steward<br/>(persistent · Challenge / Hold · ledger)"]
+    StewardLI -.->|Gate 0 verdict| G0L
+    StewardLI -.->|pre-commit verdicts| ICommitL
+    StewardLI -.->|pre-commit verdicts| RCommitL
+    StewardLI -.->|phase-close verdict| DocsL
+
+    style StewardLI fill:#f3e8ff,stroke:#6b21a8,color:#3b0764
     style HumanL fill:#fef9c3,stroke:#a16207
     style LPG fill:#fee2e2,stroke:#b91c1c
     style EscalateL fill:#fef9c3,stroke:#a16207
@@ -490,6 +523,7 @@ Phase Docs receives an explicit light-mode handoff that the Review-owned PASS re
 | Implementation | `implement` | Component source/essential tests, overview, targeted evidence, component gate for `fast`/`review`, commit for `fast` |
 | Implementation | `review` | Component audit/commit for `review`; aggregate audit, phase validation/report, and commit for `phase-gate` |
 | Phase close | `phase-docs` | `docs/phase-summary.md` and conditional `docs/*-product-solution-doc-*.md` updates |
+| (all stages) | `steward` | `docs/steward-ledger.md` — control-plane role, spawned first: checkpoints, Challenges, Holds, close audits |
 
 ### Light build stage gates
 
@@ -560,7 +594,7 @@ Every agent is rendered for **three** platforms from the same `agents-src/` sour
 - **Codex:** TOML format (`name`, `description`, body in `developer_instructions`); no `model` key (inherits the session model)
 - **`teams` flag (Claude + Codex):** the Team Collaboration Protocol renders only on platforms that orchestrate subagents
 
-Skills render to both `.claude/skills/<name>/SKILL.md` (Claude Code) and `.agents/skills/<name>/SKILL.md` (the open Agent Skills standard, read by Codex). Each build Lead Coordinator runs the event-driven Steward checklist itself on every platform rather than holding a parallel Steward thread. On Codex it delegates to task agents by name (they auto-register from `.codex/agents/` in trusted repos, flat fan-out capped by `[agents] max_threads`).
+Skills render to both `.claude/skills/<name>/SKILL.md` (Claude Code) and `.agents/skills/<name>/SKILL.md` (the open Agent Skills standard, read by Codex). On Claude every skill spawns the persistent `steward` teammate first; on Codex the Lead Coordinator executes the same Steward duties itself — rendered from the same `shared/steward-core.md` — because agent threads are flat and task-scoped. On Codex it delegates to task agents by name (they auto-register from `.codex/agents/` in trusted repos, flat fan-out capped by `[agents] max_threads`).
 
 The root [`corporate-copilot-agent-team/`](../corporate-copilot-agent-team/) package is deliberately outside this generated matrix. It is a copy-only GitHub Copilot kit with its own `.github/skills/build-with-agent-team/` and three corporate custom agents; bootstrap, `build-agents.py`, and the normal template flow do not install or render it.
 
@@ -629,7 +663,7 @@ flowchart TD
 /build-with-agent-team-light full              # plan next phase, one approval, then implement it
 ```
 
-- **`max-agents`** is a ceiling, not a target. Defaults: validation 4; expansive build planning 4, refinement 4, implementation 3; light build 2. The build Steward is a coordinator-run duty and consumes no teammate slot. Expansive conditional Test/Review/Debug roles and the light route's Review role are spawned only when their gate requires them. Implementation authoring is serialized by default unless the profile defines the complete opt-in integration protocol. Concurrency is otherwise bounded by file/document ownership and shared-resource leases.
+- **`max-agents`** is a ceiling, not a target. Defaults: validation 4; expansive build planning 4, refinement 4, implementation 3; light build 2. The Steward is mandatory on every path and sits outside the ceiling. Expansive conditional Test/Review/Debug roles and the light route's Review role are spawned only when their gate requires them. Implementation authoring is serialized by default unless the profile defines the complete opt-in integration protocol. Concurrency is otherwise bounded by file/document ownership and shared-resource leases.
 - **Validation:** `--with-assets` toggles the optional asset-producer.
 - **Build:** expansive `implementation` requires the phase number as the third argument after `max-agents`. Light `implementation` accepts the phase as its lone trailing value (for example, `implementation 1`) or after `max-agents` (for example, `implementation 2 1`). The phase is optional for light `planning`/`full`; omission selects the next phase needing a breakdown or implementation.
 
@@ -675,8 +709,10 @@ docs/
 │                                           review (`light-phase-gate`) [LIGHT BUILD]
 ├── phase-summary.md                      ← phase-docs               [BOTH BUILDS]
 │
-├── agent-team-state.md                   ← Lead Coordinator; build Steward is a coordinator duty [BOTH BUILDS]
-└── validation-team-state.md              ← Lead Coordinator + Steward [VALIDATE skill]
+├── steward-ledger.md                     ← steward (checkpoints, Challenges, Holds,
+│                                            close audits; fingerprint-excluded) [ALL PATHS]
+├── agent-team-state.md                   ← Lead Coordinator (sole writer) [BOTH BUILDS]
+└── validation-team-state.md              ← Lead Coordinator (sole writer) [VALIDATE skill]
 
 (application source code)                 ← landing-page-builder     [VALIDATE]
                                           ← implement                [BOTH BUILDS]

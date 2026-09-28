@@ -1,0 +1,20 @@
+# __PROJECT_NAME__
+
+_One line on what this project does and for whom._
+
+Created from [project-template](https://github.com/sjmeehan9/project-template) and bootstrapped for the **__PLATFORM__** stack.
+
+## Start here
+
+- **`docs/project-profile.md`** — the stack contract every agent reads first: platform, validation tiers, test frameworks, run instructions, git workflow, human tasks, delivery posture. Keep it current.
+- **`CLAUDE.md` / `AGENTS.md`** — session entry points for Claude Code and Codex.
+- **`docs/`** — the documents the delivery pipelines produce and consume: requirements, brief, solution design, phase plan, component breakdowns, component overviews, test reports, team state.
+- **`supporting-files/AGENT_FLOWS.md`** — how the agent pipeline fits together.
+
+## Delivery pipelines
+
+`validate-with-waitlist`, `build-with-agent-team-light`, and `build-with-agent-team` are installed as skills (`.claude/skills/`, `.agents/skills/`). Every run has a persistent Steward.
+
+## Template updates
+
+Agent definitions, skills, doctrine and tooling arrive through the weekly `template-sync` pull request (it needs the `TEMPLATE_SYNC_PAT` secret). Change them in `project-template`, not here: local edits to synced files are overwritten by the next sync. Files listed in `.templatesyncignore` (this README, `CLAUDE.md`, `AGENTS.md`, `docs/`, application source, stack manifests) are project-owned and never touched by the sync.

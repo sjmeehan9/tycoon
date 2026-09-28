@@ -27,6 +27,14 @@ test.describe('department-store progression and service shell', () => {
     for (const level of [2, 3]) await buy(page, 'Refrigeration', level);
     for (const level of [2, 3]) await buy(page, 'Point of sale', level);
     for (const level of [1, 2, 3]) await buy(page, 'Service counter', level);
+    for (const [name, price] of [
+      ['Heritage welcome marquee', '$75.00'],
+      ['Espresso order pass', '$90.00'],
+      ['Brew gallery', '$80.00'],
+      ['Cold collection rail', '$85.00'],
+    ] as const) {
+      await page.getByRole('button', { name: `Buy ${name} · ${price}` }).click();
+    }
 
     await expect(
       page.getByRole('heading', { name: /Day 18\/40 · Department Store Coffee Hall/ }),
@@ -35,6 +43,27 @@ test.describe('department-store progression and service shell', () => {
     await expect(page.getByText('Level 3/3')).toHaveCount(6);
     await expect(page.getByText(/99% reliability/).first()).toBeVisible();
     await expect(page.getByText(/maintenance/).first()).toBeVisible();
+    for (const improvementId of [
+      'heritage-welcome-marquee',
+      'espresso-order-pass',
+      'brew-gallery',
+      'cold-collection-rail',
+    ]) {
+      await expect(page.locator(`[data-improvement-id="${improvementId}"]`)).toContainText('Owned');
+    }
+    expect(
+      await page.evaluate(() => {
+        const saved = JSON.parse(window.localStorage.getItem('laneway-tycoon.save.v4') ?? '{}') as {
+          activeRun?: { improvements?: string[] };
+        };
+        return saved.activeRun?.improvements;
+      }),
+    ).toEqual([
+      'heritage-welcome-marquee',
+      'espresso-order-pass',
+      'brew-gallery',
+      'cold-collection-rail',
+    ]);
 
     await page.reload();
     await page.getByRole('button', { name: 'Continue autosave' }).click();
@@ -55,12 +84,16 @@ test.describe('department-store progression and service shell', () => {
     const world = page.locator('[data-service-section="scene"]');
     await expect(world).toHaveAttribute('data-venue', 'departmentStore');
     await expect(world).toHaveAttribute('data-world', 'heritage-department-store-coffee-hall');
-    await expect(world).toHaveAttribute('data-queue-capacity', '32');
+    await expect(world).toHaveAttribute('data-queue-capacity', '34');
     await expect(world).toHaveAttribute(
       'data-equipment',
       'grinder:3,espressoMachine:3,batchBrewer:3,refrigeration:3,pos:3,serviceCounter:3',
     );
     await expect(world).toHaveAttribute('data-snapshot-only', 'true');
+    await expect(world).toHaveAttribute(
+      'data-upgrade-anchor-registry',
+      'hallEntry,espressoBay,brewBay,coldBay',
+    );
     await expect(page.locator('[data-station]')).toHaveCount(0);
     await expect(page.getByRole('img', { name: /Department Store Coffee Hall/ })).toBeVisible();
     await page.screenshot({

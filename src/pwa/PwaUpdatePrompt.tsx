@@ -5,9 +5,10 @@ import { useGame } from '../app/GameContext';
 
 /** Register the release service worker and require a verified save before activating an update. */
 export function PwaUpdatePrompt(): React.JSX.Element | null {
-  const { checkpointSave } = useGame();
+  const { checkpointSave, game } = useGame();
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     offlineReady: [offlineReady, setOfflineReady],
@@ -22,16 +23,20 @@ export function PwaUpdatePrompt(): React.JSX.Element | null {
       );
     },
   });
+  const serviceActive = game?.phase === 'rush' || game?.phase === 'event';
 
   const acceptUpdate = async (): Promise<void> => {
     setUpdateError(null);
+    if (serviceActive) return;
     if (!checkpointSave()) {
       setUpdateError('The local checkpoint was not verified. Export a save before updating.');
       return;
     }
+    setIsUpdating(true);
     try {
       await updateServiceWorker(true);
     } catch (error) {
+      setIsUpdating(false);
       setUpdateError(
         error instanceof Error
           ? `The update could not start: ${error.message}`
@@ -44,21 +49,34 @@ export function PwaUpdatePrompt(): React.JSX.Element | null {
     return (
       <aside aria-labelledby="pwa-update-title" className="pwa-notice" role="alertdialog">
         <strong id="pwa-update-title">A fresh batch is ready</strong>
-        <p>
-          Keep playing on this version, or save a verified checkpoint and update now. The game never
-          refreshes an active run automatically.
-        </p>
+        {serviceActive ? (
+          <p id="pwa-update-service-status">
+            Service is active, so this version will stay in control. Finish service before choosing
+            whether to save and update.
+          </p>
+        ) : (
+          <p>
+            Keep playing on this version, or save a verified checkpoint and update now. Updates only
+            activate after you choose them at a safe point.
+          </p>
+        )}
         {updateError ? <p role="alert">{updateError}</p> : null}
         <div className="pwa-notice-actions">
           <button className="button" onClick={() => setNeedRefresh(false)} type="button">
             Keep playing
           </button>
           <button
+            aria-describedby={serviceActive ? 'pwa-update-service-status' : undefined}
             className="button button-primary"
+            disabled={serviceActive || isUpdating}
             onClick={() => void acceptUpdate()}
             type="button"
           >
-            Save and update
+            {serviceActive
+              ? 'Finish service to update'
+              : isUpdating
+                ? 'Saving and updating…'
+                : 'Save and update'}
           </button>
         </div>
       </aside>

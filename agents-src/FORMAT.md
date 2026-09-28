@@ -66,8 +66,7 @@ Rules:
   - `shared/implementation-assurance.md` — versioned assurance lanes, risk triggers, gate ownership, and commit ownership (build coordinator + delivery agents)
   - `shared/validation-tiers.md` — targeted/component/phase validation ownership, evidence fingerprints, fallback, and exclusive-resource rules (build skill + delivery agents)
   - `shared/memory-section.md` — persistent memory section (Claude outputs only; conditional inside the include)
-  - `shared/steward-prompt.md` — persistent validation-path Steward prompt
-  - `shared/build-steward-prompt.md` — event-driven, coordinator-run build-path Steward checklist (not a separate task agent)
+  - `shared/steward-core.md` — the persistent Steward's full body: rendered as the `steward` Claude agent (`agents-src/steward.src.md`) and included inside each skill's `%%% begin codex` block as the coordinator-executed checklist; the Steward Challenge answer rule every agent carries lives in `shared/agent-report.md` (teams-only block)
 - Autonomous variants: put mode differences in `%%% begin interactive` / `%%% begin autonomous` blocks. The canonical difference set: clarification steps and approval waits are interactive-only; autonomous variants log **Assumptions** and proceed (see `shared/agent-report.md` and `shared/priority-doctrine.md`, which already carry the conditionals).
 
 ## Commands
