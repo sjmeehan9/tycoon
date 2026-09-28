@@ -2,9 +2,14 @@
 # Bootstrap a project repo created from project-template.
 # Usage: ./bootstrap.sh  (interactive)
 #        ./bootstrap.sh --name MyApp --platform ios --bundle-id com.example.myapp [--simulator "iPhone 17"]
+# Requires git and python3 (python3 fills the placeholders and runs the agent tooling on every stack).
 set -euo pipefail
 
 cd "$(dirname "$0")"
+
+for tool in git python3; do
+  command -v "$tool" >/dev/null 2>&1 || { echo "$tool is required by bootstrap.sh and by the agent tooling. Install it and re-run." >&2; exit 1; }
+done
 
 NAME="" PLATFORM="" BUNDLE_ID="" SIMULATOR="iPhone 17"
 
@@ -47,12 +52,13 @@ fi
 
 # Portable placeholder substitution (BSD/GNU sed differences avoided).
 fill() { # fill <src> <dest>
-  python3 - "$1" "$2" "$NAME" "$SLUG" "${BUNDLE_ID:-}" "$SIMULATOR" <<'PY'
+  python3 - "$1" "$2" "$NAME" "$SLUG" "${BUNDLE_ID:-}" "$SIMULATOR" "$PLATFORM" <<'PY'
 import sys
-src, dest, name, slug, bundle, sim = sys.argv[1:7]
+src, dest, name, slug, bundle, sim, platform = sys.argv[1:8]
 text = open(src).read()
 for k, v in {"__PROJECT_NAME__": name, "__PROJECT_SLUG__": slug,
-             "__BUNDLE_ID__": bundle, "__IOS_SIMULATOR__": sim}.items():
+             "__BUNDLE_ID__": bundle, "__IOS_SIMULATOR__": sim,
+             "__PLATFORM__": platform}.items():
     text = text.replace(k, v)
 open(dest, "w").write(text)
 PY
@@ -112,11 +118,35 @@ case "$PLATFORM" in
     ;;
 esac
 
+# README: the template's own README arrives with every generated repo. Replace it with the project
+# stub, but never clobber a README the project has already written.
+if [[ ! -f README.md ]] || [[ "$(head -n1 README.md)" == "# project-template" ]]; then
+  echo "→ writing README.md (project stub)"
+  fill templates/README.md.template README.md
+fi
+
+# Template hygiene: GitHub copies every tracked file at creation and template sync never deletes,
+# so remove the template-only paths here, then seed .templatesyncignore (which sync cannot update)
+# from its synced canonical copy so those paths are never re-added.
+echo "→ template hygiene: removing template-only paths"
+while IFS= read -r line || [[ -n "$line" ]]; do
+  p=$(printf '%s' "$line" | sed 's/#.*//;s/^[[:space:]]*//;s/[[:space:]]*$//')
+  [[ -z "$p" ]] && continue
+  case "$p" in "/"|"."|".."|/*|*..*) echo "  ! refusing unsafe path in templates/template-only.txt: $p" >&2; exit 1 ;; esac
+  if [[ -e "$p" ]]; then
+    git rm -r -q --cached --ignore-unmatch -- "$p" 2>/dev/null || true
+    rm -rf -- "$p"
+    echo "  - removed $p"
+  fi
+done < templates/template-only.txt
+cp templates/templatesyncignore .templatesyncignore
+
 echo
 echo "Bootstrap complete."
 echo
 echo "Remaining human steps:"
-echo "  1. Review and complete docs/project-profile.md (external services, budgets, versions)."
+echo "  1. Review and complete docs/project-profile.md (external services, budgets, versions,"
+echo "     and the Delivery posture section the Steward calibrates scrutiny against)."
 echo "  -  Codex users: run 'codex' once in the repo root and TRUST the project, or"
 echo "     .codex/config.toml (sandbox, MCP servers) and .codex/agents/ will not load."
 if [[ "$PLATFORM" == "ios" ]]; then
@@ -130,4 +160,5 @@ fi
 echo "  - Add the TEMPLATE_SYNC_PAT repo secret (fine-grained PAT with read access to the"
 echo "    template repo and contents+pull-requests+workflows write here) to receive template updates."
 echo "  - Protect the main branch (the git workflow contract assumes it)."
+echo "  - Fill in README.md's one-line purpose."
 echo "  - Commit: git add -A && git commit -m 'chore: bootstrap ${NAME}'"

@@ -29,7 +29,7 @@ You are a **senior QA engineer and integration testing specialist**. Your sole p
 
 Every completion-gate result records:
 
-1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes state, overview, test-report, phase-summary, and Phase Docs-owned `docs/*-product-solution-doc-*.md` evidence files so writing phase evidence does not invalidate its executable candidate identity.
+1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes state, overview, test-report, phase-summary, the Steward's `docs/steward-ledger.md`, and Phase Docs-owned `docs/*-product-solution-doc-*.md` evidence files so writing phase evidence does not invalidate its executable candidate identity.
 2. Exact commands, exit status, duration, and a concise result summary.
 3. Paths to raw logs when failure evidence is too large for the report.
 
