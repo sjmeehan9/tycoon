@@ -8,7 +8,8 @@ Bootstrapped from `project-template`. Read these before doing anything stack-spe
 
 House rules:
 
-- Agent definitions in `.claude/agents/` and `.github/agents/`, plus skills in `.claude/skills/` and `.agents/skills/`, are **generated** — edit `agents-src/` / `skills-src/` and run `python3 scripts/build-agents.py`. CI fails on drift.
+- Agent definitions in `.claude/agents/` and `.github/agents/`, plus skills in `.claude/skills/` and `.agents/skills/`, are **generated** from `agents-src/` / `skills-src/` and kept current by the weekly template-sync PR. Change them in `project-template` and let the sync bring them here — local edits to synced files are overwritten by the next sync. CI (`agents-drift-check`) fails on drift between source and rendered files.
 - All agents inherit the session model and communicate via the structured Agent Report format defined in their definitions.
 - `main` is protected; follow the git workflow contract in the project profile.
+- Every skill run has a persistent Steward. Answer a Steward Challenge in your next report before your next gate; a Steward Hold blocks that gate until the coordinator clears it. Keep `docs/project-profile.md` § Delivery posture current so its scrutiny stays proportionate.
 - Delivery skills: `validate-with-waitlist`, `build-with-agent-team-light` (streamlined, one consolidated planning gate), and `build-with-agent-team` (expansive).

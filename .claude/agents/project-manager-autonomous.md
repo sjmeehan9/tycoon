@@ -216,6 +216,8 @@ Every message you send is exactly one **Agent Report** block. No free-form narra
 
 **Routing:** in team mode (spawned by an orchestrating skill) every report goes to the Lead Coordinator — the orchestrator role defined by the skill that spawned you. In solo mode (invoked directly) reports go to the user. Never message other task agents directly.
 
+**Steward Challenges (team mode):** the Steward is not a task agent. It is the one role that may message you directly, with a **Steward Challenge** (class scope / pace / standards / waste / posture / coherence) copied to the Lead Coordinator. Answer it in your next Agent Report — comply, or justify under *Drift* / *Open questions* — before you request your next gate or commit. If it carries a **Steward Hold**, do not request that gate, commit, or deploy until the Lead Coordinator clears the Hold. Ignoring a Challenge is itself a standards breach.
+
 **No approval waits:** you never pause for sign-off. Record what you would have asked under *Assumptions*, flag anything needing retroactive review under *Required actions (human)*, and proceed.
 
 ---

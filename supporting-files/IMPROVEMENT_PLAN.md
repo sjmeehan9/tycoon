@@ -274,6 +274,39 @@ Generated agent and skill definitions update through `agents-src/`, `skills-src/
 
 ---
 
+## Part E — Persistent Steward with authority (2026-09-05)
+
+Part D made the build-path Steward an event-driven coordinator duty to stop redundant validation, cold starts, and slot use. In practice that left nobody with standing to challenge a task agent mid-engagement, so scope creep, slow pace, and disproportionate scrutiny were caught only at gates — or not at all. Part E reinstates a **persistent Steward** on every path without reopening Part D's cost problem.
+
+### E1. One agent, three paths
+
+- `agents-src/shared/steward-core.md` is the single body. It renders as the `steward` Claude agent (`.claude/agents/steward.md`, spawned first and retired last by all three skills) and is included in each skill's Codex block as the coordinator-executed checklist — Codex threads are flat and task-scoped, so the coordinator performs the same duties there. No Copilot or Codex agent file is rendered (there is no orchestration on Copilot; registering a Codex agent would invite delegation).
+- The two prior includes (`shared/steward-prompt.md`, `shared/build-steward-prompt.md`) are removed; the build-path event checklist (Gate 0 / exceptional / pre-commit / phase close) and the validation-path voice-and-story focus are folded into the core.
+
+### E2. Presence without polling
+
+The Steward is forwarded every spawn contract and every task-agent report. Routine reports get a triage (report text only; silence is acknowledgement). Gate events — Gate 0 / stage initialisation, exceptional reports, every pre-commit / pre-distribution / pre-deploy point, stage close, any open Hold — get a deep check whose verdict the coordinator must wait for. It never rereads the document set without a trigger, never runs build/test/validation commands (read-only `git` and `scripts/worktree-fingerprint.py` only), and sits outside the max-agents ceiling. This replaces the coordinator's own reread work rather than adding to it.
+
+### E3. Four duties on top of coherence and health
+
+1. **Timekeeper** — per-role checkpoint sequences tracked in the ledger; pace signals (no advance across reports, reruns on an unchanged fingerprint, remediation near the ceiling, intake loops past completeness, scope growth); wall-clock only when the profile's optional `## Pace budgets` names values. No hour or count targets in agent text, consistent with B1.
+2. **Scope-to-spec and drift enforcer** — ownership, Explicit Non-Goals, acceptance criteria (no gold-plating, no silent narrowing), Scope Integrity, feature slicing; undispositioned Drift at a gate is a Hold. On the light path it also challenges the coordinator-authored breakdown.
+3. **Standards bearer** — the doctrine includes are carried verbatim and a challenge map ties observed behaviour to the clause breached.
+4. **Waste steerer** — redundant validation, roles, cold starts, and rereads; and **posture-disproportionate work**, calibrated by the new profile section `## Delivery posture` (audience, monetisation, data sensitivity, scrutiny consequence), with a recorded fallback inference from `docs/brief.md` / `docs/positioning-brief.md`.
+
+### E4. Authority model
+
+- **Steward Challenge** — sent directly to the task agent (the one exception to peer-messaging), copied to the coordinator, fixed inner block (class · finding · standard · required response · hold). Every agent carries the answer rule via `shared/agent-report.md`: answer in the next report before the next gate.
+- **Steward Hold** — blocks the engagement's next gate, commit, or deploy until the coordinator dispositions it; raised only for ownership breaches, stale/unowned/missing evidence at a gate, remediation past the ceiling, required-path standards breaches, or undispositioned Drift. Pace alone never raises a Hold.
+- **Coordinator keeps every decision.** It may dismiss a Challenge or clear a Hold only with a Decisions Log entry naming the standard set aside; a second overrule of the same standard in one stage, and every Steward escalation, reaches the user verbatim.
+- **Ledger** — `docs/steward-ledger.md` is the Steward's only owned file, excluded from candidate fingerprints; the state files stay coordinator-owned on every path (the validation path previously had both writing the state file).
+
+### E5. Guardrails in CI
+
+`scripts/check-assurance-contracts.py` now requires the Steward contracts in all three skills and the agent, prohibits the former "never a separate teammate" / coordinator-only wording, allowlists `steward` as a control-plane role so the light registry stays exactly seven task agents, and requires `## Delivery posture` and `## Pace budgets` in every profile template. `scripts/worktree-fingerprint.py` excludes the ledger.
+
+---
+
 ## Suggested implementation order
 
 1. **Quick wins (no restructuring):** `model: inherit` on Claude agents; fix tools lists, argument-hints, `phase_plan.md`, commented-out `applyTo`, leaked `Topics`/`iPhone 16` values.

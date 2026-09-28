@@ -1,4 +1,6 @@
 name: Agents drift check
+# Runs in project-template and in every repository generated from it. Rendered agents and skills
+# are never edited downstream, so drift there means a local edit the next template sync would erase.
 on:
   push:
     branches: [main]
@@ -16,3 +18,6 @@ jobs:
         run: python3 scripts/check-assurance-contracts.py
       - name: Verify fingerprint identity behavior
         run: python3 scripts/test-worktree-fingerprint.py
+      - name: Verify the .templatesyncignore seed matches its synced copy (template repo only)
+        if: github.repository == 'sjmeehan9/project-template'
+        run: diff -u templates/templatesyncignore .templatesyncignore

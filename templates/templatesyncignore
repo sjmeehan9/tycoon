@@ -1,0 +1,25 @@
+# Per-project files the template sync must never touch.
+# Canonical copy: templates/templatesyncignore (synced). actions-template-sync never updates the
+# root .templatesyncignore itself, so bootstrap.sh copies this file there and
+# scripts/template-cleanup.sh merges it into an existing one. Keep both identical in
+# project-template (CI checks).
+README.md
+CLAUDE.md
+AGENTS.md
+.codex/config.toml
+.gitignore
+docs/
+project.yml
+Sources/
+Tests/
+UITests/
+src/
+app/
+tests/
+pyproject.toml
+package.json
+.env.example
+# Template-only paths (templates/template-only.txt): removed from generated repos, never re-added.
+corporate-copilot-agent-team/
+supporting-files/IMPROVEMENT_PLAN.md
+supporting-files/IMPROVEMENT_PLAN_2026-09.md

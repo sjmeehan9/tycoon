@@ -8,10 +8,11 @@ Bootstrapped from `project-template`. Read these before doing anything stack-spe
 
 House rules:
 
-- Agent definitions (`.codex/agents/*.toml`, `.claude/agents/`, `.github/agents/`) and skills (`.agents/skills/`, `.claude/skills/`) are **generated** — edit `agents-src/` / `skills-src/` and run `python3 scripts/build-agents.py`. CI fails on drift.
+- Agent definitions (`.codex/agents/*.toml`, `.claude/agents/`, `.github/agents/`) and skills (`.agents/skills/`, `.claude/skills/`) are **generated** from `agents-src/` / `skills-src/` and kept current by the weekly template-sync PR. Change them in `project-template` and let the sync bring them here — local edits to synced files are overwritten by the next sync. CI (`agents-drift-check`) fails on drift between source and rendered files.
 - No agent pins a model — everything inherits the session model.
 - All agents communicate via the structured Agent Report format defined in their definitions.
 - `main` is protected; follow the git workflow contract in the project profile.
+- Every skill run has a persistent Steward (on Codex the coordinator executes its duties). Answer a Steward Challenge in your next report before your next gate; a Steward Hold blocks that gate until the coordinator clears it. Keep `docs/project-profile.md` § Delivery posture current so its scrutiny stays proportionate.
 
 Codex specifics:
 

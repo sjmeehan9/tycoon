@@ -108,6 +108,21 @@ Feeds Component X.1 (human setup) of each phase. List accounts, API keys, and in
 
 - Verify current framework versions (Next.js/Node/etc.) against official documentation during Technical Validation; record them here.
 
+## Delivery posture
+
+Read by the Steward to keep scrutiny proportionate; update when the answer changes.
+
+- **Audience:** [personal/local tool · internal team · public free · public paid]
+- **Monetisation:** [none · one-off · subscription]
+- **Data sensitivity:** [none · personal data · regulated]
+- **Scrutiny consequence:** [what hardening is proportionate now and what is not — e.g. a personal/local tool needs essential-path correctness only, no multi-tenant/abuse/scale/compliance hardening, and Hardening notes stay deferred; a public paid app makes security, privacy, and payment findings proportionate and their Test/Review triggers real]
+
+## Pace budgets (optional)
+
+Soft wall-clock expectations the Steward may compare against state timestamps. Leave as `none` to pace by checkpoints only.
+
+- none
+
 ## Standards file
 
 `.github/instructions/copilot.instructions.md` (TypeScript section applies).
