@@ -15,3 +15,7 @@ tests/
 pyproject.toml
 package.json
 .env.example
+# Added by scripts/template-cleanup.sh 2026-09-29: template-only paths and project-owned files the sync must never touch
+corporate-copilot-agent-team/
+supporting-files/IMPROVEMENT_PLAN.md
+supporting-files/IMPROVEMENT_PLAN_2026-09.md
