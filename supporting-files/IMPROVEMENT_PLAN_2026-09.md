@@ -32,6 +32,8 @@ Standing constraints from earlier sessions still apply: strict Agent Report chat
 
 ## WP1 — Target hygiene (Requirement 1)
 
+**Status (2026-10-02):** delivered in PR #7 (`feat/wp1-target-hygiene`, merged 2026-09-28 AEST). The cleanup script has been run on basicapps-site, tycoon and scan-basic (see WP5).
+
 **Goal.** New repos never carry the obvious template-only files; existing repos lose them through one PR each; sync can never re-add them.
 
 ### Changes
@@ -64,6 +66,8 @@ Standing constraints from earlier sessions still apply: strict Agent Report chat
 ---
 
 ## WP2 — Phase 7 recommendations (Requirement 2)
+
+**Status (2026-10-02):** delivered on `feat/wp2-phase7-recommendations`; the recommendations document was deleted from the working tree once every item below had landed.
 
 **Source:** `supporting-files/template-recommendations-phase-7.md` (untracked; keep in the working tree until this WP is merged, then delete; the mapping below is complete enough to implement without it). Tags: **[generic]** applies to any iPhone app; **[iCloud]** items are included (O8) under an "If the app uses iCloud" heading so non-sync apps skip it. **Excluded as project-specific:** evidence citations, Steward and term numbers, ScanBasic paths and scripts (`sync-oracle.sh` etc.), CloudKit specifics beyond the tagged guidance, Phase 7 component names.
 
@@ -108,6 +112,8 @@ The document has two sections labelled "C". Here they are **C-process** (coordin
 ---
 
 ## WP3 — Context and knowledge architecture (Requirement 3)
+
+**Status (2026-10-02):** delivered on `feat/wp3-knowledge-tiers`; live repositories adopt it at their next phase boundary using the migration checklist below.
 
 **Goal.** Every engagement spawns with all the information its role needs and nothing else; the project's full history stays available on demand; storage stays in the target's `docs/`; both build skills and the validation skill share one structure.
 
@@ -171,6 +177,8 @@ Drift items: recorded in the journal block that reports them and, when they chan
 
 ## WP4 — Tooling inventory and stack neutrality (Requirement 4)
 
+**Status (2026-10-02):** delivered on `feat/wp4-tooling-inventory`: `supporting-files/TOOLING.md`, the `paths:` filter and inventory check in `agents-drift-check.yml`, the prerequisites line in the entry-point templates and README, and the TOOLING pointer in the project README stub.
+
 1. **`supporting-files/TOOLING.md`** (new, synced): the itemised table of every script and action — asset, runs where (template / target / both), what it does, what it requires — plus a one-line rule that any new script or workflow adds a row. Initial rows: `bootstrap.sh`; `scripts/worktree-fingerprint.py`; `scripts/build-agents.py`; `scripts/check-assurance-contracts.py`; `scripts/test-assurance-contracts.py`; `scripts/test-worktree-fingerprint.py`; `scripts/template-cleanup.sh` (WP1); `agents-drift-check.yml`; `template-sync.yml`; Fastfile lanes `beta` and `test`; `.mcp.json` and the Codex MCP tables; `corporate-copilot-agent-team/scripts/validate.py` (template only).
 2. **Prerequisites stated once**: README "Prerequisites" (git, bash, python3 for every stack; `gh` for creation and cleanup PRs; iOS extras per the runbook), the CLAUDE/AGENTS templates (one line), and the bootstrap prerequisite check (WP1).
 3. **`agents-drift-check.yml`**: add a header comment stating it runs downstream by design, and a `paths:` filter on `push` and `pull_request` (`agents-src/**`, `skills-src/**`, `.claude/**`, `.agents/**`, `.codex/**`, `.github/agents/**`, `.github/instructions/**`, `scripts/**`, `templates/**`, `supporting-files/AGENT_FLOWS.md`, `README.md`, `.templatesyncignore`) so product commits in targets do not spend Actions minutes (O6: adopted).
@@ -185,6 +193,8 @@ Drift items: recorded in the journal block that reports them and, when they chan
 
 ## WP5 — Rollout
 
+**Status (2026-10-02):** WP1 merged; the cleanup script has run on all three live repositories. WP4 is in review; WP2 and WP3 follow.
+
 **Order.** WP1 → WP4 → WP2 → WP3, one PR each on `project-template`, each passing the four checks. WP2 before WP3 because both touch `validation-tiers.md` and the skills, and WP2 is the smaller, concrete change.
 
 **After each merge.** Trigger `template-sync` by `workflow_dispatch` in each target (or wait for the Monday run), merge the sync PR.
@@ -193,9 +203,11 @@ Drift items: recorded in the journal block that reports them and, when they chan
 
 | Repo | On disk | Steps |
 |---|---|---|
-| `scan-basic` | `~/Projects/scan-basic-project/scan-basic` | `scripts/template-cleanup.sh --target … --apply --pr`; hand-edit `CLAUDE.md`/`AGENTS.md` house rule (WP1 §5); adopt WP3 at the Phase 8 boundary |
-| `basicapps-site` | `~/Projects/basicapps-site-project/basicapps-site` | same |
-| `tycoon` | `~/Projects/tycoon-project/tycoon` | same |
+| `scan-basic` | `~/Projects/scan-basic-project/scan-basic` | Cleanup script run (2026-10) after the Phase 7 merge, so its `.gitignore` `.evidence/` line and the runbook could not collide with the phase branch. Remaining on `main`: move the Phase 5–7 appendices out of `supporting-files/ios-setup-runbook.md` into a project-owned file such as `docs/ios-runbook-appendix.md` and restore the template text (every sync resets that file; the 2026-09-28 sync PR would have deleted 132 lines of it), then re-dispatch template-sync; hand-edit the `CLAUDE.md`/`AGENTS.md` house rule; adopt WP3 at the Phase 8 boundary |
+| `basicapps-site` | `~/Projects/basicapps-site-project/basicapps-site` | Cleanup script run (2026-09). Remaining: hand-edit the house rule |
+| `tycoon` | `~/Projects/tycoon-project/tycoon` | Cleanup script run (2026-09). Remaining: hand-edit the house rule |
+
+**Lessons from the scan-basic rollout.** Run a repository's cleanup only from a tree that already contains its in-flight phase branch's `.gitignore` changes, in practice after the phase merge. Read every sync PR's file list before merging: the sync resets any synced file the project has edited, and scan-basic kept project appendices in a synced path.
 
 `project-ideas` was deleted from GitHub on 2026-09-28 and its `TEMPLATE_SYNC_PAT` revoked; it is out of scope.
 

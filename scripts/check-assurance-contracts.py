@@ -537,9 +537,141 @@ def main() -> int:
         "never spawn a Steward",
         "steward-prompt.md",
         "build-steward-prompt.md",
+        "docs/phase-summary.md",
+        "for awareness of overall project state",
+        "for awareness of what other agents are building",
+        "for awareness of overall state",
+        "Decisions Log",
+        "Drift Log",
+        "Deferred Log",
     )
     for relative in live_contracts:
         failures += prohibit(relative, *obsolete_contracts)
+
+    # Phase 7 recommendations (IMPROVEMENT_PLAN_2026-09 WP2): overlap, harness facts, evidence rules,
+    # falsifiable harness checks, and the App Store Connect key / build-number distribution contract.
+    for relative in (*build_skills, *light_build_skills):
+        failures += require(
+            relative,
+            "read-only PREP",
+            "§ Harness and toolchain facts",
+            "consumes no build number",
+            "Usage-Limit Resilience",
+        )
+    for relative in validation_skills:
+        failures += require(relative, "Usage-Limit Resilience")
+    for relative in implement_agents:
+        failures += require(relative, "what would have made it red", "§ Harness and toolchain facts")
+    for relative in test_agents:
+        failures += require(relative, "could have failed")
+    for relative in review_agents:
+        failures += require(relative, "could not have failed", "exact-reproduction")
+    for relative in profiles:
+        failures += require(relative, "## Harness and toolchain facts")
+    failures += require(
+        "templates/project-profile.ios.md",
+        "toolchain triple",
+        ".evidence/",
+        "## Host capacity",
+        "## Simulators",
+        "## Shared test accounts",
+        "per boot",
+        "quiet host",
+        "XCODEBUILDMCP_ENABLED_WORKFLOWS",
+        "manageAppVersionAndBuildNumber",
+        "never the commit count",
+        "one run per approval",
+        "-collect-test-diagnostics never",
+    )
+    failures += require(
+        "agents-src/shared/validation-tiers.md",
+        "toolchain triple",
+        ".evidence/",
+        "never a pass",
+        "per use, not per engagement",
+        "Exact-reproduction exception",
+    )
+    failures += require(
+        "supporting-files/AGENT_FLOWS.md",
+        "toolchain triple",
+        "read-only PREP",
+        "consumes no build number",
+    )
+    failures += require(".github/instructions/copilot.instructions.md", "toolchain triple")
+    failures += require("templates/ios/mcp.json", "XCODEBUILDMCP_ENABLED_WORKFLOWS")
+    failures += require("templates/codex/config.ios-mcp.toml", "XCODEBUILDMCP_ENABLED_WORKFLOWS")
+    failures += require(
+        "templates/ios/fastlane/Fastfile",
+        "manageAppVersionAndBuildNumber: false",
+        "-authenticationKeyPath",
+        "CFBundleVersion",
+    )
+    failures += require(
+        "supporting-files/ios-setup-runbook.md",
+        "Role: **Admin**",
+        "XCODEBUILDMCP_ENABLED_WORKFLOWS",
+        "xcrun simctl boot",
+        "-collect-test-diagnostics never",
+    )
+
+    # Context tiers (IMPROVEMENT_PLAN_2026-09 WP3): bounded snapshot, journal, decisions, deferred,
+    # knowledge, the per-role Reading Contract, and docs/ excluded from fingerprints.
+    for relative in (*build_skills, *light_build_skills):
+        failures += require(
+            relative,
+            "docs/journal/",
+            "docs/decisions/",
+            "docs/deferred.md",
+            "docs/knowledge.md",
+            "docs/phase-summaries/",
+            "docs/archive/",
+            "§ Current Stage and your own lifecycle row only",
+        )
+    for relative in validation_skills:
+        failures += require(
+            relative,
+            "docs/journal/",
+            "docs/decisions/",
+            "docs/deferred.md",
+            "docs/archive/",
+            "§ Current Stage and your own row only",
+        )
+    for relative in (
+        *implement_agents,
+        *test_agents,
+        *review_agents,
+        *debug_agents,
+        *tech_lead_agents,
+        *phase_docs_agents,
+    ):
+        failures += require(relative, "## Reading Contract")
+    for relative in phase_docs_agents:
+        failures += require(
+            relative,
+            "docs/phase-summaries/README.md",
+            "docs/deferred.md",
+            "docs/knowledge.md",
+        )
+    for relative in steward_agents:
+        failures += require(relative, "State bloat", "## Open", "docs/archive/")
+    for relative in profiles:
+        failures += require(relative, "## Context budgets")
+    failures += require("agents-src/shared/validation-tiers.md", "everything under `docs/`")
+    failures += require(
+        "supporting-files/AGENT_FLOWS.md",
+        "Context tiers",
+        "docs/journal/",
+        "docs/decisions/",
+        "docs/knowledge.md",
+        "state bloat",
+    )
+    failures += require(
+        ".github/instructions/copilot.instructions.md",
+        "docs/journal/",
+        "docs/decisions/",
+        "docs/knowledge.md",
+    )
+    failures += require("scripts/worktree-fingerprint.py", 'EVIDENCE_PATHS = ("docs/*",)')
 
     if failures:
         print("Implementation assurance contract check failed:")

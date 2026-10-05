@@ -150,8 +150,10 @@ echo "     and the Delivery posture section the Steward calibrates scrutiny agai
 echo "  -  Codex users: run 'codex' once in the repo root and TRUST the project, or"
 echo "     .codex/config.toml (sandbox, MCP servers) and .codex/agents/ will not load."
 if [[ "$PLATFORM" == "ios" ]]; then
-  echo "  2. Set DEVELOPMENT_TEAM in project.yml; add your Apple ID in Xcode (automatic signing)."
-  echo "  3. Create an App Store Connect API key (role: App Manager), place the .p8 in"
+  echo "  2. Set DEVELOPMENT_TEAM in project.yml. (An Apple ID in Xcode is optional, for on-device"
+  echo "     development only; TestFlight uploads use the API key, not an Xcode sign-in.)"
+  echo "  3. Create an App Store Connect API key (role: Admin — lesser roles cannot create the"
+  echo "     distribution certificate), place the .p8 in"
   echo "     ~/.appstoreconnect/private_keys/, then cp fastlane/.env.example fastlane/.env and fill it."
   echo "     Full machine/account walkthrough: supporting-files/ios-setup-runbook.md"
   echo "  4. Deferred to your first TestFlight window: create the App Store Connect app record"

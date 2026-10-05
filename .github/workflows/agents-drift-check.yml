@@ -1,10 +1,46 @@
 name: Agents drift check
 # Runs in project-template and in every repository generated from it. Rendered agents and skills
 # are never edited downstream, so drift there means a local edit the next template sync would erase.
+# The paths filters list every file the checks read, so product commits in generated repositories
+# do not spend Actions minutes on them.
 on:
   push:
     branches: [main]
+    paths:
+      - 'agents-src/**'
+      - 'skills-src/**'
+      - '.claude/**'
+      - '.agents/**'
+      - '.codex/**'
+      - '.github/agents/**'
+      - '.github/instructions/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
+      - 'templates/**'
+      - 'corporate-copilot-agent-team/**'
+      - 'supporting-files/AGENT_FLOWS.md'
+      - 'supporting-files/TOOLING.md'
+      - 'README.md'
+      - 'bootstrap.sh'
+      - '.templatesyncignore'
   pull_request:
+    paths:
+      - 'agents-src/**'
+      - 'skills-src/**'
+      - '.claude/**'
+      - '.agents/**'
+      - '.codex/**'
+      - '.github/agents/**'
+      - '.github/instructions/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
+      - 'templates/**'
+      - 'corporate-copilot-agent-team/**'
+      - 'supporting-files/AGENT_FLOWS.md'
+      - 'supporting-files/TOOLING.md'
+      - 'README.md'
+      - 'bootstrap.sh'
+      - '.templatesyncignore'
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -21,3 +57,11 @@ jobs:
       - name: Verify the .templatesyncignore seed matches its synced copy (template repo only)
         if: github.repository == 'sjmeehan9/project-template'
         run: diff -u templates/templatesyncignore .templatesyncignore
+      - name: Verify every tracked script, workflow and tool configuration has a row in supporting-files/TOOLING.md (template repo only)
+        if: github.repository == 'sjmeehan9/project-template'
+        run: |
+          missing=0
+          for f in $(git ls-files 'scripts/*' '.github/workflows/*' 'bootstrap.sh' 'corporate-copilot-agent-team/scripts/*' 'templates/ios/fastlane/Fastfile' 'templates/ios/mcp.json' 'templates/ios/project.yml' 'templates/codex/*.toml'); do
+            grep -qF -- "$f" supporting-files/TOOLING.md || { echo "::error::no row in supporting-files/TOOLING.md for $f"; missing=1; }
+          done
+          exit $missing

@@ -1,24 +1,44 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload to TestFlight. Agent-run ONLY after explicit approval at the phase gate."
+  desc "Build and upload to TestFlight. Agent-run ONLY after explicit approval at the phase gate; one run per approval."
   lane :beta do
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_filepath: ENV["ASC_KEY_PATH"]
-    )
+    # The App Store Connect API key (role: Admin) authenticates the upload AND, through xcargs,
+    # xcodebuild's own provisioning during archive and export — so no Xcode account sign-in is
+    # needed on this Mac, and none is relied on. A lesser key role cannot create the cloud-managed
+    # distribution certificate and the export fails on 'No signing certificate "iOS Distribution"'.
+    key_id = ENV.fetch("ASC_KEY_ID")
+    issuer_id = ENV.fetch("ASC_ISSUER_ID")
+    key_path = File.expand_path(ENV.fetch("ASC_KEY_PATH"))
+    api_key = app_store_connect_api_key(key_id: key_id, issuer_id: issuer_id, key_filepath: key_path)
+
     sh("cd .. && xcodegen generate")
-    # Build number from commit count — deterministic, and survives .xcodeproj regeneration
-    # (never mutate the generated project to bump versions).
+
+    # Build number from the commit count — deterministic, and it survives .xcodeproj regeneration
+    # (never mutate the generated project to bump versions). Xcode's own build-number management
+    # is disabled in the export options below so the export cannot silently reassign it.
     build_number = sh("git rev-list HEAD --count").strip
-    build_app(
+
+    ipa_path = build_app(
       project: "__PROJECT_NAME__.xcodeproj",
       scheme: "__PROJECT_NAME__",
       export_method: "app-store",
-      xcargs: "-allowProvisioningUpdates CURRENT_PROJECT_VERSION=#{build_number}"
+      export_options: { manageAppVersionAndBuildNumber: false },
+      xcargs: "-allowProvisioningUpdates -authenticationKeyPath \"#{key_path}\" -authenticationKeyID #{key_id} -authenticationKeyIssuerID #{issuer_id} CURRENT_PROJECT_VERSION=#{build_number}"
     )
+
+    # The export step is the authoritative preflight: a failed export has uploaded nothing and
+    # consumed no build number. From here on, the shipped build number is whatever the ipa carries.
+    shipped = begin
+      sh("unzip -p \"#{ipa_path}\" 'Payload/*.app/Info.plist' | plutil -extract CFBundleVersion raw -o - -").strip
+    rescue StandardError => e
+      UI.important("Could not read CFBundleVersion from the ipa (#{e.message}); record the build number from the TestFlight row instead.")
+      nil
+    end
+    UI.message("Shipped build number (CFBundleVersion in the ipa): #{shipped || 'unknown — read the TestFlight row'}; computed from the commit count: #{build_number}")
+
     upload_to_testflight(api_key: api_key, skip_waiting_for_build_processing: true)
+    UI.success("Uploaded to TestFlight. Record build #{shipped || 'per the TestFlight row'} as the evidence of record — never the commit count.")
   end
 
   desc "Run unit + UI tests on the profile's simulator"

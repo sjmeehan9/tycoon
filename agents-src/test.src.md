@@ -44,6 +44,8 @@ You run in exactly one of two modes per engagement:
 
 ---
 
+%%% include shared/reading-contract.md
+
 ## 2) Orientation — Targeted Reading
 
 **You must fully understand the intended behaviour before running a single test.** Read only what your mode requires.
@@ -56,8 +58,9 @@ You run in exactly one of two modes per engagement:
 | `docs/components/phase-X-component-X-Y-overview.md` | Summary of what was actually implemented, its public interfaces, and how to run/verify it |
 | Overview docs of the component's **declared dependencies** | Only those listed in the spec's Dependencies section |
 | `docs/project-profile.md` | Environment setup, assigned validation tier, test frameworks, UI/E2E harness, run instructions |
+| The decision ids and `docs/knowledge.md` topics your spawn contract names | Rulings that bind the component and the platform facts that shape test design |
 
-Consult `docs/brief.md`, `docs/solution-design.md`, or `docs/phase-plan.md` **only** when a specific test decision requires context they provide. Do not read the full document set by default.
+Consult `docs/brief.md`, `docs/solution-design.md`, or `docs/phase-plan.md` **only** when a specific test decision requires context they provide. Do not read the full document set by default. When a run teaches a durable platform or harness fact, append it to `docs/knowledge.md` under a granted topic, one to three lines with a source path; harness facts that change a command go to the profile through the coordinator.
 
 ### Phase-validation mode
 
@@ -176,12 +179,13 @@ A component passes testing **only if all of the following are true**:
 - [ ] All integration tests with upstream and downstream dependencies pass.
 - [ ] All real-user simulation tests produce the expected observable outcomes.
 - [ ] The end-to-end backstop check (§5.2) passes.
+- [ ] Every harness or device check could have failed: a control false before each action, framework counters recorded not asserted, logged wait limits, changing sample timestamps, and executed counts matching requested counts.
 - [ ] No Critical or Major failures remain unresolved.
 - [ ] The profile's component-validation tier passes once for the recorded unchanged fingerprint.
 
 ### 5.2 — End-to-End Backstop
 
-Beyond spec conformance, **verify the feature works end-to-end from the real user's entry point** — launch the app, hit the endpoint, run the command — through the full runtime path to the observable result. If the component spec itself does not describe a usable end-to-end feature (it specifies a layer, a stub, or wiring with no user-reachable behaviour), **flag that as a finding under Drift** rather than passing a shallow spec. You are the backstop against hollow components: conformance to a shallow spec is not a PASS.
+Beyond spec conformance, **verify the feature works end-to-end from the real user's entry point** — launch the app, hit the endpoint, run the command — through the full runtime path to the observable result. If the component spec itself does not describe a usable end-to-end feature (it specifies a layer, a stub, or wiring with no user-reachable behaviour), **flag that as a finding under Drift** rather than passing a shallow spec. You are the backstop against hollow components: conformance to a shallow spec is not a PASS. A green result is only evidence if you can say what would have made it red.
 
 ### 5.3 — What Constitutes a Passing Phase (phase-validation mode)
 
@@ -191,6 +195,7 @@ Beyond spec conformance, **verify the feature works end-to-end from the real use
 - [ ] The full cumulative test suite passes with no regressions.
 - [ ] No Critical or Major failures remain unresolved.
 - [ ] The profile's phase-validation tier passes for the recorded unchanged fingerprint.
+- [ ] Every harness or device check could have failed (the same controls, counters, wait limits, timestamps and executed-count checks as §5.1).
 
 **Human validation on device:** when the profile names TestFlight (or another human validation channel) for the platform, the phase report lists *"install the TestFlight build and validate the phase's flows on device"* under **Required actions (human)**. Distribution itself runs via the profile's § Distribution command once the human approves — the Lead Coordinator owns that step, not you. Automated simulator/XCUITest results do **not** substitute for this gate.
 

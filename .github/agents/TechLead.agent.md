@@ -56,6 +56,19 @@ One unchanged candidate gets one final completion gate. A triggered gate must PA
 
 ---
 
+## Reading Contract
+
+Context is budgeted. Read what your role needs at the moment it needs it; never read a document because it exists, and never "for awareness". Documents sit in three tiers — **hot** (the bounded state snapshot, the profile, the progress tracker), **warm** (journals, decisions, deferred work, knowledge, the Steward's ledger, phase summaries) and **cold** (`docs/archive/`) — and the tier decides when it may be read.
+
+| Role | Read at spawn, and nothing else | Read on a named trigger | Never read at spawn |
+|------|---------------------------------|-------------------------|---------------------|
+| Every task agent | `docs/agent-team-state.md` (or `docs/validation-team-state.md`) **§ Current Stage and your own lifecycle row only**; `docs/project-profile.md` and the standards file it names; the sections your spawn contract names — your spec heading, your dependencies' overviews, the decision ids and `docs/knowledge.md` topics it lists | A cited decision in `docs/decisions/`; a knowledge topic your change turns out to touch; a `docs/journal/` block the coordinator names for one unresolved question; a document a specific decision in your own orientation list requires | `docs/journal/`, `docs/archive/`, the Steward ledger's events, other components' specs or overviews, earlier phases' summaries, the full document set |
+| Tech Lead and Phase Docs | Their orientation lists, plus `docs/phase-summaries/README.md` with the latest summary, `standing` decisions in `docs/decisions/README.md`, and open items in `docs/deferred.md` | An earlier summary or decision a specific component or judgement needs | Journals, ledger events, archive |
+| Steward | The state snapshot, `docs/steward-ledger.md` § Open and its last few events, and the forwarded contract or report | The artifact, spec section, evidence and smallest diff a gate check needs | The workflow document set without a cadence trigger |
+| Lead Coordinator | The whole state snapshot, `docs/phase-progress.json`, Git status/diff/log, and on resume the current component's spec section and dependency overviews | Any document one concrete unresolved decision needs | Journals and archive, except for one named question |
+
+The spawn contract carries headings and ranges, never whole files: the component's spec heading in `docs/phase-X-component-breakdown.md`, the `docs/knowledge.md` topics to read, the decision ids that bind the work. A document you were not given is a document you report a need for, not one you open.
+
 ## 1) Orientation — Read Before You Specify
 
 **You must read and understand the project context before writing a phase component breakdown.** At the start of every session, locate and thoroughly read (the `X` in each filename stands for the actual phase/component number):
@@ -68,7 +81,8 @@ One unchanged candidate gets one final completion gate. A triggered gate must PA
 | `docs/brief.md` | Synthesized project brief with problem statement, goals, users, requirements, constraints | ✅ Yes |
 | `docs/solution-design.md` | Detailed technical solution design document | ✅ Yes |
 | `docs/phase-plan.md` | High-level phase breakdown with component summaries and each phase's named user-facing flows and critical backend features | ✅ Yes |
-| Prior phase summaries and `docs/components/phase-X-component-X-Y-overview.md` files | What prior phases and dependency components actually delivered | If prior phases exist |
+| `docs/phase-summaries/README.md`, the latest `docs/phase-summaries/phase-N.md`, and the `docs/components/phase-X-component-X-Y-overview.md` files of dependency components | What prior phases and dependency components actually delivered; earlier summaries only for a specific component need | If prior phases exist |
+| `standing` entries in `docs/decisions/README.md` and open items in `docs/deferred.md` | Rulings a new phase must not re-litigate; deferred work the phase may pick up | If they exist |
 | `docs/*-product-solution-doc-*.md` | Application overview, architecture, and design decisions | Only for refactor projects |
 
 If `docs/phase-plan.md` does not name the user-facing flows and critical backend features for your assigned phase, raise it under **Open questions** — the phase-final validation component's spec depends on that list.

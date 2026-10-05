@@ -10,6 +10,7 @@ Created from [project-template](https://github.com/sjmeehan9/project-template) a
 - **`CLAUDE.md` / `AGENTS.md`** — session entry points for Claude Code and Codex.
 - **`docs/`** — the documents the delivery pipelines produce and consume: requirements, brief, solution design, phase plan, component breakdowns, component overviews, test reports, team state.
 - **`supporting-files/AGENT_FLOWS.md`** — how the agent pipeline fits together.
+- **`supporting-files/TOOLING.md`** — every script, workflow and tool configuration this repository carries from the template, where it runs and what it needs.
 
 ## Delivery pipelines
 

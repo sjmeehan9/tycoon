@@ -97,13 +97,15 @@ If prerequisites are missing, report it (Agent Report, Status BLOCKED, the gap u
 
 ## Step 2: Initialise Persistent State
 
-Create or update `docs/validation-team-state.md`. Its logs mirror the Agent Report categories so nothing reported by an agent is lost between sessions:
+Create or update the state snapshot `docs/validation-team-state.md`: rewritten in place after every change, anything resolved leaves it as it resolves, and it stays within the profile's ceiling (default 250 lines). Nothing reported is lost — history goes to `docs/journal/<stage>.md`, decisions to `docs/decisions/`, deferred items to `docs/deferred.md`:
 
 ```markdown
 # Validation Team State
 
 ## Current Stage
-[positioning | creative | build]
+- **Stage:** [positioning | creative | build] · **Now:** [the document or build step in flight and its engagement] · **Next action:** [who does what next]
+- **Open human gate:** [none | what the human must do] · **Active leases:** [preview/production deploy · Git — holder, or none]
+- **Resume here:** [the two or three facts a cold coordinator needs that the sections below do not carry]
 
 ## Stage Progress
 - [ ] Positioning: Brief drafted and approved
@@ -156,20 +158,13 @@ Create or update `docs/validation-team-state.md`. Its logs mirror the Agent Repo
 | Raised by | Question | Status |
 |-----------|----------|--------|
 
-## Drift Log
-| Time | Reported by | Deviation / inconsistency | Resolution |
-|------|-------------|---------------------------|------------|
-
-## Deferred Log
-| Time | Reported by | Item (incl. DESIGN.md fallbacks, Hardening notes) | Tracked where |
-|------|-------------|---------------------------------------------------|---------------|
-
-## Decisions Log
-| Time | Decision | Rationale | Affects |
-|------|----------|-----------|---------|
+## Unresolved Drift
+| Reported by | Deviation / inconsistency | Pending resolution |
+|-------------|---------------------------|--------------------|
+(resolved drift lives in `docs/journal/<stage>.md`; contract-changing drift also becomes a `docs/decisions/` record; Deferred items, including DESIGN.md fallbacks and Hardening notes, live in `docs/deferred.md`)
 ```
 
-Update this file after every agent status change. You are its sole writer; the Steward reads it and owns `docs/steward-ledger.md` instead. All agents read it for situational awareness. When agents report **Drift** or **Deferred** items, copy them into the corresponding log before acting on them.
+Update the snapshot after every agent status change. You are its sole writer; the Steward reads it and owns `docs/steward-ledger.md` instead. Task agents read § Current Stage and their own row only. Before acting on a report, write its block in `docs/journal/<stage>.md`, copy any **Deferred** item (including DESIGN.md fallbacks and Hardening notes) into `docs/deferred.md`, and record contract-changing **Drift** as a decision in `docs/decisions/`; at stage close rotate the ledger to `docs/archive/steward-ledger-<stage>.md`.
 
 ---
 
@@ -179,7 +174,7 @@ A **persistent Steward** accompanies the whole run as the team's timekeeper, sco
 
 - **Forward everything.** Send the Steward every task-agent spawn contract and every task-agent Agent Report as they arrive. Routine reports need no reply — silence is acknowledgement; do not wait.
 - **Wait at gate events.** Its verdict is a required input at stage initialisation, on every exceptional report (BLOCKED, Drift, Deferred, scope or ownership exception, stack-fact contradiction), immediately before the production deploy, and at stage close. Never approve production or close a stage past an open **Steward Hold**.
-- **Steward Challenge and Steward Hold.** The Steward may message a task agent directly with a Challenge (you are copied) and may Hold that engagement's next gate, approval, or deploy. Record every Challenge outcome in the Decisions/Drift logs and every Hold in the state file's Steward section. You may dismiss a Challenge or clear a Hold only with a Decisions Log entry naming the standard set aside and why; a second overrule of the same standard within one stage goes to the user verbatim. Every Steward escalation appears verbatim in your next user report.
+- **Steward Challenge and Steward Hold.** The Steward may message a task agent directly with a Challenge (you are copied) and may Hold that engagement's next gate, approval, or deploy. Record every Challenge outcome in the journal, and as a decision record when you overrule, and every Hold in the state file's Steward section. You may dismiss a Challenge or clear a Hold only with a decision record naming the standard set aside and why; a second overrule of the same standard within one stage goes to the user verbatim. Every Steward escalation appears verbatim in your next user report.
 - **Ledger.** The Steward owns `docs/steward-ledger.md`. It never writes `docs/validation-team-state.md`; you remain its sole writer.
 - Wherever this skill says "the Steward confirms/verifies X", that is a Steward verdict you obtain — never a check you skip.
 
@@ -259,7 +254,7 @@ competitor-analysis.md → [Positioning Brief] → positioning-brief.md (revised
 - [ ] `docs/competitor-analysis.md` exists and satisfies the completeness criterion (all materially competing products, stated completeness rationale)
 - [ ] Positioning brief differentiation reflects competitor findings
 - [ ] Steward close audit recorded (documentation consistent, no open Holds, every Challenge dispositioned)
-- [ ] State file updated; agents' Drift/Deferred items copied to the logs
+- [ ] State file updated; agents' Drift journaled, Deferred items in `docs/deferred.md`
 
 **Stage Completion:**
 Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
@@ -320,7 +315,7 @@ positioning-brief.md → [Copywriter]  → landing-copy.md
 landing-copy.md + stitch-design-prompt.md (+ DESIGN.md if exported) → [Asset Producer (optional)] → asset-plan.md + delivered assets
 ```
 
-**DESIGN.md contract (applies here and in Build):** exporting `docs/DESIGN.md` from Stitch is **optional**. Every consumer has an explicit fallback: **when DESIGN.md is absent, derive design tokens (colours, typography, spacing) from `docs/stitch-design-prompt.md`'s stated design system and the screen exports in `docs/stitch-exports/`, and record the fallback under Deferred** (in the report and the state file's Deferred Log). No agent may treat a missing DESIGN.md as a blocker.
+**DESIGN.md contract (applies here and in Build):** exporting `docs/DESIGN.md` from Stitch is **optional**. Every consumer has an explicit fallback: **when DESIGN.md is absent, derive design tokens (colours, typography, spacing) from `docs/stitch-design-prompt.md`'s stated design system and the screen exports in `docs/stitch-exports/`, and record the fallback under Deferred** (in the report and in `docs/deferred.md`). No agent may treat a missing DESIGN.md as a blocker.
 
 **Spawn Protocol:**
 1. Spawn Design and Copywriter in parallel with their respective ownership boundaries and the approved positioning brief as input contract.
@@ -346,7 +341,7 @@ landing-copy.md + stitch-design-prompt.md (+ DESIGN.md if exported) → [Asset P
 - [ ] Stitch screen exports saved to `docs/stitch-exports/` (DESIGN.md optional; absence recorded under Deferred)
 - [ ] If `--with-assets`: `docs/asset-plan.md` exists, all assets delivered, statuses marked "Delivered"
 - [ ] Steward close audit recorded (copy, design, and assets tell the same story; no open Holds; every Challenge dispositioned)
-- [ ] State file updated; Drift/Deferred logs current
+- [ ] State file updated; Drift journaled, Deferred items in `docs/deferred.md`
 
 **Stage Completion:**
 Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
@@ -462,7 +457,7 @@ After the user approves the design doc, present:
 - [ ] Preview approved by the user
 - [ ] Production deploy explicitly approved (the gate above), executed per the git workflow contract, and live
 - [ ] Steward close audit recorded (page, copy, and positioning tell the same story; no open Holds; every Challenge dispositioned)
-- [ ] State file updated; Drift/Deferred logs current
+- [ ] State file updated; Drift journaled, Deferred items in `docs/deferred.md`
 
 **Stage Completion:**
 Update `validation-team-state.md`. Record the Steward's close audit and retire the Steward. Report:
@@ -536,7 +531,7 @@ and stack-facts rule where the stage contract assigns them]
 - Report out-of-ownership needs, discoveries affecting other agents, and blockers before acting on them.
 - Do NOT communicate directly with other task agents — all coordination flows through the Lead Coordinator.
 - The Steward may message you directly with a Steward Challenge (copied to the Lead Coordinator). Answer it in your next report before requesting your next gate or approval; a Steward Hold means you do not request that gate until the Lead Coordinator clears it.
-- Read `docs/validation-team-state.md` for awareness of overall state.
+- Read `docs/validation-team-state.md` § Current Stage and your own row only; your definition's Reading Contract names everything else.
 
 ### Before Reporting Done
 1. Run the stage-specific validations your contract names.
@@ -580,8 +575,19 @@ When the Steward reports context exhaustion: ask the agent for a final Agent Rep
 When your Steward-capacity checks detect context exhaustion in an agent: ask it for a final Agent Report (done / remaining / in-progress decisions), retire it, and spawn a fresh agent with the same role and assignment, the completed-work summary, the remaining task list, and all active contracts. Record the swap in the state file.
 %%% end
 
+### Staying Alive Between Reports
+%%% begin claude
+Arm a `Monitor`-based progress watch that reports three things — a new commit, a change in the leased validation resource or the preview/production deploy state, and a stall — with each arm lasting at most 30 minutes and re-armed on expiry. Do not schedule `CronCreate` self-prompts (the auto-mode classifier denies them) and do not `sleep` in the foreground (blocked); a background `until` loop is the fallback. Stop every watch you armed when the engagement it watched ends.
+%%% end
+%%% begin codex
+Wait on spawned threads through the runtime's own result delivery; never busy-wait in the coordinator thread, and never leave a watch running for a retired engagement.
+%%% end
+
+### Usage-Limit Resilience
+Account usage stops cost more than code does. Keep check-ins to one line; keep evidence in files, never in chat; after any stop, re-onboard from the state file, the spawn contract and the last Agent Report — never from the transcript; stop retired agents' background watches; and spawn fresh, compact engagements rather than resuming very large contexts.
+
 ### Steward Challenge and Hold
-Forward every spawn contract and every task-agent report to the Steward as it arrives; do not wait for a reply on routine reports. When the Steward issues a Challenge (you are copied), record it in the Decisions or Drift log and confirm the target's next report answers it before you advance that engagement. When it raises a Hold, record it in the state file's Steward section and do not advance the affected gate, approval, or deploy until you disposition it — clear it with a Decisions Log entry naming the standard set aside and why, or uphold it and route the remedy. A second overrule of the same standard within one stage, and every Steward escalation, goes to the user verbatim in your next Agent Report. Retire the Steward only at stage close, after recording its close audit.
+Forward every spawn contract and every task-agent report to the Steward as it arrives; do not wait for a reply on routine reports. When the Steward issues a Challenge (you are copied), record it in the Decisions or Drift log and confirm the target's next report answers it before you advance that engagement. When it raises a Hold, record it in the state file's Steward section and do not advance the affected gate, approval, or deploy until you disposition it — clear it with a decision record naming the standard set aside and why, or uphold it and route the remedy. A second overrule of the same standard within one stage, and every Steward escalation, goes to the user verbatim in your next Agent Report. Retire the Steward only at stage close, after recording its close audit.
 
 ### Blocker Escalation
 An agent reporting Status BLOCKED is never left unacknowledged. Resolve by providing information, spawning a dependency, or adjusting the contract — or escalate to the user via an Agent Report with the blocker under *Problems / blockers* and the decision under *Open questions*.
@@ -617,7 +623,7 @@ Before finalising any stage:
 9. **Coordinator writing code or copy.** You coordinate; that is the whole job.
 10. **Inconsistent voice across copy / assets / page.** The single most common quality issue. The Steward checks this at every stage.
 11. **Free-form chat.** Every message — yours and the agents' — is one Agent Report block; stage-transition questions live under *Open questions* with Status BLOCKED until answered.
-12. **Overruling the Steward silently.** A Hold cleared or a Challenge dismissed without a Decisions Log entry. Every overrule names the standard set aside and why; a second overrule of the same standard goes to the user.
+12. **Overruling the Steward silently.** A Hold cleared or a Challenge dismissed without a decision record. Every overrule names the standard set aside and why; a second overrule of the same standard goes to the user.
 
 ---
 
@@ -626,7 +632,7 @@ Before finalising any stage:
 A stage is done when its **Stage Gate checklist** (in Step 4) passes in full — those checklists are the single source of truth; do not maintain a second list. Two overarching rules apply to every stage:
 
 1. **Outcome over metrics.** Success is the validated outcome — an approved brief, coherent creative, a live page with a working signup — reported with evidence, not activity counts.
-2. **Structured close.** The state file is current, agents' Drift/Deferred items are logged, the Steward's close audit is recorded and no Hold is open, and the stage completion Agent Report has been sent.
+2. **Structured close.** The state file is current, agents' Drift and Deferred items are in the journal and `docs/deferred.md`, the Steward's close audit is recorded and no Hold is open, and the stage completion Agent Report has been sent.
 
 ---
 

@@ -108,6 +108,12 @@ Feeds Component X.1 (human setup) of each phase. List accounts, API keys, and in
 
 - Verify current framework versions (Next.js/Node/etc.) against official documentation during Technical Validation; record them here.
 
+## Harness and toolchain facts
+
+Written by the Lead Coordinator in the component's docs commit whenever a report records a discovery that changes how a command runs: a tool breakage, a runtime or SDK behaviour, a service or host limit, a working procedure. One line each — date · fact · source (report or evidence path). If a fact changes a default, update `CLAUDE.md` in the same commit. Agent memory is not a substitute: a fact that lives only there resurfaces as new Drift.
+
+- none yet
+
 ## Delivery posture
 
 Read by the Steward to keep scrutiny proportionate; update when the answer changes.
@@ -122,6 +128,13 @@ Read by the Steward to keep scrutiny proportionate; update when the answer chang
 Soft wall-clock expectations the Steward may compare against state timestamps. Leave as `none` to pace by checkpoints only.
 
 - none
+
+## Context budgets (optional)
+
+Ceilings the Steward polices as the `waste` class *state bloat*, and the coordinator restores by moving resolved material to the journal, decisions or archive. These defaults apply when the section is absent or unchanged.
+
+- `docs/agent-team-state.md` (or `docs/validation-team-state.md`): 250 lines
+- `docs/knowledge.md`: 300 lines
 
 ## Standards file
 

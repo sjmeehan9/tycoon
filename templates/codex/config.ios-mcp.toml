@@ -1,6 +1,9 @@
 
 # iOS agent tooling — same servers as .mcp.json (Claude Code), Codex-native registration.
 # startup_timeout_sec is raised because first-run `npx` downloads exceed the 10s default.
+# XCODEBUILDMCP_ENABLED_WORKFLOWS is required: without it XcodeBuildMCP loads only its default
+# simulator workflow and has no tap/type/snapshot tools. Valid ids for 2.7.0 are listed in
+# supporting-files/ios-setup-runbook.md; add "debugging" when a project needs LLDB.
 
 [mcp_servers.XcodeBuildMCP]
 command = "npx"
@@ -9,6 +12,7 @@ startup_timeout_sec = 60
 
 [mcp_servers.XcodeBuildMCP.env]
 XCODEBUILDMCP_SENTRY_DISABLED = "true"
+XCODEBUILDMCP_ENABLED_WORKFLOWS = "simulator,simulator-management,ui-automation"
 
 [mcp_servers.ios-simulator]
 command = "npx"

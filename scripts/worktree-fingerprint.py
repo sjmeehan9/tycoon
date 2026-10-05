@@ -13,16 +13,11 @@ from pathlib import Path
 from typing import Sequence
 
 
-EVIDENCE_PATHS = (
-    "docs/agent-team-state.md",
-    "docs/phase-progress.json",
-    "docs/components/*-overview.md",
-    "docs/test-reports/**",
-    "docs/phase-*-test-report.md",
-    "docs/phase-summary.md",
-    "docs/steward-ledger.md",
-    "docs/*-product-solution-doc-*.md",
-)
+# Everything under docs/ is documentation, never executable content: the state snapshot, journals,
+# decisions, deferred work, knowledge, component overviews, test reports, phase summaries, the
+# Steward's ledger, the product solution doc. Writing any of it must not move a candidate identity;
+# specification changes are governed by the Drift protocol instead. fnmatch's "*" spans "/".
+EVIDENCE_PATHS = ("docs/*",)
 
 
 def git(repo: Path, *args: str) -> bytes:
