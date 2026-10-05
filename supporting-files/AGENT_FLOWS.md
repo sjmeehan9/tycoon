@@ -51,10 +51,24 @@ Agent files are **never customised downstream** — all per-project variability 
 - **Routing:** in **team mode** (spawned by a skill) all reports go to the Lead Coordinator; in **solo mode** (invoked directly) they go to the user. Task agents never message each other directly.
 - **Flat topology:** only the Lead Coordinator spawns task agents. Task agents never spawn children; reuse/follow up with the existing role engagement through its remediation budget.
 - **Steward:** every skill run has a mandatory, **persistent Steward** (`.claude/agents/steward.md`, spawned first and retired last; on Codex the Lead Coordinator executes the same duties itself). It is the timekeeper (checkpoint pacing, optional profile *Pace budgets*), scope-to-spec and drift enforcer, standards bearer, and waste steerer (no reruns of an unchanged fingerprint, no scrutiny disproportionate to the profile's *Delivery posture*). It may send a **Steward Challenge** directly to a task agent — the one exception to peer-messaging — and raise a **Steward Hold** that blocks the next gate, commit, or deploy until the coordinator dispositions it. It owns `docs/steward-ledger.md` (fingerprint-excluded), never approves or rejects work, never runs validation, sits outside the max-agents ceiling, and its escalations reach the user verbatim; the coordinator may overrule it only with a logged decision.
-- **Stack contract:** `docs/project-profile.md` (written by `bootstrap.sh`) is the single source of truth for platform, targeted/component/phase validation tiers, test frameworks and UI/E2E harness, shared-resource locks, coverage policy, project layout, run instructions, git workflow contract, external services / human tasks, and performance budgets. An agent that finds the profile missing or still carrying only the legacy single validation sequence stops and raises profile migration as a blocker; it never guesses commands.
-- **Evidence reuse:** every component gate records commands, duration, result, and a scoped `python3 scripts/worktree-fingerprint.py -- [component paths]` identity; the phase gate records the global identity. Scoped identities are commit-stable and are verified historically with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same component paths]` (`--rev` must precede the path delimiter). State, overview, test-report, phase-summary, and Phase Docs-owned product-solution updates are evidence paths excluded from executable identity. Downstream roles trust passing evidence while its scope is unchanged; a role handoff or unrelated later component never causes a rerun.
-- **Serialized shared state:** implementation authoring is serialized by default on the phase branch, with one active component-delivery engagement at a time through its gate and commit. Parallel component authors are opt-in only when the project profile defines a complete branch/worktree integration protocol; isolated worktrees and disjoint files alone do not authorize it. The coordinator leases shared simulators, browsers, mutable test services/databases, and ports one operation at a time. Every Git index, commit, push, and branch-integrating write also passes through one serial lane.
+- **Stack contract:** `docs/project-profile.md` (written by `bootstrap.sh`) is the single source of truth for platform, targeted/component/phase validation tiers, test frameworks and UI/E2E harness, shared-resource locks, coverage policy, project layout, run instructions, git workflow contract, external services / human tasks, and performance budgets. An agent that finds the profile missing or still carrying only the legacy single validation sequence stops and raises profile migration as a blocker; it never guesses commands. Harness and toolchain facts — discoveries that change how a command runs — are written into the profile's section of that name by the coordinator in the component's docs commit, never left in agent memory.
+- **Evidence reuse:** every component gate records commands, duration, result, and a scoped `python3 scripts/worktree-fingerprint.py -- [component paths]` identity; the phase gate records the global identity. Scoped identities are commit-stable and are verified historically with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same component paths]` (`--rev` must precede the path delimiter). Everything under `docs/` is excluded from executable identity, so writing any document never invalidates evidence. Downstream roles trust passing evidence while its scope is unchanged; a role handoff or unrelated later component never causes a rerun. Beside every fingerprint sits the profile's toolchain triple — a changed triple voids execution evidence — and the executed-versus-requested test counts; raw evidence lives in the gitignored `.evidence/phase-N/gate-X-Y/`. An expensive device leg keeps its PASS after a later edit to non-production entries it never executed only under the exact-reproduction proof Review performs.
+- **Serialized shared state:** implementation authoring is serialized by default on the phase branch, with one active component-delivery engagement at a time through its gate and commit. Parallel component authors are opt-in only when the project profile defines a complete branch/worktree integration protocol; isolated worktrees and disjoint files alone do not authorize it. The coordinator leases shared simulators, browsers, mutable test services/databases, and ports **per use**: every boot or start — including a test run that boots its destination and any viewer attach — re-acquires the lease, the profile's maximum-concurrent limit is a hard rule, and a gate records a host snapshot and starts only below the profile's thresholds. While a component's expensive evidence legs run, the next author may spawn in read-only PREP and Review may run a read-only first stage; authoring itself stays serialized. Every Git index, commit, push, and branch-integrating write also passes through one serial lane.
 - **Delivery manifest:** `docs/components/phase-X-component-X-Y-overview.md` is the sole component delivery manifest. It records the outcome, delivered files, public interfaces, integration notes, assurance lane, fingerprint, and validation evidence; there is no separate phase-level delivery log.
+
+---
+
+## Context tiers (what each agent reads)
+
+Agents read by **reading contract**, never "for awareness". Documents sit in three tiers:
+
+| Tier | Documents | Written by | Read by |
+|---|---|---|---|
+| **Hot** — bounded, rewritten in place | `docs/agent-team-state.md` / `docs/validation-team-state.md`: the snapshot (current stage and next action, current-phase lifecycle rows, active engagements, human gate, open Holds, open questions, unresolved drift) with a 250-line ceiling unless the profile's *Context budgets* says otherwise · `docs/project-profile.md` · `docs/phase-progress.json` (codes, SHAs, fingerprints, paths — no narrative) | The Lead Coordinator after every lifecycle change; anything resolved leaves the snapshot as it resolves | Coordinator and Steward whole; every task agent § Current Stage and its own row only |
+| **Warm** — append-only or indexed, read on a trigger | `docs/journal/phase-X.md` (history, one dated block per event; spawn contracts recorded here) · `docs/decisions/` (index + one-paragraph records; `standing` rulings are never re-litigated) · `docs/deferred.md` (living backlog) · `docs/knowledge.md` (durable facts by topic, 300-line ceiling) · `docs/steward-ledger.md` (§ Open head + appended events) · `docs/phase-summaries/` (index + one file per phase) | Coordinator (journal, decisions, deferred) · Implement, Debug, Test append knowledge · Steward (ledger) · Phase Docs (summaries, deferred close-out, knowledge curation) | Only the entry a spec, contract or question names; a replacement Steward reads § Open and the last few events; Tech Lead and Phase Docs read the summaries index and the latest summary |
+| **Cold** — never read at spawn | `docs/archive/` (rotated ledgers, retired knowledge entries, closed deferred items, migrated legacy files) | Coordinator at stage close | Named investigations only |
+
+The Steward polices the budgets as the `waste` class **state bloat**; the coordinator restores them by moving resolved material to the journal, decisions or archive. A spawn contract names headings and ranges — the component's spec heading, knowledge topics, decision ids — never whole files. The shared `reading-contract` include carries the per-role table into every delivery agent.
 
 ---
 
@@ -290,7 +304,7 @@ flowchart TD
     Report -->|PASS| FinalCommit["Resume Review for commit-only pass<br/>through serialized Git lane"]
     FinalCommit --> OnDevice{{"Gate 5 · Human on-device validation<br/>(TestFlight for iOS, if the profile names it)"}}
     OnDevice -->|confirmed| PD["Gate 6 · phase-docs"]
-    PD --> Summary[/"docs/phase-summary.md"/]
+    PD --> Summary[/"docs/phase-summaries/phase-X.md"/]
     Summary --> Merge([Phase branch merged<br/>per git workflow contract])
 
     StewardI["steward<br/>(persistent · Challenge / Hold · ledger)"]
@@ -307,7 +321,7 @@ flowchart TD
 
 **Assurance lanes:** `fast` = Implement gate + Implement commit; `test` = Test gate + Implement commit; `review` = Implement gate + Review commit; `full` = Test gate + Review commit; `phase-gate` = aggregate Review + mandatory Test Phase X + Review commit. Test triggers on UI/OS/external behaviour not fully proven by deterministic component tests, cross-component or persistence round trips, primary-path mocks/fakes, permissions/privacy/security, migrations or destructive state, concurrency/background execution, first use of a runtime/integration pattern, or regression-prone observable behaviour. Review triggers on shared/core/app-entry/build/config/signing files, new or changed public API/schema/protocol/cross-component contracts, security/privacy authorization, a spec deviation or ADR, an open Technical Validation risk, an ownership exception, broad scope, or incomplete/contradictory evidence. Both sets or any critical signal trigger `full`; neither triggers `fast`; the phase-final validation component always uses `phase-gate`.
 
-**Phase validation gate:** Gate 0 records a phase-base SHA. Aggregate Review receives that base plus every ordered component commit SHA, verifies each historical scoped identity with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same component paths]`, audits the full phase diff, and then `Test Phase X` executes the profile's phase tier and every named **Validation Target** — user-facing flows through the UI harness (XCUITest / Playwright), critical backend paths end-to-end, plus the full cumulative suite — and writes `docs/phase-X-test-report.md`. It is mandatory regardless of which component lanes ran. `phase-docs` and the phase-final commit require PASS; Review resumes for a commit-only pass while the candidate is unchanged. **On iOS, the automated PASS does not substitute for the human TestFlight-on-device gate.**
+**Phase validation gate:** Gate 0 records a phase-base SHA. Aggregate Review receives that base plus every ordered component commit SHA, verifies each historical scoped identity with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same component paths]`, audits the full phase diff, and then `Test Phase X` executes the profile's phase tier and every named **Validation Target** — user-facing flows through the UI harness (XCUITest / Playwright), critical backend paths end-to-end, plus the full cumulative suite — and writes `docs/phase-X-test-report.md`. It is mandatory regardless of which component lanes ran. `phase-docs` and the phase-final commit require PASS; Review resumes for a commit-only pass while the candidate is unchanged. **On iOS, the automated PASS does not substitute for the human TestFlight-on-device gate.** Distribution runs once per approval: the lane's export step is the preflight of record, a failed export uploads nothing and consumes no build number, and the recorded build number is the one read back from the artifact.
 
 ### Component lifecycle state machine
 
@@ -371,7 +385,7 @@ flowchart LR
 | Implementation | `test` | Conditional component gate in `test`/`full`: `docs/test-reports/phase-X-component-X-Y-test-report.md` · mandatory Phase mode (`Test Phase X`): `docs/phase-X-test-report.md` |
 | Implementation | `debug` | Escalated component diagnosis/fix after one owner remediation fails or for ambiguous/flaky/systemic failures; immediate owner of phase-test failures |
 | Implementation | `review` | Conditional component audit + serialized commit in `review`/`full` · mandatory aggregate phase audit + phase-final commit in `phase-gate`; never reruns valid unchanged-tree evidence |
-| Implementation | `phase-docs` | `docs/phase-summary.md` |
+| Implementation | `phase-docs` | `docs/phase-summaries/phase-X.md` |
 | (all stages) | `steward` | `docs/steward-ledger.md` — control-plane role, spawned first: checkpoints, Challenges, Holds, close audits |
 
 ### Build path stage gates
@@ -403,7 +417,7 @@ implementation  → Gate 0: dependency graph built, all components Spec-Validate
                    → refresh aggregate audit → re-test, max 3 cycles;
                    PASS gates phase-docs and the phase-final commit)
                 → human on-device validation (e.g. TestFlight) if the profile names it
-                → phase-docs → phase-summary.md; phase branch merged per git workflow contract
+                → phase-docs → phase-summaries/phase-X.md; phase branch merged per git workflow contract
 ```
 
 ---
@@ -492,7 +506,7 @@ flowchart TD
     DeviceL -->|"not performed / infrastructure blocked"| HumanBlockedL{{"BLOCKED · await user/environment<br/>no code-repair allowance consumed"}}
     DeviceL -->|"required-path defect<br/>repair unused"| ReopenL
     DeviceL -->|"defect after allowance<br/>or spec gap"| EscalateL
-    DocsL --> SummaryL[/"docs/phase-summary.md"/]
+    DocsL --> SummaryL[/"docs/phase-summaries/phase-X.md"/]
 
     StewardLI["steward<br/>(persistent · Challenge / Hold · ledger)"]
     StewardLI -.->|Gate 0 verdict| G0L
@@ -509,7 +523,7 @@ flowchart TD
 
 Review's assignment-selected `light-phase-gate` mode performs the aggregate static/spec audit, verifies historical component fingerprints with revision options before the path delimiter, acquires the phase-validation lease immediately before execution, runs every profile phase-tier command and named Validation Target, releases the lease after execution, then writes the phase report. The coordinator increments `phaseValidationAttempts` before every aggregate/phase-gate invocation, including pre-execution BLOCKED outcomes. Review commits only a matching PASS candidate. The report maps failures to owning components. The coordinator records one shared phase repair cycle before routing the same Implement engagements through their normal component gates/commits; after that allowance, any non-APPROVED aggregate or non-PASS phase result escalates because the light path has no diagnostic fallback agent.
 
-Phase Docs receives an explicit light-mode handoff that the Review-owned PASS report satisfies its phase-report prerequisite. A missing/declined or infrastructure-blocked human action stops before Phase Docs without consuming code repair. A human-observed required-path defect uses the shared phase repair only when still unused, then repeats aggregate Review, automated phase validation/commit, and the human gate; another defect or a spec gap escalates. Phase Docs owns `docs/phase-summary.md` plus any conditional product-solution update, both excluded from executable candidate fingerprints. Git protections and human merge approvals are unchanged.
+Phase Docs receives an explicit light-mode handoff that the Review-owned PASS report satisfies its phase-report prerequisite. A missing/declined or infrastructure-blocked human action stops before Phase Docs without consuming code repair. A human-observed required-path defect uses the shared phase repair only when still unused, then repeats aggregate Review, automated phase validation/commit, and the human gate; another defect or a spec gap escalates. Phase Docs owns `docs/phase-summaries/phase-X.md` plus any conditional product-solution update, both excluded from executable candidate fingerprints. Git protections and human merge approvals are unchanged.
 
 ### Light build agents — at a glance
 
@@ -522,7 +536,7 @@ Phase Docs receives an explicit light-mode handoff that the Review-owned PASS re
 | Planning/state | Light Lead Coordinator | Selected `docs/phase-X-component-breakdown.md`, `docs/phase-progress.json`, `docs/agent-team-state.md` |
 | Implementation | `implement` | Component source/essential tests, overview, targeted evidence, component gate for `fast`/`review`, commit for `fast` |
 | Implementation | `review` | Component audit/commit for `review`; aggregate audit, phase validation/report, and commit for `phase-gate` |
-| Phase close | `phase-docs` | `docs/phase-summary.md` and conditional `docs/*-product-solution-doc-*.md` updates |
+| Phase close | `phase-docs` | `docs/phase-summaries/phase-X.md` and conditional `docs/*-product-solution-doc-*.md` updates |
 | (all stages) | `steward` | `docs/steward-ledger.md` — control-plane role, spawned first: checkpoints, Challenges, Holds, close audits |
 
 ### Light build stage gates
@@ -544,7 +558,7 @@ implementation  → Gate 0 resume/dependency/ownership/route normalization;
                 → Review light-phase-gate aggregate APPROVED
                 → Review runs exact phase tier → docs/phase-X-test-report.md PASS
                 → profiled human/on-device validation confirmed
-                → phase-docs → phase-summary.md; branch closes per profile
+                → phase-docs → phase-summaries/phase-X.md; branch closes per profile
 ```
 
 ---
@@ -569,7 +583,7 @@ flowchart LR
     RA --> Analysis[/"docs/repository-analysis.md<br/>(input to ideate or solutions-architect)"/]
     Debug --> Fix([Bug fix + regression test])
     TR --> TROut[/"docs/technical-research.md or<br/>docs/technical-research-phase-X.md"/]
-    PhaseDoc --> Summ([docs/phase-summary.md])
+    PhaseDoc --> Summ([docs/phase-summaries/phase-X.md])
 ```
 
 ---
@@ -707,11 +721,21 @@ docs/
 │   └── phase-X-component-X-Y-test-report.md ← test (component mode) [EXPANSIVE BUILD]
 ├── phase-X-test-report.md                ← test (phase mode)        [EXPANSIVE BUILD]
 │                                           review (`light-phase-gate`) [LIGHT BUILD]
-├── phase-summary.md                      ← phase-docs               [BOTH BUILDS]
+├── phase-summaries/
+│   ├── README.md                         ← phase-docs (index, one row per phase) [BOTH BUILDS]
+│   └── phase-X.md                        ← phase-docs (one summary per phase) [BOTH BUILDS]
+├── journal/
+│   └── phase-X.md · <stage>.md           ← Lead Coordinator (append-only history; spawn contracts recorded here) [ALL PATHS]
+├── decisions/
+│   ├── README.md                         ← Lead Coordinator (index; agents propose; `standing` tag) [ALL PATHS]
+│   └── NNNN-slug.md                      ← Lead Coordinator (one-paragraph records) [ALL PATHS]
+├── deferred.md                           ← Lead Coordinator; phase-docs closes items [BOTH BUILDS]
+├── knowledge.md                          ← implement / debug / test append; phase-docs curates [BOTH BUILDS]
+├── archive/                              ← Lead Coordinator at stage close (rotated ledgers, retired entries) [ALL PATHS]
 │
-├── steward-ledger.md                     ← steward (checkpoints, Challenges, Holds,
-│                                            close audits; fingerprint-excluded) [ALL PATHS]
-├── agent-team-state.md                   ← Lead Coordinator (sole writer) [BOTH BUILDS]
+├── steward-ledger.md                     ← steward (§ Open head rewritten in place + appended events;
+│                                            rotated to archive/ at stage close) [ALL PATHS]
+├── agent-team-state.md                   ← Lead Coordinator (sole writer; bounded snapshot rewritten in place) [BOTH BUILDS]
 └── validation-team-state.md              ← Lead Coordinator (sole writer) [VALIDATE skill]
 
 (application source code)                 ← landing-page-builder     [VALIDATE]

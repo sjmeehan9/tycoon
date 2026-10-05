@@ -5,10 +5,12 @@ Bootstrapped from `project-template`. Read these before doing anything stack-spe
 - **`docs/project-profile.md`** — the stack contract: platform, targeted/component/phase validation tiers, test frameworks, UI/E2E harness, shared-resource locks, project layout, run instructions, git workflow, human tasks, budgets. Agents trust this file over their own assumptions.
 - **`.github/instructions/copilot.instructions.md`** — coding standards (per-stack sections; the profile says which applies).
 - **`supporting-files/AGENT_FLOWS.md`** — how the agent pipeline fits together.
+- **`supporting-files/TOOLING.md`** — the template's scripts, workflows and their prerequisites: git, bash and python3 on every stack; iOS adds its own toolchain.
 
 House rules:
 
 - Agent definitions (`.codex/agents/*.toml`, `.claude/agents/`, `.github/agents/`) and skills (`.agents/skills/`, `.claude/skills/`) are **generated** from `agents-src/` / `skills-src/` and kept current by the weekly template-sync PR. Change them in `project-template` and let the sync bring them here — local edits to synced files are overwritten by the next sync. CI (`agents-drift-check`) fails on drift between source and rendered files.
+- Context is tiered. `docs/agent-team-state.md` is a bounded snapshot rewritten in place; history lives in `docs/journal/`, decisions in `docs/decisions/`, deferred work in `docs/deferred.md`, durable facts in `docs/knowledge.md`, closed material in `docs/archive/`. Read what your role's reading contract names — a task agent reads § Current Stage and its own lifecycle row, never a document for awareness.
 - No agent pins a model — everything inherits the session model.
 - All agents communicate via the structured Agent Report format defined in their definitions.
 - `main` is protected; follow the git workflow contract in the project profile.

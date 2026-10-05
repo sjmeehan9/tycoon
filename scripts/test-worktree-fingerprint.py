@@ -86,6 +86,25 @@ class WorktreeFingerprintTests(unittest.TestCase):
         )
         self.assertEqual(before, self.fingerprint())
 
+    def test_documents_never_change_scoped_or_unscoped_identity(self) -> None:
+        scoped_before = self.fingerprint("src/alpha.txt")
+        global_before = self.fingerprint()
+        (self.repo / "docs" / "journal").mkdir()
+        (self.repo / "docs" / "decisions").mkdir()
+        (self.repo / "docs" / "journal" / "phase-1.md").write_text(
+            "### 09:00 — spawned Implement for 1.2\n", encoding="utf-8"
+        )
+        (self.repo / "docs" / "decisions" / "0001-use-xcodegen.md").write_text(
+            "Decision: generate the project with XcodeGen.\n", encoding="utf-8"
+        )
+        (self.repo / "docs" / "knowledge.md").write_text("## Build\n- fact\n", encoding="utf-8")
+        (self.repo / "docs" / "deferred.md").write_text("| D-1 | open |\n", encoding="utf-8")
+        (self.repo / "docs" / "project-profile.md").write_text("# Profile\n", encoding="utf-8")
+
+        self.assertEqual(scoped_before, self.fingerprint("src/alpha.txt"))
+        self.assertEqual(global_before, self.fingerprint())
+        self.assertEqual(global_before, self.fingerprint("docs/knowledge.md", "src/alpha.txt", "src/beta.txt"))
+
     def test_unrelated_later_change_preserves_scoped_component_identity(self) -> None:
         component = self.fingerprint("src/alpha.txt")
         global_before = self.fingerprint()

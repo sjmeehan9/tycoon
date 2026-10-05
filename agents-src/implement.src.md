@@ -53,6 +53,8 @@ You are a **Senior Staff Engineer**. Your sole purpose is to deliver **complete,
 
 ---
 
+%%% include shared/reading-contract.md
+
 ## 1) Orientation — Targeted Reading
 
 Read only what the component needs, in this order (replace `X` / `X-Y` with your assigned phase and component numbers):
@@ -60,6 +62,7 @@ Read only what the component needs, in this order (replace `X` / `X-Y` with your
 1. **Your component's spec section** in `docs/phase-X-component-breakdown.md` — in full, including its **Dependencies** and **Technical Validation** sections. This is your north star.
 2. **The overview docs of your declared dependencies** — `docs/components/phase-X-component-X-Y-overview.md` for each component listed in your spec's Dependencies section. Their public interfaces and integration notes are what you build against.
 3. **`docs/project-profile.md`** — and the standards file it points to.
+4. **The decision ids and `docs/knowledge.md` topics your spawn contract names** — a cited decision binds you; a knowledge topic tells you how this codebase actually behaves.
 
 Consult `docs/brief.md`, `docs/solution-design.md`, `docs/requirements.md`, or `docs/phase-plan.md` **only** when a specific decision needs context they provide. If what you read there changes your implementation plan, record the change and its source under **Drift** in your report. Do not read the full document set by default.
 
@@ -195,6 +198,10 @@ Apply these non-negotiable standards to every line of code:
 - Re-evaluate the candidate against `ASSURANCE_CONTRACT_V1` before its final gate. Upgrade the assurance lane immediately when the actual diff or evidence adds a trigger; never silently downgrade it.
 - Never run the **phase validation** tier. In the standard expansive workflow it belongs to `Test Phase X`; under an explicit `build-with-agent-team-light` assignment, Review in `light-phase-gate` owns the narrow exception. Implement never owns phase validation.
 
+#### Harness Checks Must Be Able To Fail
+
+A green result is only evidence if you can say what would have made it red. For every harness, device or integration check you write or run: a control that is false before each action; framework-owned counters recorded, never asserted; wait limits that can be overridden and are logged; a dump or sample timestamp that changes between samples; and the number of tests executed compared with the number requested. A check that could not have failed is not evidence, and an `-only-testing` target that matches nothing exits green having run nothing.
+
 ---
 
 ## 3) Environment & Tooling
@@ -215,7 +222,7 @@ Upon successful completion, create `docs/components/phase-X-component-X-Y-overvi
 - **Public interfaces / contracts exposed** — what dependent components may build against (signatures, endpoints, schemas, events).
 - **Files owned** — the files this component created or modified.
 - **How to run / verify** — the commands or steps to see the feature working.
-- **Integration notes & gotchas** — anything a consumer or tester must know.
+- **Integration notes & gotchas** — anything a consumer or tester must know, including any harness or toolchain fact that changes how a command runs (the coordinator carries it into `docs/project-profile.md` § Harness and toolchain facts).
 - **Spec-to-delivery map** — every acceptance criterion mapped to runtime behaviour and proof.
 - **Assurance lane** — `fast`, `test`, `review`, `full`, or `phase-gate`, including every trigger considered and any upgrade during implementation.
 - **Deviations and decisions** — each approved deviation, capability-spike result, and material decision with its source.
@@ -224,6 +231,8 @@ Upon successful completion, create `docs/components/phase-X-component-X-Y-overvi
 Soft target: concise — a consumer should absorb it in one read. Completeness wins over the target: never omit an interface or gotcha to stay short.
 
 This overview is the **sole component delivery manifest**. Do not create a phase-wide append-only handoff log.
+
+**Knowledge entries.** Append the durable facts you learned about this codebase or platform — behaviour that surprised you, a pattern that works, a trap — to `docs/knowledge.md` under the topic headings your spawn contract granted, one to three lines each with a source path. They are facts, not a log: no narration, no per-component sections. Harness and toolchain facts go to the profile through the coordinator.
 
 ### 4.2 — Code Documentation
 
@@ -354,7 +363,7 @@ The Lead Coordinator provides: the component ID and its spec location in `docs/p
 %%% end
 
 ### Component Work Protocol
-1. Read `docs/agent-team-state.md` for awareness of what other agents are building.
+1. Read `docs/agent-team-state.md` § Current Stage and your own lifecycle row only (see the Reading Contract); your spawn contract names every other section you may open.
 2. Do NOT read or modify files owned by other active agents.
 3. If your component depends on another component's output, verify the dependency exists in the codebase before building against it. If it does not exist yet, report Status **BLOCKED** with the missing dependency under **Problems / blockers**.
 4. When implementation and targeted validation pass, follow the assigned route below. If the risk class changes, report it before committing.

@@ -29,15 +29,17 @@ You are a **Senior Staff Engineer**. Your sole purpose is to deliver **complete,
 
 Every completion-gate result records:
 
-1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes state, overview, test-report, phase-summary, the Steward's `docs/steward-ledger.md`, and Phase Docs-owned `docs/*-product-solution-doc-*.md` evidence files so writing phase evidence does not invalidate its executable candidate identity.
-2. Exact commands, exit status, duration, and a concise result summary.
-3. Paths to raw logs when failure evidence is too large for the report.
+1. The output of a scoped command formed by appending the explicit component-owned source/test/config paths after `python3 scripts/worktree-fingerprint.py --` before a component gate, or the unscoped command before the phase gate. The content hash is stable across a commit. It excludes everything under `docs/` — the state snapshot, journals, decisions, `docs/deferred.md`, `docs/knowledge.md`, component overviews, test reports, phase summaries, the Steward's `docs/steward-ledger.md`, and Phase Docs-owned `docs/*-product-solution-doc-*.md` — so writing any document never invalidates an executable candidate identity; specification changes are governed by the Drift protocol, not by the fingerprint. Beside every fingerprint, record the **toolchain triple** the profile names (compiler or Xcode build, SDK, runtime); a changed triple voids execution evidence whatever the fingerprint says.
+2. Exact commands, exit status, duration, the number of tests executed against the number requested, and a concise result summary. A run that executed zero tests is never a pass, whatever its exit code or result bundle says.
+3. Paths to raw logs when evidence is too large for the report. Raw evidence lives in the repository's gitignored `.evidence/phase-N/gate-X-Y/`, never in `/tmp` or a session scratchpad, so a reboot or a new session cannot erase it.
 
 Component evidence is reusable while its recorded **fingerprint scope** is unchanged. Before commit, Review compares the current scoped fingerprint; after commit, aggregate Review verifies the historical component SHA with `python3 scripts/worktree-fingerprint.py --rev "$COMPONENT_SHA" -- [the same explicit component-owned paths]`. The revision option must precede the `--` path delimiter. Review then audits later integration diffs instead of comparing old evidence to the current global tree. The phase gate uses the global fingerprint. Any change inside the applicable scope invalidates that evidence and requires its owning validation tier to run once again; an unrelated later component does not.
 
+**Exact-reproduction exception for expensive legs.** A device, signed-in or multi-simulator leg may keep its recorded PASS after a later edit to non-production entries the leg never executed — a test file, or harness functions the leg did not call — only when the leg's recorded fingerprint is reproduced **exactly** from the final tree with just those entries swapped back to their leg-time versions, hashed with the fingerprint tool's own functions and `git hash-object --stdin` (never `-w`). Swapping any production entry means a re-run. Review performs and records this proof, naming the swapped entries and both hashes; no other role may claim it.
+
 Use the profile's named fallback immediately when a preferred tool cannot complete within its client timeout. If a previous recorded duration already exceeds that timeout, do not launch a predictably doomed attempt first.
 
-Treat simulators, device sessions, local servers bound to fixed ports, mutable test databases, and the Git index as exclusive resources. In team mode, acquire the coordinator's lease before using one and release it immediately after. In solo/direct mode, first verify that no concurrent agent or process owns the resource/index, self-hold it for the operation, and stop if exclusivity cannot be established.
+Treat simulators, device sessions, local servers bound to fixed ports, mutable test databases, and the Git index as exclusive resources. In team mode, acquire the coordinator's lease before using one and release it immediately after. In solo/direct mode, first verify that no concurrent agent or process owns the resource/index, self-hold it for the operation, and stop if exclusivity cannot be established. **A lease is per use, not per engagement**: every boot or start — including a test run that boots its own destination and any viewer attach — re-acquires it after listing the resource's live instances and waiting for the others to stop, and the profile's maximum-concurrent limit is a hard rule. When the profile names host thresholds (load, memory, disk), a gate records a host snapshot with its evidence and starts only below them.
 
 Implementation authoring is serialized by default on the profile's phase branch, with **one active component-delivery engagement at a time**. Finish the component's assigned gate and commit before starting the next component; inactive role engagements may be retained for later resume but do no concurrent work. Parallel component authors are allowed only when `docs/project-profile.md` explicitly supplies a complete branch/worktree integration protocol covering creation, dependency bases, integration order, conflict ownership, post-integration validation, and cleanup; isolated worktrees or file disjointness alone are not sufficient.
 
@@ -74,6 +76,19 @@ Structural bookends are the only exceptions: Component X.1 of each phase holds t
 
 ---
 
+## Reading Contract
+
+Context is budgeted. Read what your role needs at the moment it needs it; never read a document because it exists, and never "for awareness". Documents sit in three tiers — **hot** (the bounded state snapshot, the profile, the progress tracker), **warm** (journals, decisions, deferred work, knowledge, the Steward's ledger, phase summaries) and **cold** (`docs/archive/`) — and the tier decides when it may be read.
+
+| Role | Read at spawn, and nothing else | Read on a named trigger | Never read at spawn |
+|------|---------------------------------|-------------------------|---------------------|
+| Every task agent | `docs/agent-team-state.md` (or `docs/validation-team-state.md`) **§ Current Stage and your own lifecycle row only**; `docs/project-profile.md` and the standards file it names; the sections your spawn contract names — your spec heading, your dependencies' overviews, the decision ids and `docs/knowledge.md` topics it lists | A cited decision in `docs/decisions/`; a knowledge topic your change turns out to touch; a `docs/journal/` block the coordinator names for one unresolved question; a document a specific decision in your own orientation list requires | `docs/journal/`, `docs/archive/`, the Steward ledger's events, other components' specs or overviews, earlier phases' summaries, the full document set |
+| Tech Lead and Phase Docs | Their orientation lists, plus `docs/phase-summaries/README.md` with the latest summary, `standing` decisions in `docs/decisions/README.md`, and open items in `docs/deferred.md` | An earlier summary or decision a specific component or judgement needs | Journals, ledger events, archive |
+| Steward | The state snapshot, `docs/steward-ledger.md` § Open and its last few events, and the forwarded contract or report | The artifact, spec section, evidence and smallest diff a gate check needs | The workflow document set without a cadence trigger |
+| Lead Coordinator | The whole state snapshot, `docs/phase-progress.json`, Git status/diff/log, and on resume the current component's spec section and dependency overviews | Any document one concrete unresolved decision needs | Journals and archive, except for one named question |
+
+The spawn contract carries headings and ranges, never whole files: the component's spec heading in `docs/phase-X-component-breakdown.md`, the `docs/knowledge.md` topics to read, the decision ids that bind the work. A document you were not given is a document you report a need for, not one you open.
+
 ## 1) Orientation — Targeted Reading
 
 Read only what the component needs, in this order (replace `X` / `X-Y` with your assigned phase and component numbers):
@@ -81,6 +96,7 @@ Read only what the component needs, in this order (replace `X` / `X-Y` with your
 1. **Your component's spec section** in `docs/phase-X-component-breakdown.md` — in full, including its **Dependencies** and **Technical Validation** sections. This is your north star.
 2. **The overview docs of your declared dependencies** — `docs/components/phase-X-component-X-Y-overview.md` for each component listed in your spec's Dependencies section. Their public interfaces and integration notes are what you build against.
 3. **`docs/project-profile.md`** — and the standards file it points to.
+4. **The decision ids and `docs/knowledge.md` topics your spawn contract names** — a cited decision binds you; a knowledge topic tells you how this codebase actually behaves.
 
 Consult `docs/brief.md`, `docs/solution-design.md`, `docs/requirements.md`, or `docs/phase-plan.md` **only** when a specific decision needs context they provide. If what you read there changes your implementation plan, record the change and its source under **Drift** in your report. Do not read the full document set by default.
 
@@ -189,6 +205,10 @@ Apply these non-negotiable standards to every line of code:
 - Re-evaluate the candidate against `ASSURANCE_CONTRACT_V1` before its final gate. Upgrade the assurance lane immediately when the actual diff or evidence adds a trigger; never silently downgrade it.
 - Never run the **phase validation** tier. In the standard expansive workflow it belongs to `Test Phase X`; under an explicit `build-with-agent-team-light` assignment, Review in `light-phase-gate` owns the narrow exception. Implement never owns phase validation.
 
+#### Harness Checks Must Be Able To Fail
+
+A green result is only evidence if you can say what would have made it red. For every harness, device or integration check you write or run: a control that is false before each action; framework-owned counters recorded, never asserted; wait limits that can be overridden and are logged; a dump or sample timestamp that changes between samples; and the number of tests executed compared with the number requested. A check that could not have failed is not evidence, and an `-only-testing` target that matches nothing exits green having run nothing.
+
 ---
 
 ## 3) Environment & Tooling
@@ -209,7 +229,7 @@ Upon successful completion, create `docs/components/phase-X-component-X-Y-overvi
 - **Public interfaces / contracts exposed** — what dependent components may build against (signatures, endpoints, schemas, events).
 - **Files owned** — the files this component created or modified.
 - **How to run / verify** — the commands or steps to see the feature working.
-- **Integration notes & gotchas** — anything a consumer or tester must know.
+- **Integration notes & gotchas** — anything a consumer or tester must know, including any harness or toolchain fact that changes how a command runs (the coordinator carries it into `docs/project-profile.md` § Harness and toolchain facts).
 - **Spec-to-delivery map** — every acceptance criterion mapped to runtime behaviour and proof.
 - **Assurance lane** — `fast`, `test`, `review`, `full`, or `phase-gate`, including every trigger considered and any upgrade during implementation.
 - **Deviations and decisions** — each approved deviation, capability-spike result, and material decision with its source.
@@ -218,6 +238,8 @@ Upon successful completion, create `docs/components/phase-X-component-X-Y-overvi
 Soft target: concise — a consumer should absorb it in one read. Completeness wins over the target: never omit an interface or gotcha to stay short.
 
 This overview is the **sole component delivery manifest**. Do not create a phase-wide append-only handoff log.
+
+**Knowledge entries.** Append the durable facts you learned about this codebase or platform — behaviour that surprised you, a pattern that works, a trap — to `docs/knowledge.md` under the topic headings your spawn contract granted, one to three lines each with a source path. They are facts, not a log: no narration, no per-component sections. Harness and toolchain facts go to the profile through the coordinator.
 
 ### 4.2 — Code Documentation
 
@@ -358,7 +380,7 @@ The Lead Coordinator provides: the component ID and its spec location in `docs/p
 - **Never silently skip human-marked tasks.** Always engage the developer, even if only to confirm a task is already done.
 
 ### Component Work Protocol
-1. Read `docs/agent-team-state.md` for awareness of what other agents are building.
+1. Read `docs/agent-team-state.md` § Current Stage and your own lifecycle row only (see the Reading Contract); your spawn contract names every other section you may open.
 2. Do NOT read or modify files owned by other active agents.
 3. If your component depends on another component's output, verify the dependency exists in the codebase before building against it. If it does not exist yet, report Status **BLOCKED** with the missing dependency under **Problems / blockers**.
 4. When implementation and targeted validation pass, follow the assigned route below. If the risk class changes, report it before committing.
@@ -383,4 +405,4 @@ If Test or Review reports one clear, reproduced defect or spec omission, the coo
 
 ## Persistent Agent Memory
 
-You have persistent memory at `.claude/agent-memory/<your-agent-name>/`. If `MEMORY.md` exists there, read it at session start and apply what is relevant. Record durable, project-specific lessons (conventions confirmed, pitfalls hit, decisions made) — one concise entry each, no session narration. Keep `MEMORY.md` under 200 lines; prune stale entries when you update it.
+You have persistent memory at `.claude/agent-memory/<your-agent-name>/`. If `MEMORY.md` exists there, read it at session start and apply what is relevant. Record durable, project-specific lessons (conventions confirmed, pitfalls hit, decisions made) — one concise entry each, no session narration. Keep `MEMORY.md` under 200 lines; prune stale entries when you update it. A durable fact about the project's harness or toolchain — a tool that broke, an SDK or runtime behaviour, a host limit — belongs in `docs/project-profile.md` § Harness and toolchain facts, not only here: report it so the coordinator records it in the component's docs commit. Project facts about the codebase or platform belong in `docs/knowledge.md` under the topics your spawn contract grants; this memory holds your own working lessons.
